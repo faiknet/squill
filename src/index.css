@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-700 rounded-full;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+}
+
+.ProseMirror h1 {
+  font-size: 1.75rem;
+  line-height: 2rem;
+  font-weight: 700;
+  margin: 0.75rem 0;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5rem;
+  line-height: 1.75rem;
+  font-weight: 700;
+  margin: 0.625rem 0;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  margin: 0.5rem 0;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+}
+
+/* Link styling - brand teal color with underline */
+.ProseMirror a {
+  color: #307473;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ProseMirror a:hover {
+  color: #265d5c;
+}
+
+.dark .ProseMirror a {
+  color: #5da7a4;
+}
+
+.dark .ProseMirror a:hover {
+  color: #85bdbb;
+}
+
+/* Image styling - make images resizable and selectable */
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem 0;
+  cursor: pointer;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid #307473;
+  outline-offset: 2px;
+}
+
+/* Image resize handles styling */
+.ProseMirror .image-resizer {
+  position: relative;
+  display: inline-block;
+}
+
+.ProseMirror .image-resizer img {
+  margin: 0;
+}
+
+.ProseMirror .image-resizer .resize-trigger {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #307473;
+  border: 2px solid white;
+  border-radius: 2px;
+}
+
+.dark .ProseMirror .image-resizer .resize-trigger {
+  background: #5da7a4;
+  border-color: #1e1f20;
+}
+
+.ProseMirror .image-resizer .resize-trigger.top-left {
+  top: -5px;
+  left: -5px;
+  cursor: nwse-resize;
+}
+
+.ProseMirror .image-resizer .resize-trigger.top-right {
+  top: -5px;
+  right: -5px;
+  cursor: nesw-resize;
+}
+
+.ProseMirror .image-resizer .resize-trigger.bottom-left {
+  bottom: -5px;
+  left: -5px;
+  cursor: nesw-resize;
+}
+
+.ProseMirror .image-resizer .resize-trigger.bottom-right {
+  bottom: -5px;
+  right: -5px;
+  cursor: nwse-resize;
+}

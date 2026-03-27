@@ -1,0 +1,55 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.idea
+*.swp
+*.swo
+*~
+
+# Vite
+*.local
+vite.cache
+
+# Testing
+coverage
+.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Supabase
+supabase
+.migrate-cache
+
+# Build
+*.cache
+.next
+.nuxt
+.output
+.output-metadata
+.railway-cli
+.railwayignore
+
+# Build artifacts
+*.tsbuildinfo

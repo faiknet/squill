@@ -1,0 +1,598 @@
+import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { requireSupabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useSupabaseAuth'
+import { useFormState } from '../hooks/useFormState'
+import { copyInviteLink, getDisplayLabel } from '../lib/utils'
+import CreateCampaignModal from '../components/campaigns/CreateCampaignModal'
+import EditCampaignModal from '../components/campaigns/EditCampaignModal'
+import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
+import Logo from '../components/ui/logo.webp'
+
+function CampaignList() {
+  const navigate = useNavigate()
+  const { authState, signOut } = useAuth()
+  const { user } = authState
+  const { error, message, setFail, setSuccess, clear } = useFormState()
+
+  const [campaigns, setCampaigns] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [campaignsExpanded, setCampaignsExpanded] = useState(true)
+
+  // Modals state
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingCampaign, setEditingCampaign] = useState(null)
+  const [deletingCampaign, setDeletingCampaign] = useState(null)
+
+  useEffect(() => {
+    if (authState.isLoading || !authState.user) return
+    loadCampaigns()
+  }, [authState.isLoading, authState.user])
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (openMenuId) setOpenMenuId(null)
+    }
+    if (openMenuId) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [openMenuId])
+
+  const loadCampaigns = async () => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    try {
+      const client = requireSupabase()
+
+      // Parallel queries for efficiency
+      const [campaignsResult, pinsResult, partySizesResult, sessionsResult] = await Promise.all([
+        client.from('campaigns').select('id, name, description, created_at, updated_at, created_by, invite_code').order('created_at', { ascending: false }),
+        client.from('campaign_pins').select('campaign_id').eq('user_id', user.id),
+        client.rpc('get_campaign_party_sizes'),
+        client.from('sessions').select('campaign_id')
+      ])
+
+      if (campaignsResult.error) throw campaignsResult.error
+      if (pinsResult.error && console.warn('Pins error:', pinsResult.error)) { }
+      if (partySizesResult.error) throw partySizesResult.error
+      if (sessionsResult.error) throw sessionsResult.error
+
+      const pinnedIds = new Set((pinsResult.data || []).map(p => p.campaign_id))
+      const partySizeMap = new Map((partySizesResult.data || []).map(r => [r.campaign_id, Number(r.party_size) || 0]))
+
+      const sessionCountMap = new Map()
+      sessionsResult.data?.forEach(s => {
+        sessionCountMap.set(s.campaign_id, (sessionCountMap.get(s.campaign_id) || 0) + 1)
+      })
+
+      const processed = (campaignsResult.data || []).map(c => ({
+        ...c,
+        party_size: partySizeMap.get(c.id) ?? 0,
+        session_count: sessionCountMap.get(c.id) ?? 0,
+        pinned: pinnedIds.has(c.id),
+      }))
+
+      // Sort: pinned first, then recently updated
+      processed.sort((a, b) => {
+        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
+        return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+      })
+
+      setCampaigns(processed)
+    } catch (err) {
+      setFail(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreateCampaign = async ({ name, description }) => {
+    try {
+      const client = requireSupabase()
+      const { data, error } = await client.from('campaigns').insert([
+        { name, description, created_by: user.id }
+      ]).select().single()
+
+      if (error) throw error
+      await client.from('campaign_members').insert({ campaign_id: data.id, user_id: user.id })
+
+      setShowCreateModal(false)
+      await loadCampaigns()
+      navigate(`/campaigns/${data.id}`)
+    } catch (err) {
+      setFail(err)
+    }
+  }
+
+  const handleUpdateCampaign = async (id, { name, description }) => {
+    try {
+      const client = requireSupabase()
+      const { data, error } = await client.rpc('update_campaign_as_gm', {
+        p_campaign_id: id,
+        p_name: name,
+        p_description: description
+      })
+
+      if (error) throw error
+      if (!data || data.length === 0) throw new Error('Failed to update. Permission denied or campaign deleted.')
+
+      await loadCampaigns()
+      setEditingCampaign(null)
+      setSuccess('Campaign updated successfully')
+    } catch (err) {
+      setFail(err)
+    }
+  }
+
+  const handleDeleteCampaign = async () => {
+    try {
+      const { error } = await requireSupabase().from('campaigns').delete().eq('id', deletingCampaign.id)
+      if (error) throw error
+
+      setDeletingCampaign(null)
+      await loadCampaigns()
+      setSuccess('Campaign deleted')
+    } catch (err) {
+      const msg = String(err.message || '')
+      if (msg.toLowerCase().includes('row-level security')) {
+        setFail('Only the GM can delete this campaign.')
+      } else {
+        setFail(msg || 'Failed to delete campaign')
+      }
+    }
+  }
+
+  const handlePinCampaign = async (campaign) => {
+    try {
+      const client = requireSupabase()
+      const query = campaign.pinned
+        ? client.from('campaign_pins').delete().eq('campaign_id', campaign.id).eq('user_id', user.id)
+        : client.from('campaign_pins').insert({ campaign_id: campaign.id, user_id: user.id })
+
+      const { error } = await query
+      if (error) throw error
+
+      setOpenMenuId(null)
+      await loadCampaigns()
+    } catch (err) {
+      setFail(err)
+    }
+  }
+
+  const handleCopyLink = async (campaign) => {
+    if (!campaign?.invite_code) return
+    const success = await copyInviteLink(campaign.invite_code, setSuccess)
+    if (success) {
+      setOpenMenuId(null)
+      setTimeout(clear, 2000)
+    }
+  }
+
+  const isRecentlyModified = (updatedAt) => {
+    if (!updatedAt) return false
+    return new Date(updatedAt) > new Date(Date.now() - 12 * 60 * 60 * 1000)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-slate-500">Loading campaigns...</div>
+      </div>
+    )
+  }
+
+  const profileLabel = getDisplayLabel(authState)
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 font-sans text-slate-900 dark:text-gray-100 relative">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/50 md:hidden transition-opacity"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0
+        border-r border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="p-5 flex items-center justify-between">
+          <button
+            onClick={() => navigate('/campaigns')}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
+            <img src={Logo} alt="Squill Logo" className="size-8" />
+            <h1 className="text-2xl font-bold tracking-tight">Squill</h1>
+          </button>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="md:hidden p-1 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+          {/* Campaigns Button */}
+          <div>
+            <div className="w-full flex items-center gap-3">
+              <button
+                onClick={() => {/* Already on campaigns page */ }}
+                className="flex-1 flex items-center gap-3 px-3 py-1.5 rounded-md transition-colors bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 border-l-2 border-brand-600"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                <span className="text-sm font-medium flex-1 text-left">Campaigns</span>
+              </button>
+              <button
+                onClick={() => setCampaignsExpanded(!campaignsExpanded)}
+                className="p-1.5 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-md transition-colors"
+              >
+                <svg
+                  className={`w-4 h-4 transition-transform ${campaignsExpanded ? 'rotate-180' : ''} text-brand-700 dark:text-brand-400`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Campaigns Submenu */}
+            {campaignsExpanded && (
+              <div className="mt-1 space-y-0.5 pl-3 border-l border-slate-200 dark:border-gray-700">
+                {loading ? (
+                  <div className="px-3 py-2 text-xs text-slate-500 dark:text-gray-400">Loading...</div>
+                ) : campaigns.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-slate-500 dark:text-gray-400">No campaigns</div>
+                ) : (
+                  campaigns.map((campaign) => (
+                    <button
+                      key={campaign.id}
+                      onClick={() => {
+                        navigate(`/campaigns/${campaign.id}`)
+                        setMobileMenuOpen(false)
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm truncate hover:bg-slate-50 dark:hover:bg-gray-700/50 text-slate-700 dark:text-gray-300"
+                      title={campaign.name}
+                    >
+                      {campaign.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </nav>
+
+        <div className="p-4 border-t border-slate-100 dark:border-gray-700 relative">
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="w-full flex items-center gap-2.5 p-1.5 hover:bg-slate-50 dark:hover:bg-gray-800 rounded-md cursor-pointer transition-colors"
+          >
+            <div className="size-8 rounded-full bg-slate-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-gray-300">
+              {profileLabel.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 overflow-hidden text-left">
+              <p className="text-sm font-medium truncate">{profileLabel}</p>
+            </div>
+            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showUserMenu && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xl rounded-md overflow-hidden z-20">
+              <button
+                onClick={() => { setShowUserMenu(false); navigate('/settings') }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-2"
+              >
+                Settings
+              </button>
+              <button
+                onClick={() => { setShowUserMenu(false); signOut().then(() => navigate('/auth')) }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-2 border-t border-slate-100 dark:border-gray-700 text-red-600 dark:text-red-400"
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <main className="flex-1 overflow-y-auto w-full">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto">
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 flex items-center justify-between">
+              <span>{error}</span>
+              <button onClick={clear} className="text-sm font-bold hover:underline">Dismiss</button>
+            </div>
+          )}
+          {message && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 rounded-full shadow-xl border border-green-200 dark:border-green-700 flex items-center gap-4 transition-all animate-in fade-in slide-in-from-bottom-4">
+              <span className="font-medium">{message}</span>
+              <button onClick={clear} className="p-1 hover:bg-black/10 rounded-full transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <h2 className="text-2xl font-bold tracking-tight">Your Campaigns</h2>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3 w-full md:w-auto">
+              <div className="relative flex-1 md:flex-none md:w-64">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search campaigns..."
+                  className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-md text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                />
+              </div>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-brand-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-brand-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>New Campaign</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-sm">
+            {/* Desktop Table View */}
+            <table className="w-full text-left hidden md:table">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-gray-800/50 border-b border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3">Campaign Name</th>
+                  <th className="px-6 py-3">Party Size</th>
+                  <th className="px-6 py-3">Sessions</th>
+                  <th className="px-6 py-3">Last Modified</th>
+                  <th className="px-6 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-gray-700">
+                {campaigns.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                      <p className="mb-2">No campaigns found.</p>
+                      <button onClick={() => setShowCreateModal(true)} className="text-brand-600 hover:underline">
+                        Create one now
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  campaigns
+                    .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((campaign) => {
+                      const isOwner = user && campaign.created_by === user.id
+                      return (
+                        <tr
+                          key={campaign.id}
+                          className="hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group"
+                          onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                {isRecentlyModified(campaign.updated_at) && (
+                                  <span className="size-2 bg-brand-500 rounded-full" title="Recently active" />
+                                )}
+                                <span className="font-medium text-slate-900 dark:text-gray-100">{campaign.name}</span>
+                                {campaign.pinned && (
+                                  <svg className="w-3 h-3 text-brand-500" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M16 5c.55 0 1 .45 1 1v5.586l3 3V16H13v6l-1 1-1-1v-6H4v-1.414l3-3V6c0-.55.45-1 1-1h8zm-2 2H8v6.414l-2 2V14h12v-.586l-2-2V7z" />
+                                  </svg>
+                                )}
+                              </div>
+                              {campaign.description && (
+                                <span className="text-sm text-slate-500 truncate max-w-xs">{campaign.description}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-600 dark:text-gray-400">{campaign.party_size}</td>
+                          <td className="px-6 py-4 text-sm text-slate-600 dark:text-gray-400">{campaign.session_count}</td>
+                          <td className="px-6 py-4 text-sm text-slate-500">
+                            {new Date(campaign.updated_at || campaign.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          </td>
+                          <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="relative inline-block text-left">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenMenuId(openMenuId === campaign.id ? null : campaign.id)
+                                }}
+                                className="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-gray-200"
+                              >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                </svg>
+                              </button>
+
+                              {openMenuId === campaign.id && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50 py-1">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleCopyLink(campaign) }}
+                                    className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                  >
+                                    Invite
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handlePinCampaign(campaign) }}
+                                    className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                  >
+                                    {campaign.pinned ? 'Unpin' : 'Pin'}
+                                  </button>
+                                  {isOwner && (
+                                    <>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setEditingCampaign(campaign); setOpenMenuId(null) }}
+                                        className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                      >
+                                        Edit Details
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setDeletingCampaign(campaign); setOpenMenuId(null) }}
+                                        className="w-full px-4 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                      >
+                                        Delete Campaign
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                )}
+              </tbody>
+            </table>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-gray-700">
+              {campaigns.length === 0 ? (
+                <div className="p-6 text-center text-slate-400">
+                  <p className="mb-2">No campaigns found.</p>
+                  <button onClick={() => setShowCreateModal(true)} className="text-brand-600 hover:underline">
+                    Create one now
+                  </button>
+                </div>
+              ) : (
+                campaigns
+                  .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((campaign) => {
+                    const isOwner = user && campaign.created_by === user.id
+                    return (
+                      <div
+                        key={campaign.id}
+                        onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                        className="p-4 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {isRecentlyModified(campaign.updated_at) && (
+                              <span className="size-2 bg-brand-500 rounded-full" title="Recently active" />
+                            )}
+                            <span className="font-medium text-slate-900 dark:text-gray-100">{campaign.name}</span>
+                            {campaign.pinned && (
+                              <svg className="w-3 h-3 text-brand-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M16 5c.55 0 1 .45 1 1v5.586l3 3V16H13v6l-1 1-1-1v-6H4v-1.414l3-3V6c0-.55.45-1 1-1h8zm-2 2H8v6.414l-2 2V14h12v-.586l-2-2V7z" />
+                              </svg>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenMenuId(openMenuId === campaign.id ? null : campaign.id)
+                            }}
+                            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-gray-200"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {campaign.description && (
+                          <p className="text-sm text-slate-500 mb-3 line-clamp-2">{campaign.description}</p>
+                        )}
+
+                        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-gray-400">
+                          <div className="flex gap-3">
+                            <span>👥 {campaign.party_size || 0}</span>
+                            <span>📜 {campaign.session_count || 0}</span>
+                          </div>
+                          <span>
+                            {new Date(campaign.updated_at || campaign.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          </span>
+                        </div>
+
+                        {/* Mobile Actions Menu Dropdown */}
+                        {openMenuId === campaign.id && (
+                          <div className="mt-2 bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-md overflow-hidden">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleCopyLink(campaign) }}
+                              className="w-full px-4 py-3 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                            >
+                              Invite
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handlePinCampaign(campaign) }}
+                              className="w-full px-4 py-3 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2 border-t border-slate-200 dark:border-gray-700"
+                            >
+                              {campaign.pinned ? 'Unpin' : 'Pin to Top'}
+                            </button>
+                            {isOwner && (
+                              <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setEditingCampaign(campaign); setOpenMenuId(null) }}
+                                  className="w-full px-4 py-3 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2 border-t border-slate-200 dark:border-gray-700"
+                                >
+                                  Edit Details
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeletingCampaign(campaign); setOpenMenuId(null) }}
+                                  className="w-full px-4 py-3 text-sm text-left text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2 border-t border-slate-200 dark:border-gray-700"
+                                >
+                                  Delete Campaign
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Modals */}
+      <CreateCampaignModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreateCampaign}
+      />
+      <EditCampaignModal
+        isOpen={!!editingCampaign}
+        onClose={() => setEditingCampaign(null)}
+        campaign={editingCampaign}
+        onSave={handleUpdateCampaign}
+      />
+      <DeleteCampaignModal
+        isOpen={!!deletingCampaign}
+        onClose={() => setDeletingCampaign(null)}
+        campaignName={deletingCampaign?.name}
+        onDelete={handleDeleteCampaign}
+      />
+    </div>
+  )
+}
+
+export default CampaignList

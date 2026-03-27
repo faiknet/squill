@@ -1,0 +1,80 @@
+/* Mention styling for the editor */
+
+span[data-mention-type] {
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  display: inline-block;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: all; /* Helps with selection */
+  margin: 0 1px;
+  vertical-align: middle;
+}
+
+span[data-mention-type]:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+}
+
+.dark span[data-mention-type]:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+}
+
+/* NPC mentions - Blue */
+span[data-mention-entity-type="npc"] {
+  color: #3b82f6;
+  padding-left: 24px; /* Space for icon */
+  background-image: url('/icons/NPCs.png');
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: 4px center;
+}
+
+/* Inventory mentions - Brown */
+span[data-mention-entity-type="item"] {
+  color: #a16207;
+  padding-left: 24px;
+  background-image: url('/icons/Inventory.png');
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: 4px center;
+}
+
+/* Pet mentions - Purple */
+span[data-mention-entity-type="pet"] {
+  color: #a855f7;
+  padding-left: 24px;
+  background-image: url('/icons/Pets.png');
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: 4px center;
+}
+
+/* Location mentions - Green */
+span[data-mention-entity-type="location"] {
+  color: #22c55e;
+  padding-left: 24px;
+  background-image: url('/icons/Location.png');
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: 4px center;
+}
+
+/* Session mentions - Red */
+span[data-mention-type="session"] {
+  color: #ef4444;
+  text-decoration: none; /* Removed underline in favor of button style */
+}
+
+/* Hover effects for specific types if needed, otherwise generic hover above handles it */
+
+/* Dark mode overrides */
+.dark span[data-mention-type="entity"][data-mention-entity-type="npc"] { color: #60a5fa; }
+.dark span[data-mention-type="entity"][data-mention-entity-type="item"] { color: #d97706; }
+.dark span[data-mention-type="entity"][data-mention-entity-type="pet"] { color: #c084fc; }
+.dark span[data-mention-type="entity"][data-mention-entity-type="location"] { color: #4ade80; }
+.dark span[data-mention-type="session"] { color: #f87171; }
+
