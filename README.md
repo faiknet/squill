@@ -2,7 +2,8 @@
 
 A production-ready web applicationfor collaborative note-taking in tabletop RPG campaigns. Built with modern tech and enterprise-grade security.
 
-![SquillDemo](https://github.com/user-attachments/assets/d472c74f-8fac-4f36-980f-ce35a70b1ba8)
+![SquillDemo](https://github.com/user-attachments/assets/7c123527-60e3-4939-bec8-037341accd0b)
+
 
 ---
 
