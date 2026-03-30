@@ -104,7 +104,7 @@ function CampaignList() {
     try {
       // Validate input before database operation
       const validated = validateCreateCampaign({ name, description })
-      
+
       const client = requireSupabase()
       const { data, error } = await client.from('campaigns').insert([
         { name: validated.name, description: validated.description, created_by: user.id }
@@ -130,7 +130,7 @@ function CampaignList() {
       // Validate inputs before database operation
       const validated = validateUpdateCampaign({ name, description })
       const validatedId = validateCampaignId(id)
-      
+
       const client = requireSupabase()
       const { data, error } = await client.rpc('update_campaign_as_gm', {
         p_campaign_id: validatedId,
@@ -157,7 +157,7 @@ function CampaignList() {
     try {
       // Validate campaign ID before deletion
       const validatedId = validateCampaignId(deletingCampaign.id)
-      
+
       const { error } = await requireSupabase().from('campaigns').delete().eq('id', validatedId)
       if (error) throw error
 
@@ -224,14 +224,14 @@ function CampaignList() {
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/50 md:hidden transition-opacity"
+          className="fixed inset-0 z-20 bg-black/50 lg:hidden transition-opacity"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0
+        fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
         border-r border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
@@ -245,7 +245,7 @@ function CampaignList() {
           </button>
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="md:hidden p-1 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="lg:hidden p-1 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
             <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -343,8 +343,8 @@ function CampaignList() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto w-full">
-        <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
+        <div className="p-4 lg:p-6 w-full">
           {error && (
             <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 flex items-center justify-between">
               <span>{error}</span>
@@ -362,10 +362,21 @@ function CampaignList() {
             </div>
           )}
 
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h2 className="text-2xl font-bold tracking-tight">Your Campaigns</h2>
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3 w-full md:w-auto">
-              <div className="relative flex-1 md:flex-none md:w-64">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              >
+                <svg className="w-6 h-6 text-slate-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <h2 className="text-xl lg:text-2xl font-bold tracking-tight whitespace-nowrap lg:block hidden">Your Campaigns</h2>
+              <h2 className="text-xl lg:text-2xl font-bold tracking-tight whitespace-nowrap lg:hidden">Campaigns</h2>
+            </div>
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3 w-full lg:w-auto">
+              <div className="relative flex-1 lg:flex-none lg:w-56">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
@@ -379,19 +390,20 @@ function CampaignList() {
               </div>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="bg-brand-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-brand-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                className="bg-brand-600 text-white px-3 lg:px-4 py-2 rounded-md text-sm font-semibold hover:bg-brand-700 transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap flex-shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span>New Campaign</span>
+                <span className="hidden lg:inline">New Campaign</span>
+                <span className="lg:hidden">New</span>
               </button>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-sm">
+          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-sm overflow-x-auto">
             {/* Desktop Table View */}
-            <table className="w-full text-left hidden md:table">
+            <table className="w-full text-left hidden lg:table">
               <thead>
                 <tr className="bg-slate-50 dark:bg-gray-800/50 border-b border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-3">Campaign Name</th>
@@ -423,14 +435,14 @@ function CampaignList() {
                           onClick={() => navigate(`/campaigns/${campaign.id}`)}
                         >
                           <td className="px-6 py-4">
-                            <div className="flex flex-col">
+                            <div className="flex flex-col max-w-xs">
                               <div className="flex items-center gap-2">
                                 {isRecentlyModified(campaign.updated_at) && (
                                   <span className="size-2 bg-brand-500 rounded-full" title="Recently active" />
                                 )}
-                                <span className="font-medium text-slate-900 dark:text-gray-100">{campaign.name}</span>
+                                <span className="font-medium text-slate-900 dark:text-gray-100 truncate">{campaign.name}</span>
                                 {campaign.pinned && (
-                                  <svg className="w-3 h-3 text-brand-500" fill="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-3 h-3 text-brand-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M16 5c.55 0 1 .45 1 1v5.586l3 3V16H13v6l-1 1-1-1v-6H4v-1.414l3-3V6c0-.55.45-1 1-1h8zm-2 2H8v6.414l-2 2V14h12v-.586l-2-2V7z" />
                                   </svg>
                                 )}
@@ -501,7 +513,7 @@ function CampaignList() {
             </table>
 
             {/* Mobile Card View */}
-            <div className="md:hidden divide-y divide-slate-100 dark:divide-gray-700">
+            <div className="lg:hidden divide-y divide-slate-100 dark:divide-gray-700">
               {campaigns.length === 0 ? (
                 <div className="p-6 text-center text-slate-400">
                   <p className="mb-2">No campaigns found.</p>
@@ -550,9 +562,19 @@ function CampaignList() {
                         )}
 
                         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-gray-400">
-                          <div className="flex gap-3">
-                            <span>👥 {campaign.party_size || 0}</span>
-                            <span>📜 {campaign.session_count || 0}</span>
+                          <div className="flex gap-4">
+                            <div className="flex items-center gap-1">
+                              <svg className="w-4 h-4 text-brand-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+                              </svg>
+                              <span>{campaign.party_size || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <svg className="w-4 h-4 text-brand-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M16 18H8v-2h8v2zm0-4H8v-2h8v2zm0-4H8V8h8v2z"/>
+                              </svg>
+                              <span>{campaign.session_count || 0}</span>
+                            </div>
                           </div>
                           <span>
                             {new Date(campaign.updated_at || campaign.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}

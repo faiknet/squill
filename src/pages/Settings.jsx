@@ -123,7 +123,7 @@ export default function Settings() {
       if (saveError instanceof ValidationError) {
         profileForm.setFail(saveError.getClientMessage())
       } else {
-        profileForm.setFail(saveError)
+        profileForm.setFail(saveError?.message || 'Failed to save profile')
       }
     } finally {
       setProfileSaving(false)
@@ -152,7 +152,7 @@ export default function Settings() {
       if (error instanceof ValidationError) {
         accountForm.setFail(error.getClientMessage())
       } else {
-        accountForm.setFail(error)
+        accountForm.setFail(error?.message || 'Failed to update email')
       }
     } finally {
       setEmailLoading(false)

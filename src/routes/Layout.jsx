@@ -5,6 +5,7 @@ import { getDisplayLabel } from '../lib/utils'
 import { UserProfileMenu } from '../components/ui'
 import Logo from '../components/ui/logo.webp'
 import { requireSupabase } from '../lib/supabase'
+import { MobileMenuProvider } from '../contexts/MobileMenuContext'
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -44,7 +45,8 @@ export default function Layout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 font-sans text-slate-900 dark:text-gray-100 relative">
+    <MobileMenuProvider value={{ mobileMenuOpen, setMobileMenuOpen }}>
+      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 font-sans text-slate-900 dark:text-gray-100 relative">
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
@@ -153,5 +155,6 @@ export default function Layout() {
         </div>
       </main>
     </div>
+    </MobileMenuProvider>
   )
 }

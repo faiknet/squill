@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
+import { useMobileMenu } from '../contexts/MobileMenuContext'
 import { Button, Card, Input } from '../components/ui'
 import { EditSessionModal, DeleteSessionModal } from '../components/sessions'
 import { colorFromString } from '../lib/liveblocks'
@@ -21,6 +22,7 @@ function CampaignDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
+  const { setMobileMenuOpen } = useMobileMenu()
   const currentUserId = authState.user?.id ?? null
   const [campaign, setCampaign] = useState(null)
   const [sessions, setSessions] = useState([])
@@ -439,6 +441,14 @@ function CampaignDetail() {
           <div className="flex flex-col gap-4">
 
             <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              >
+                <svg className="w-6 h-6 text-slate-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-gray-100 break-all">{campaign.name}</h1>
               {isGM && (
                 <span className="inline-flex items-center rounded-md bg-brand-50 dark:bg-brand-900/30 px-2 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 ring-1 ring-inset ring-brand-700/10 shrink-0">

@@ -48,16 +48,16 @@ export default function PresenceSidebar({
     // 3. Map campaign members (Supabase)
     // We want to show all members. If they are active, show status. If not, offline.
     // If we have duplicates (e.g. "You" is in members), filter out.
-    
+
     // Note: This matching by name is fragile but works for MVP without auth IDs in presence
     campaignMembers.forEach(member => {
       const displayName = member.display_name
-      
+
       // Skip self if name matches (simple check)
-      if (displayName === currentUser?.name) return 
+      if (displayName === currentUser?.name) return
 
       const activeUser = activeMap.get(displayName)
-      
+
       if (activeUser) {
         list.push({
           id: activeUser.connectionId,
@@ -82,16 +82,16 @@ export default function PresenceSidebar({
 
     // 4. Add remaining active users (Guests not in member list)
     activeMap.forEach((u) => {
-       if (u.presence?.name !== currentUser?.name) {
-         list.push({
-           id: u.connectionId,
-           name: u.presence.name,
-           color: u.presence?.color || '#9ca3af',
-           status: u.presence?.typing ? 'Editing' : 'Viewing',
-           isOnline: true,
-           typing: u.presence?.typing || false
-         })
-       }
+      if (u.presence?.name !== currentUser?.name) {
+        list.push({
+          id: u.connectionId,
+          name: u.presence.name,
+          color: u.presence?.color || '#9ca3af',
+          status: u.presence?.typing ? 'Editing' : 'Viewing',
+          isOnline: true,
+          typing: u.presence?.typing || false
+        })
+      }
     })
 
     return list.sort((a, b) => {
@@ -106,12 +106,12 @@ export default function PresenceSidebar({
       {/* Members Section */}
       <div className="p-5 flex-1 overflow-y-auto">
         <h3 className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-4">
-          Online Now
+          Member List
         </h3>
         <div className="space-y-3">
           {memberStatusList.map((user) => (
             <div key={user.id} className={`flex items-start gap-3 ${!user.isOnline ? 'opacity-50' : ''}`}>
-              <div 
+              <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0 select-none"
                 style={{ backgroundColor: user.color }}
               >
@@ -131,7 +131,7 @@ export default function PresenceSidebar({
               </div>
             </div>
           ))}
-          
+
           {memberStatusList.length === 0 && (
             <p className="text-xs text-slate-500 dark:text-gray-600 italic">No members found.</p>
           )}
@@ -174,7 +174,7 @@ function timeAgo(dateString) {
   const date = new Date(dateString)
   const now = new Date()
   const seconds = Math.floor((now - date) / 1000)
-  
+
   if (seconds < 60) return 'Just now'
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) return `${minutes}m ago`
