@@ -43,10 +43,11 @@ A **production-ready web application** for collaborative note-taking in tabletop
 
 ### Prerequisites
 - **Node.js** 18+ and npm
-- **Supabase** account (free tier works)
-- **Liveblocks** account (free tier works)
+- **Supabase** account ([free tier](https://supabase.com) works perfectly)
+- **Liveblocks** account ([free tier](https://liveblocks.io) works perfectly)
 
 ### 1. Clone & Install
+
 ```bash
 git clone https://github.com/yourusername/scribes-quill.git
 cd scribes-quill
@@ -55,47 +56,60 @@ npm install
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the root directory. Use `.env.example` as a template:
+> ⚠️ **IMPORTANT:** The `.env` file is listed in `.gitignore` for security — it should NEVER be committed to version control.
+
+Create a `.env` file in the root directory using `.env.example` as a template:
 
 ```bash
 cp .env.example .env
 ```
 
-Fill in your credentials:
+Then fill in your credentials from the services below:
 
-**Supabase Setup:**
-1. Go to [Supabase Dashboard](https://app.supabase.com)
-2. Create a new project
-3. Get your URL and keys from **Settings** → **API**
-4. Copy into `.env`:
-   ```
+#### Supabase Setup
+1. Go to [Supabase Dashboard](https://app.supabase.com) → Create new project
+2. Navigate to **Settings** → **API** to find your credentials
+3. Add to `.env`:
+   ```env
    VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key (for edge functions)
+   VITE_SUPABASE_ANON_KEY=your_anon_key_here
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+   ```
+4. **Email Configuration** (Required): Go to **Project Settings** → **Email** and enable email confirmations. This allows users to verify their email during signup and password reset.
+
+#### Liveblocks Setup
+1. Go to [Liveblocks Dashboard](https://liveblocks.io) → Create new project
+2. Copy your public API key from **Settings** → **API Keys**
+3. Add to `.env`:
+   ```env
+   VITE_LIVEBLOCKS_PUBLIC_KEY=pk_your_key_here
+   VITE_LIVEBLOCKS_HOST=https://api.liveblocks.io
    ```
 
-**Liveblocks Setup:**
-1. Go to [Liveblocks Dashboard](https://liveblocks.io)
-2. Create a new project
-3. Copy your API key from **Settings**:
-   ```
-   VITE_LIVEBLOCKS_PUBLIC_KEY=pk_your_key
-   ```
+#### Application Configuration
+```env
+VITE_APP_NAME=Scribes Quill
+VITE_APP_VERSION=1.0.0
+VITE_BYPASS_AUTH=false
+VITE_LIVEBLOCKS_SNAPSHOT_WEBHOOK=https://your-deployment-url/api/functions/snapshot-note
+```
 
 ### 3. Database Setup
 
+Run migrations to set up the PostgreSQL schema and Row-Level Security (RLS) policies:
+
 ```bash
-# Deploy migrations to Supabase
+# Deploy migrations to Supabase (requires supabase-cli)
 npx supabase migration up
 
-# Or manually run migrations via Supabase Dashboard SQL Editor
-# Files: supabase/migrations/*.sql
+# OR manually: Go to Supabase Dashboard → SQL Editor → Paste files from supabase/migrations/*.sql
 ```
 
 ### 4. Run Locally
 
 ```bash
-# Development server (http://localhost:5173)
+# Start development server (http://localhost:5173)
 npm run dev
 
 # Build for production
@@ -104,9 +118,21 @@ npm run build
 # Run tests
 npm test
 
-# Lint code
+# Type-check code
+npm run type-check
+
+# Lint code (fix unused imports before deploying to public repo)
 npm run lint
 ```
+
+### ✅ Before Deploying to Public GitHub
+
+- [x] `.env` file is in `.gitignore` (never commit secrets!)
+- [x] `.env.example` has placeholder values (safe to commit)
+- [x] No sensitive files tracked in git
+- [x] Code builds successfully: `npm run build`
+- [x] All tests pass: `npm test`
+- [x] TypeScript is error-free: `npm run type-check`
 
 ---
 
@@ -262,34 +288,136 @@ See [DATABASE_INDEXING_SUMMARY.md](./md/DATABASE_INDEXING_SUMMARY.md) for techni
 
 ## 🚢 Deployment
 
-### Vercel (Recommended for Frontend)
+### Frontend Deployment (Vercel - Recommended)
+
+Vercel seamlessly deploys from GitHub with automatic deployments on push.
+
 ```bash
-# Build for production
+# 1. Build locally first to verify
 npm run build
 
-# Deploy to Vercel
-vercel deploy
+# 2. Push to GitHub
+git push origin main
+
+# 3. Go to https://vercel.com → Import Git Repository → Select your repo
 ```
 
 **Environment Variables for Vercel:**
+In Vercel dashboard, add these from your `.env`:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_LIVEBLOCKS_PUBLIC_KEY`
 - `VITE_APP_NAME`
 - `VITE_APP_VERSION`
+- `VITE_LIVEBLOCKS_SNAPSHOT_WEBHOOK` (production URL after deployment)
 
-### Supabase Edge Functions
+**Next steps after deployment:**
+1. Update `VITE_LIVEBLOCKS_SNAPSHOT_WEBHOOK` in Vercel settings to your production URL
+2. Update `VITE_LIVEBLOCKS_SNAPSHOT_WEBHOOK` in Supabase Edge Function environment
+
+### Database Deployment (Supabase)
+
 ```bash
-# Deploy edge functions
-supabase functions deploy join-campaign
-supabase functions deploy snapshot-note
+# Deploy migrations to Supabase
+supabase link  # Links your local project to Supabase
+supabase db push  # Deploys migrations
+
+# OR: Manually run migrations via Supabase Dashboard SQL Editor
+# 1. Go to Supabase Dashboard → SQL Editor
+# 2. Copy content from supabase/migrations/*.sql
+# 3. Paste and execute
 ```
 
-See [IDOR_DEPLOYMENT_CHECKLIST.md](./md/IDOR_DEPLOYMENT_CHECKLIST.md) for database migration steps.
+### Edge Functions Deployment (Supabase)
+
+Rate-limited webhook handlers for security:
+
+```bash
+# Deploy join-campaign function (invite link handler)
+supabase functions deploy join-campaign --project-ref YOUR_PROJECT_ID
+
+# Deploy snapshot-note function (Liveblocks webhook)
+supabase functions deploy snapshot-note --project-ref YOUR_PROJECT_ID
+```
+
+**Configuration:**
+Update `.env` in Supabase edge function settings:
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+### Deployment Checklist
+
+- [ ] All tests pass: `npm test`
+- [ ] Build succeeds: `npm run build`
+- [ ] No TypeScript errors: `npm run type-check`
+- [ ] `.env` file is NOT committed
+- [ ] GitHub repository is public
+- [ ] Supabase project created and migrations applied
+- [ ] Liveblocks API key generated
+- [ ] Vercel project created and linked
+- [ ] Environment variables set in Vercel
+- [ ] Edge functions deployed to Supabase
+- [ ] Email confirmation enabled in Supabase
+- [ ] Live site tested end-to-end
+
+See [IDOR_DEPLOYMENT_CHECKLIST.md](./md/IDOR_DEPLOYMENT_CHECKLIST.md) for comprehensive deployment security guide.
+
+## 📋 Best Practices for Public Repository
+
+### Environment Variables (CRITICAL)
+- ✅ `.env` is in `.gitignore` — never committed
+- ✅ `.env.example` provides template with placeholders
+- ✅ Never paste real API keys into documentation
+- ✅ Use `.env` locally, set via deployment platform environment variables in production
+
+### Git Configuration
+```bash
+# Verify sensitive files are ignored
+git check-ignore .env .env.local
+
+# Check git history (ensure .env never committed)
+git log --all -- .env
+
+# View tracked files before pushing
+git ls-files
+```
+
+### Pre-Push Checklist
+```bash
+# 1. Build production bundle
+npm run build
+
+# 2. Type-check
+npm run type-check
+
+# 3. Test (if available)
+npm test
+
+# 4. Review changes
+git diff --cached
+
+# 5. Ensure no .env files tracked
+git status
+```
+
+### Security Headers & CSP
+This application is configured for:
+- ✅ HTTPS enforcement via Vercel
+- ✅ CORS policy (Supabase handles auth)
+- ✅ Content Security Policy (Vite configurable)
+- ✅ SameSite cookie enforcement (Supabase Auth)
+
+### Sensitive Data Handling
+- **No API keys in code** — all credentials from `.env`
+- **No secrets in comments** — clean git history
+- **No personal data in docs** — generic examples only
+- **No credentials in package-lock.json** — auto-generated
 
 ---
 
-## 🔄 Development Workflow
+
 
 ### Before Committing
 ```bash
