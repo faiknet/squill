@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from './useSupabaseAuth'
+import {
+  validateUpdateNote,
+  validateCreateEntityTag,
+  validateUpdateEntityTag,
+  validateSessionId,
+  validateCampaignId,
+  validateTagId,
+  ValidationError,
+} from '../lib/validation'
 
 export function useSessionData(sessionId, campaignId) {
   const { authState } = useAuth()
@@ -215,10 +224,14 @@ export function useSessionData(sessionId, campaignId) {
     setError('')
     console.log('saveNote called, about to save...')
     try {
+      // Validate content before saving
+      const validated = validateUpdateNote({ contentMd: content })
+      const validatedSessionId = validateSessionId(sessionId)
+      
       const { error } = await requireSupabase().from('session_notes').upsert({
-        session_id: sessionId,
-        content_md: content,
-        liveblocks_id: sessionId,
+        session_id: validatedSessionId,
+        content_md: validated.contentMd,
+        liveblocks_id: validatedSessionId,
         updated_at: new Date().toISOString()
       }, { onConflict: 'session_id' })
 
@@ -229,7 +242,11 @@ export function useSessionData(sessionId, campaignId) {
       logActivity('edit_document', session?.name)
       
     } catch (err) {
-      setError(err.message || 'Failed to save note')
+      if (err instanceof ValidationError) {
+        setError(err.getClientMessage())
+      } else {
+        setError(err.message || 'Failed to save note')
+      }
     } finally {
       setSaving(false)
     }
@@ -237,17 +254,23 @@ export function useSessionData(sessionId, campaignId) {
 
   const addTag = useCallback(async (type, label) => {
     try {
+      // Validate tag data before insertion
+      const validated = validateCreateEntityTag({
+        name: label,
+        tagType: type === 'inventory' ? 'item' : type,
+        sessionId: sessionId,
+        description: undefined
+      })
+
       // Map frontend types to database types
-      let dbType = type
-      if (type === 'inventory') dbType = 'item'
-      if (type === 'pet') dbType = 'pet' // Will need DB constraint update
+      let dbType = validated.tagType
       
       const { data, error } = await requireSupabase()
         .from('entity_tags')
         .insert({
           session_id: sessionId,
           campaign_id: campaignId,
-          label: label,
+          label: validated.name,
           tag_type: dbType,
           created_by: authState.user?.id,
         })
@@ -288,14 +311,17 @@ export function useSessionData(sessionId, campaignId) {
 
   const removeTag = useCallback(async (tagId, tagDetails = null) => {
     try {
+      // Validate tag ID before deletion
+      const validatedTagId = validateTagId(tagId)
+      
       // Find the tag first so we can log its removal
       // Prefer passed details, fallback to finding in state
-      const tagToRemove = tagDetails || tags.find(t => t.id === tagId)
+      const tagToRemove = tagDetails || tags.find(t => t.id === validatedTagId)
       
-      const { error } = await requireSupabase().from('entity_tags').delete().eq('id', tagId)
+      const { error } = await requireSupabase().from('entity_tags').delete().eq('id', validatedTagId)
       if (error) throw error
       
-      setTags(prev => prev.filter(t => t.id !== tagId))
+      setTags(prev => prev.filter(t => t.id !== validatedTagId))
       
       // Log removal if tag was found
       if (tagToRemove) {
@@ -320,23 +346,35 @@ export function useSessionData(sessionId, campaignId) {
         })
       }
     } catch (err) {
-      setError(err.message || 'Failed to remove tag')
+      if (err instanceof ValidationError) {
+        setError(err.getClientMessage())
+      } else {
+        setError(err.message || 'Failed to remove tag')
+      }
     }
   }, [tags, logActivity, session?.name, authState.user?.id])
 
   const updateTag = useCallback(async (tagId, updates) => {
     try {
+      // Validate tag ID and updates
+      const validatedTagId = validateTagId(tagId)
+      const validated = validateUpdateEntityTag(updates)
+      
       const { error } = await requireSupabase()
         .from('entity_tags')
-        .update(updates)
-        .eq('id', tagId)
+        .update(validated)
+        .eq('id', validatedTagId)
       
       if (error) throw error
       
-      setTags(prev => prev.map(t => t.id === tagId ? { ...t, ...updates } : t))
+      setTags(prev => prev.map(t => t.id === validatedTagId ? { ...t, ...validated } : t))
       return true
     } catch (err) {
-      setError(err.message || 'Failed to update tag')
+      if (err instanceof ValidationError) {
+        setError(err.getClientMessage())
+      } else {
+        setError(err.message || 'Failed to update tag')
+      }
       return false
     }
   }, [])

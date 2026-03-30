@@ -4,6 +4,12 @@ import { useFormState } from '../hooks/useFormState'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { requireSupabase } from '../lib/supabase'
 import { Button, Input } from '../components/ui'
+import {
+  validateUpdateProfile,
+  validateEmail,
+  validatePassword,
+  ValidationError,
+} from '../lib/validation'
 
 export default function Settings() {
   const { authState, refreshProfile } = useAuth()
@@ -96,25 +102,29 @@ export default function Settings() {
     profileForm.clear()
 
     try {
-      const trimmed = displayName.trim()
-      if (!trimmed) {
-        profileForm.setFail('Display Name is required')
-        return
-      }
+      // Validate profile update
+      const validated = validateUpdateProfile({
+        displayName: displayName,
+        avatarUrl: avatarUrl
+      })
 
       const { error: upsertError } = await requireSupabase()
         .from('profiles')
         .upsert({
           id: authState.user.id,
-          display_name: trimmed,
-          avatar_url: avatarUrl // Preserve current avatar
+          display_name: validated.displayName,
+          avatar_url: validated.avatarUrl // Preserve current avatar
         })
       if (upsertError) throw upsertError
 
       await refreshProfile()
       profileForm.setSuccess('Profile updated successfully')
     } catch (saveError) {
-      profileForm.setFail(saveError)
+      if (saveError instanceof ValidationError) {
+        profileForm.setFail(saveError.getClientMessage())
+      } else {
+        profileForm.setFail(saveError)
+      }
     } finally {
       setProfileSaving(false)
     }
@@ -132,11 +142,18 @@ export default function Settings() {
     accountForm.clear()
 
     try {
-      const { error } = await requireSupabase().auth.updateUser({ email })
+      // Validate email format
+      const validatedEmail = validateEmail(email)
+      
+      const { error } = await requireSupabase().auth.updateUser({ email: validatedEmail })
       if (error) throw error
       accountForm.setSuccess('Confirmation link sent to both old and new email addresses.')
     } catch (error) {
-      accountForm.setFail(error)
+      if (error instanceof ValidationError) {
+        accountForm.setFail(error.getClientMessage())
+      } else {
+        accountForm.setFail(error)
+      }
     } finally {
       setEmailLoading(false)
     }
@@ -149,22 +166,25 @@ export default function Settings() {
       securityForm.setFail('Passwords do not match')
       return
     }
-    if (password.length < 6) {
-      securityForm.setFail('Password must be at least 6 characters')
-      return
-    }
 
     setSecurityLoading(true)
     securityForm.clear()
 
     try {
-      const { error } = await requireSupabase().auth.updateUser({ password })
+      // Validate password strength
+      const validatedPassword = validatePassword(password)
+      
+      const { error } = await requireSupabase().auth.updateUser({ password: validatedPassword })
       if (error) throw error
       securityForm.setSuccess('Password updated successfully')
       setPassword('')
       setConfirmPassword('')
     } catch (error) {
-      securityForm.setFail(error)
+      if (error instanceof ValidationError) {
+        securityForm.setFail(error.getClientMessage())
+      } else {
+        securityForm.setFail(error)
+      }
     } finally {
       setSecurityLoading(false)
     }

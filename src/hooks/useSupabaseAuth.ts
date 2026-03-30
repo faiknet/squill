@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { requireSupabase, supabase } from '../lib/supabase'
+import {
+  validateSignIn,
+  validateSignUp,
+  validateResetPassword,
+  ValidationError,
+} from '../lib/validation'
 
 interface AuthState {
   user: User | null
@@ -83,37 +89,61 @@ export function useSupabaseAuth() {
   }, [loadProfile])
 
   const signIn = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: unknown; user?: User | null; session?: Session | null }> => {
-    const client = requireSupabase()
-    const { data, error } = await client.auth.signInWithPassword({ email, password })
-    if (error) return { success: false, error }
-    return { success: true, user: data.user, session: data.session }
+    try {
+      // Validate inputs before sending to Supabase
+      const validated = validateSignIn({ email, password })
+      const client = requireSupabase()
+      const { data, error } = await client.auth.signInWithPassword({
+        email: validated.email,
+        password: validated.password,
+      })
+      if (error) return { success: false, error }
+      return { success: true, user: data.user, session: data.session }
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        return { success: false, error: err.getClientMessage() }
+      }
+      return { success: false, error: err }
+    }
   }, [])
 
   const signUp = useCallback(async (email: string, password: string, displayName?: string): Promise<{ success: boolean; error?: unknown; user?: User | null; message?: string }> => {
-    const client = requireSupabase()
-    const { data, error } = await client.auth.signUp({ email, password })
-    if (error) return { success: false, error }
-    
-    // Create profile with display name if provided
-    if (displayName && data.user?.id) {
-      try {
-        await client.from('profiles').insert({
-          id: data.user.id,
-          display_name: displayName.trim()
-        })
-      } catch (profileError) {
-        console.warn('Failed to create profile:', profileError)
-        // Don't fail signup if profile creation fails
+    try {
+      // Validate inputs before sending to Supabase
+      const validated = validateSignUp({ email, password, displayName })
+      const client = requireSupabase()
+      const { data, error } = await client.auth.signUp({
+        email: validated.email,
+        password: validated.password,
+      })
+      if (error) return { success: false, error }
+      
+      // Create profile with display name if provided
+      if (validated.displayName && data.user?.id) {
+        try {
+          await client.from('profiles').insert({
+            id: data.user.id,
+            display_name: validated.displayName, // Already trimmed by schema
+          })
+        } catch (profileError) {
+          console.warn('Failed to create profile:', profileError)
+          // Don't fail signup if profile creation fails
+        }
       }
-    }
-    
-    const needsVerification = !data.session && !data.user?.email_confirmed_at
-    return {
-      success: true,
-      user: data.user ?? null,
-      message: needsVerification
-        ? 'Account created. Check your email to verify before signing in.'
-        : 'Account created successfully.',
+      
+      const needsVerification = !data.session && !data.user?.email_confirmed_at
+      return {
+        success: true,
+        user: data.user ?? null,
+        message: needsVerification
+          ? 'Account created. Check your email to verify before signing in.'
+          : 'Account created successfully.',
+      }
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        return { success: false, error: err.getClientMessage() }
+      }
+      return { success: false, error: err }
     }
   }, [])
 
@@ -125,12 +155,21 @@ export function useSupabaseAuth() {
   }, [])
 
   const resetPasswordForEmail = useCallback(async (email: string): Promise<{ success: boolean; error?: unknown; message?: string }> => {
-    const client = requireSupabase()
-    const { error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
-    })
-    if (error) return { success: false, error }
-    return { success: true, message: 'Password reset email sent.' }
+    try {
+      // Validate email before sending
+      const validated = validateResetPassword({ email })
+      const client = requireSupabase()
+      const { error } = await client.auth.resetPasswordForEmail(validated.email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      })
+      if (error) return { success: false, error }
+      return { success: true, message: 'Password reset email sent.' }
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        return { success: false, error: err.getClientMessage() }
+      }
+      return { success: false, error: err }
+    }
   }, [])
 
   const refreshSession = useCallback(async (): Promise<{ success: boolean; error?: unknown; session?: Session | null }> => {

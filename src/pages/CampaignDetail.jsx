@@ -8,6 +8,14 @@ import { colorFromString } from '../lib/liveblocks'
 import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
 import RemovePlayerModal from '../components/campaigns/RemovePlayerModal'
 import TransferGMModal from '../components/campaigns/TransferGMModal'
+import {
+  validateUpdateCampaign,
+  validateCreateSession,
+  validateUpdateSession,
+  validateCampaignId,
+  validateSessionId,
+  ValidationError,
+} from '../lib/validation'
 
 function CampaignDetail() {
   const { id } = useParams()
@@ -167,14 +175,20 @@ function CampaignDetail() {
 
   const handleCreateSession = async (e) => {
     e.preventDefault()
-    if (!sessionName.trim()) return
 
     try {
+      // Validate inputs before database operation
+      const validated = validateCreateSession({
+        name: sessionName,
+        sessionDate: sessionDate || undefined,
+        campaignId: id
+      })
+
       const { error } = await requireSupabase().from('sessions').insert([
         {
-          campaign_id: id,
-          name: sessionName,
-          session_date: sessionDate || null,
+          campaign_id: validated.campaignId,
+          name: validated.name,
+          session_date: validated.sessionDate || null,
         },
       ])
 
@@ -185,26 +199,31 @@ function CampaignDetail() {
       setSessionDate('')
       loadCampaign()
     } catch (error) {
-      setErrorMessage(error.message || 'Failed to create session')
+      if (error instanceof ValidationError) {
+        setErrorMessage(error.getClientMessage())
+      } else {
+        setErrorMessage(error.message || 'Failed to create session')
+      }
     }
   }
 
   const handleSaveCampaign = async (e) => {
     e.preventDefault()
 
-    const nextName = campaignName.trim()
-    if (!nextName) {
-      setErrorMessage('Campaign name is required.')
-      return
-    }
-
     try {
+      // Validate inputs before database operation
+      const validated = validateUpdateCampaign({
+        name: campaignName,
+        description: campaignDescription
+      })
+      const validatedId = validateCampaignId(id)
+
       setCampaignSaving(true)
       setErrorMessage('')
       const { data: updatedCampaignData, error } = await requireSupabase().rpc('update_campaign_as_gm', {
-        p_campaign_id: id,
-        p_name: nextName,
-        p_description: campaignDescription.trim() || null,
+        p_campaign_id: validatedId,
+        p_name: validated.name,
+        p_description: validated.description,
       })
 
       if (error) throw error
@@ -218,15 +237,18 @@ function CampaignDetail() {
       setEditingCampaign(false)
       await loadCampaign()
     } catch (error) {
-      const message = String(error.message || '')
-      if (message.includes('Could not find the function public.update_campaign_as_gm')) {
-        setErrorMessage('Campaign edit helper is unavailable until migration 0008_campaign_gm_manage_rpc.sql is applied in Supabase.')
-      } else
-        if (message.toLowerCase().includes('row-level security')) {
+      if (error instanceof ValidationError) {
+        setErrorMessage(error.getClientMessage())
+      } else {
+        const message = String(error.message || '')
+        if (message.includes('Could not find the function public.update_campaign_as_gm')) {
+          setErrorMessage('Campaign edit helper is unavailable until migration 0008_campaign_gm_manage_rpc.sql is applied in Supabase.')
+        } else if (message.toLowerCase().includes('row-level security')) {
           setErrorMessage('Only the GM can edit this campaign.')
         } else {
           setErrorMessage(message || 'Failed to update campaign')
         }
+      }
     } finally {
       setCampaignSaving(false)
     }
