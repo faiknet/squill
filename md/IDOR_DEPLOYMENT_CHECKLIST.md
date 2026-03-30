@@ -24,7 +24,7 @@
 ### Step 1: Backup Database (SAFETY FIRST)
 **Before deploying any SQL changes:**
 
-1. Go to: https://app.supabase.com/project/vbkuxhmokwxpxkbyoawt/sql/backups
+1. Go to: https://app.supabase.com/project/{YOUR_SUPABASE_PROJECT_ID}/sql/backups
 2. Create a manual backup labeled: "Pre-IDOR-Fixes-[DATE]"
 3. Wait for backup to complete
 4. Confirm backup successful before proceeding
@@ -34,7 +34,7 @@
 ### Step 2: Deploy User Preferences Policy Fix
 
 **Location:** Supabase Dashboard SQL Editor  
-**URL:** https://app.supabase.com/project/vbkuxhmokwxpxkbyoawt/sql/new
+**URL:** https://app.supabase.com/project/{YOUR_SUPABASE_PROJECT_ID}/sql/new
 
 **SQL to Execute:**
 ```sql
@@ -100,7 +100,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ### Step 3: Deploy Password Reset Tokens Policy Fix
 
 **Location:** Supabase Dashboard SQL Editor  
-**URL:** https://app.supabase.com/project/vbkuxhmokwxpxkbyoawt/sql/new
+**URL:** https://app.supabase.com/project/{YOUR_SUPABASE_PROJECT_ID}/sql/new
 
 **SQL to Execute:**
 ```sql
@@ -149,7 +149,7 @@ supabase functions deploy snapshot-note
 ```
 
 **Option B: Via Supabase Dashboard**
-1. Navigate to: https://app.supabase.com/project/vbkuxhmokwxpxkbyoawt/functions/snapshot-note
+1. Navigate to: https://app.supabase.com/project/{YOUR_SUPABASE_PROJECT_ID}/functions/snapshot-note
 2. Check if the code contains the membership verification check
 3. Confirm the fix is in place
 

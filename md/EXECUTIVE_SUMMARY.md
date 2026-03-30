@@ -90,12 +90,12 @@ A production-ready application with **enterprise-grade security** protecting aga
 ## 📋 How to Deploy
 
 ### Step 1: Create Database Backup (SAFETY FIRST)
-Go to: https://app.supabase.com/project/vbkuxhmokwxpxkbyoawt/sql/backups
+Go to: https://app.supabase.com/project/{YOUR_SUPABASE_PROJECT_ID}/sql/backups
 
 Create manual backup labeled: "Pre-IDOR-Fixes-Mar30"
 
 ### Step 2: Deploy 3 IDOR Fixes
-Go to: https://app.supabase.com/project/vbkuxhmokwxpxkbyoawt/sql/new
+Go to: https://app.supabase.com/project/{YOUR_SUPABASE_PROJECT_ID}/sql/new
 
 Copy & paste SQL from: `IDOR_FIXES_DEPLOYMENT.sql`
 
