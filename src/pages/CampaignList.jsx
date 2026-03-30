@@ -4,6 +4,12 @@ import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useFormState } from '../hooks/useFormState'
 import { copyInviteLink, getDisplayLabel } from '../lib/utils'
+import {
+  validateCreateCampaign,
+  validateUpdateCampaign,
+  validateCampaignId,
+  ValidationError,
+} from '../lib/validation'
 import CreateCampaignModal from '../components/campaigns/CreateCampaignModal'
 import EditCampaignModal from '../components/campaigns/EditCampaignModal'
 import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
@@ -96,9 +102,12 @@ function CampaignList() {
 
   const handleCreateCampaign = async ({ name, description }) => {
     try {
+      // Validate input before database operation
+      const validated = validateCreateCampaign({ name, description })
+      
       const client = requireSupabase()
       const { data, error } = await client.from('campaigns').insert([
-        { name, description, created_by: user.id }
+        { name: validated.name, description: validated.description, created_by: user.id }
       ]).select().single()
 
       if (error) throw error
@@ -108,17 +117,25 @@ function CampaignList() {
       await loadCampaigns()
       navigate(`/campaigns/${data.id}`)
     } catch (err) {
-      setFail(err)
+      if (err instanceof ValidationError) {
+        setFail(err.getClientMessage())
+      } else {
+        setFail(err)
+      }
     }
   }
 
   const handleUpdateCampaign = async (id, { name, description }) => {
     try {
+      // Validate inputs before database operation
+      const validated = validateUpdateCampaign({ name, description })
+      const validatedId = validateCampaignId(id)
+      
       const client = requireSupabase()
       const { data, error } = await client.rpc('update_campaign_as_gm', {
-        p_campaign_id: id,
-        p_name: name,
-        p_description: description
+        p_campaign_id: validatedId,
+        p_name: validated.name,
+        p_description: validated.description
       })
 
       if (error) throw error
@@ -128,24 +145,35 @@ function CampaignList() {
       setEditingCampaign(null)
       setSuccess('Campaign updated successfully')
     } catch (err) {
-      setFail(err)
+      if (err instanceof ValidationError) {
+        setFail(err.getClientMessage())
+      } else {
+        setFail(err)
+      }
     }
   }
 
   const handleDeleteCampaign = async () => {
     try {
-      const { error } = await requireSupabase().from('campaigns').delete().eq('id', deletingCampaign.id)
+      // Validate campaign ID before deletion
+      const validatedId = validateCampaignId(deletingCampaign.id)
+      
+      const { error } = await requireSupabase().from('campaigns').delete().eq('id', validatedId)
       if (error) throw error
 
       setDeletingCampaign(null)
       await loadCampaigns()
       setSuccess('Campaign deleted')
     } catch (err) {
-      const msg = String(err.message || '')
-      if (msg.toLowerCase().includes('row-level security')) {
-        setFail('Only the GM can delete this campaign.')
+      if (err instanceof ValidationError) {
+        setFail(err.getClientMessage())
       } else {
-        setFail(msg || 'Failed to delete campaign')
+        const msg = String(err.message || '')
+        if (msg.toLowerCase().includes('row-level security')) {
+          setFail('Only the GM can delete this campaign.')
+        } else {
+          setFail(msg || 'Failed to delete campaign')
+        }
       }
     }
   }
