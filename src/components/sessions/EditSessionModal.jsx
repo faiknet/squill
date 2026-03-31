@@ -29,10 +29,11 @@ export default function EditSessionModal({ isOpen, onClose, onSave, session }) {
     e.preventDefault()
     setLoading(true)
     try {
-      await onSave(session.id, { 
+      const updateData = { 
         name, 
         session_date: sessionDate || null 
-      })
+      }
+      await onSave(session.id, updateData)
       onClose()
     } catch (error) {
       console.error('Failed to save session:', error)

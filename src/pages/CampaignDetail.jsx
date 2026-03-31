@@ -114,7 +114,7 @@ function CampaignDetail() {
             const { data: colorData, error: colorError } = await client.rpc('get_user_colors', {
               user_ids: memberIds
             })
-            
+
             if (colorError) {
               console.warn('Could not fetch user colors:', colorError.message)
               // Sort members with GM first
@@ -129,20 +129,20 @@ function CampaignDetail() {
               colorData?.forEach(item => {
                 colorMap.set(item.user_id, item.editor_color)
               })
-              
+
               // Add color to members
               const membersWithColor = membersData.map(member => ({
                 ...member,
                 color: colorMap.get(member.user_id)
               }))
-              
+
               // Sort members with GM first
               membersWithColor.sort((a, b) => {
                 if (a.user_id === campaignData.created_by) return -1
                 if (b.user_id === campaignData.created_by) return 1
                 return 0
               })
-              
+
               setPartyMembers(membersWithColor)
             }
           } catch (err) {
@@ -218,7 +218,7 @@ function CampaignDetail() {
         name: campaignName,
         description: campaignDescription
       })
-      const validatedId = validateCampaignId(id)
+      const validatedId = validateCampaignId(campaign.id)
 
       setCampaignSaving(true)
       setErrorMessage('')
@@ -262,7 +262,7 @@ function CampaignDetail() {
 
   const handleConfirmDeleteCampaign = async () => {
     try {
-      const { error } = await requireSupabase().from('campaigns').delete().eq('id', id)
+      const { error } = await requireSupabase().from('campaigns').delete().eq('id', campaign.id)
       if (error) throw error
       setIsDeletingCampaignModalOpen(false)
       navigate('/')
@@ -296,19 +296,30 @@ function CampaignDetail() {
 
   const handleSaveSession = async (sessionId, updates) => {
     try {
-      const { error } = await requireSupabase()
+      const client = requireSupabase()
+      
+      const { data, error } = await client
         .from('sessions')
         .update(updates)
         .eq('id', sessionId)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('Session update error:', error)
+        throw error
+      }
+
+      if (!data || data.length === 0) {
+        console.error('Update returned 0 rows - RLS is blocking UPDATE even though SELECT works')
+        return
+      }
 
       setEditingSession(null)
       setIsEditSessionModalOpen(false)
-      loadCampaign()
+      await loadCampaign()
     } catch (error) {
-      console.error(error)
-      throw error // Re-throw so modal handles the error state
+      console.error('Failed to save session:', error)
+      throw error
     }
   }
 
@@ -380,16 +391,16 @@ function CampaignDetail() {
     try {
       const client = requireSupabase()
       const { data, error } = await client.rpc('remove_campaign_member', {
-        p_campaign_id: id,
+        p_campaign_id: campaign.id,
         p_user_id: userId
       })
-      
+
       if (error) {
         console.error('Error removing player:', error)
         throw error
       }
-      
-      console.log('Player removed successfully:', { userId, campaignId: id })
+
+      console.log('Player removed successfully:', { userId, campaignId: campaign.id })
       setPartyMembers(partyMembers.filter(m => m.user_id !== userId))
       setErrorMessage('')
     } catch (error) {
@@ -405,14 +416,14 @@ function CampaignDetail() {
       const { data, error } = await client
         .from('campaigns')
         .update({ created_by: userId })
-        .eq('id', id)
-      
+        .eq('id', campaign.id)
+
       if (error) {
         console.error('Error transferring GM:', error)
         throw error
       }
-      
-      console.log('GM status transferred successfully:', { userId, campaignId: id })
+
+      console.log('GM status transferred successfully:', { userId, campaignId: campaign.id })
       setCampaign({ ...campaign, created_by: userId })
       setErrorMessage('')
     } catch (error) {
@@ -502,8 +513,8 @@ function CampaignDetail() {
             <ul className="divide-y divide-slate-100 dark:divide-gray-700/50">
               {partyMembers.length > 0 ? (
                 partyMembers.map((member) => (
-                  <li 
-                    key={member.user_id} 
+                  <li
+                    key={member.user_id}
                     onClick={() => isGM && member.user_id !== currentUserId && handleOpenPartyMemberMenu(member)}
                     className={`p-3 flex items-center gap-3 transition-colors relative ${isGM && member.user_id !== currentUserId ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/50' : 'cursor-default'}`}
                   >
@@ -676,12 +687,12 @@ function CampaignDetail() {
 
         <div className="space-y-4">
           {visibleSessions.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg border-dashed">
+            <div className="text-center py-12 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg border-dashed ">
               <p className="text-slate-500 dark:text-gray-400">No sessions found.</p>
               <Button
                 onClick={() => setShowCreateSession(true)}
                 variant="link"
-                className="text-brand-600 hover:text-brand-700 dark:text-brand-400 mt-2"
+                className="text-brand-600 hover:text-brand-700 dark:text-brand-400 mt-2 "
               >
                 Create your first session
               </Button>
@@ -710,7 +721,7 @@ function CampaignDetail() {
                       )}
                     </div>
                     <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
-                      {session.session_date ? new Date(session.session_date).toLocaleDateString() : 'No date set'}
+                      {session.session_date ? new Date(session.session_date + 'T00:00:00').toLocaleDateString() : 'No date set'}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

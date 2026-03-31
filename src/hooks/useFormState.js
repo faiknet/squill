@@ -11,7 +11,15 @@ export function useFormState() {
 
   const setFail = useCallback((err) => {
     setMessage('')
-    setError(err instanceof Error ? err.message : String(err))
+    let errorMessage = ''
+    if (err instanceof Error) {
+      errorMessage = err.message
+    } else if (err && typeof err === 'object' && err.message) {
+      errorMessage = err.message
+    } else {
+      errorMessage = String(err)
+    }
+    setError(errorMessage || 'An error occurred')
   }, [])
 
   const clear = useCallback(() => {

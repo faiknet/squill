@@ -16,8 +16,8 @@ export default function Layout() {
   const [campaigns, setCampaigns] = useState([])
   const [loadingCampaigns, setLoadingCampaigns] = useState(false)
 
-  // Get current campaign ID from URL
-  const currentCampaignId = location.pathname.match(/\/campaigns\/([^/]+)/)?.[1] || null
+  // Get current campaign slug from URL
+  const currentCampaignSlug = location.pathname.match(/\/campaigns\/([^/]+)/)?.[1] || null
   const isOnCampaignsPage = location.pathname === '/campaigns' || location.pathname.startsWith('/campaigns/')
 
   // Load campaigns when sidebar is expanded
@@ -33,7 +33,7 @@ export default function Layout() {
       const client = requireSupabase()
       const { data, error } = await client
         .from('campaigns')
-        .select('id, name')
+        .select('id, slug, name')
         .order('updated_at', { ascending: false })
       if (error) throw error
       setCampaigns(data || [])
@@ -125,12 +125,12 @@ export default function Layout() {
                     <button
                       key={campaign.id}
                       onClick={() => {
-                        navigate(`/campaigns/${campaign.id}`)
+                        navigate(`/campaigns/${campaign.slug}`)
                         setMobileMenuOpen(false)
                       }}
                       className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm truncate ${
-                        currentCampaignId === campaign.id
-                          ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium'
+                        currentCampaignSlug === campaign.slug
+                          ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium border-l-2 border-brand-600'
                           : 'hover:bg-slate-50 dark:hover:bg-gray-700/50 text-slate-700 dark:text-gray-300'
                       }`}
                       title={campaign.name}

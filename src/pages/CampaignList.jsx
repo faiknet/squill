@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
@@ -17,14 +17,19 @@ import Logo from '../components/ui/logo.webp'
 
 function CampaignList() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { authState, signOut } = useAuth()
   const { user } = authState
   const { error, message, setFail, setSuccess, clear } = useFormState()
+
+  // Extract current campaign slug from URL (e.g., /campaigns/my-campaign-a1b2)
+  const currentCampaignSlug = location.pathname.match(/^\/campaigns\/([^\/]+)(?:\/|$)/)?.[1] || null
 
   const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [campaignsExpanded, setCampaignsExpanded] = useState(true)
@@ -61,13 +66,13 @@ function CampaignList() {
       // Parallel queries for efficiency
       const [campaignsResult, pinsResult, partySizesResult, sessionsResult] = await Promise.all([
         client.from('campaigns').select('id, slug, name, description, created_at, updated_at, created_by, invite_code').order('created_at', { ascending: false }),
-        client.from('campaign_pins').select('campaign_id').eq('user_id', user.id),
+        client.from('campaign_pins').select('campaign_id'),
         client.rpc('get_campaign_party_sizes'),
         client.from('sessions').select('campaign_id')
       ])
 
       if (campaignsResult.error) throw campaignsResult.error
-      if (pinsResult.error && console.warn('Pins error:', pinsResult.error)) { }
+      if (pinsResult.error) throw pinsResult.error
       if (partySizesResult.error) throw partySizesResult.error
       if (sessionsResult.error) throw sessionsResult.error
 
@@ -181,12 +186,16 @@ function CampaignList() {
   const handlePinCampaign = async (campaign) => {
     try {
       const client = requireSupabase()
-      const query = campaign.pinned
-        ? client.from('campaign_pins').delete().eq('campaign_id', campaign.id).eq('user_id', user.id)
-        : client.from('campaign_pins').insert({ campaign_id: campaign.id, user_id: user.id })
-
-      const { error } = await query
-      if (error) throw error
+      
+      // First, always try to delete any existing pin
+      const { error: deleteError } = await client.from('campaign_pins').delete().eq('campaign_id', campaign.id).eq('user_id', user.id)
+      if (deleteError) throw deleteError
+      
+      // If currently unpinned, insert new pin
+      if (!campaign.pinned) {
+        const { error: insertError } = await client.from('campaign_pins').insert({ campaign_id: campaign.id, user_id: user.id })
+        if (insertError) throw insertError
+      }
 
       setOpenMenuId(null)
       await loadCampaigns()
@@ -289,19 +298,26 @@ function CampaignList() {
                 ) : campaigns.length === 0 ? (
                   <div className="px-3 py-2 text-xs text-slate-500 dark:text-gray-400">No campaigns</div>
                 ) : (
-                  campaigns.map((campaign) => (
-                    <button
-                      key={campaign.id}
-                      onClick={() => {
-                        navigate(`/campaigns/${campaign.slug}`)
-                        setMobileMenuOpen(false)
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm truncate hover:bg-slate-50 dark:hover:bg-gray-700/50 text-slate-700 dark:text-gray-300"
-                      title={campaign.name}
-                    >
-                      {campaign.name}
-                    </button>
-                  ))
+                  campaigns.map((campaign) => {
+                    const isSelected = campaign.slug === currentCampaignSlug
+                    return (
+                      <button
+                        key={campaign.id}
+                        onClick={() => {
+                          navigate(`/campaigns/${campaign.slug}`)
+                          setMobileMenuOpen(false)
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm truncate ${
+                          isSelected
+                            ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium border-l-2 border-brand-600'
+                            : 'hover:bg-slate-50 dark:hover:bg-gray-700/50 text-slate-700 dark:text-gray-300'
+                        }`}
+                        title={campaign.name}
+                      >
+                        {campaign.name}
+                      </button>
+                    )
+                  })
                 )}
               </div>
             )}
@@ -428,10 +444,15 @@ function CampaignList() {
                     .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()))
                     .map((campaign) => {
                       const isOwner = user && campaign.created_by === user.id
+                      const isSelected = campaign.slug === currentCampaignSlug
                       return (
                         <tr
                           key={campaign.id}
-                          className="hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group"
+                          className={`transition-colors cursor-pointer group ${
+                            isSelected
+                              ? 'bg-brand-50 dark:bg-brand-900/10'
+                              : 'hover:bg-slate-50 dark:hover:bg-gray-700'
+                          }`}
                           onClick={() => navigate(`/campaigns/${campaign.slug}`)}
                         >
                           <td className="px-6 py-4">
@@ -458,52 +479,23 @@ function CampaignList() {
                             {new Date(campaign.updated_at || campaign.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                           </td>
                           <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="relative inline-block text-left">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setOpenMenuId(openMenuId === campaign.id ? null : campaign.id)
-                                }}
-                                className="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-gray-200"
-                              >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                </svg>
-                              </button>
-
-                              {openMenuId === campaign.id && (
-                                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50 py-1">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleCopyLink(campaign) }}
-                                    className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                                  >
-                                    Invite
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handlePinCampaign(campaign) }}
-                                    className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                                  >
-                                    {campaign.pinned ? 'Unpin' : 'Pin'}
-                                  </button>
-                                  {isOwner && (
-                                    <>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setEditingCampaign(campaign); setOpenMenuId(null) }}
-                                        className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                                      >
-                                        Edit Details
-                                      </button>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setDeletingCampaign(campaign); setOpenMenuId(null) }}
-                                        className="w-full px-4 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                                      >
-                                        Delete Campaign
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (openMenuId === campaign.id) {
+                                  setOpenMenuId(null)
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect()
+                                  setMenuPosition({ top: rect.bottom + 8, left: rect.right - 192 })
+                                  setOpenMenuId(campaign.id)
+                                }
+                              }}
+                              className="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-full transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-gray-200"
+                            >
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                              </svg>
+                            </button>
                           </td>
                         </tr>
                       )
@@ -526,11 +518,16 @@ function CampaignList() {
                   .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()))
                   .map((campaign) => {
                     const isOwner = user && campaign.created_by === user.id
+                    const isSelected = campaign.slug === currentCampaignSlug
                     return (
                       <div
                         key={campaign.id}
                         onClick={() => navigate(`/campaigns/${campaign.slug}`)}
-                        className="p-4 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                        className={`p-4 transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-brand-50 dark:bg-brand-900/10'
+                            : 'hover:bg-slate-50 dark:hover:bg-gray-700'
+                        }`}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
@@ -641,6 +638,57 @@ function CampaignList() {
         campaignName={deletingCampaign?.name}
         onDelete={handleDeleteCampaign}
       />
+
+      {/* Desktop Context Menu Overlay */}
+      {openMenuId && campaigns.find(c => c.id === openMenuId) && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setOpenMenuId(null)}
+        />
+      )}
+      {openMenuId && campaigns.find(c => c.id === openMenuId) && (
+        <div 
+          className="fixed z-50 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 pointer-events-auto"
+          style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+        >
+          {(() => {
+            const campaign = campaigns.find(c => c.id === openMenuId)
+            const isOwner = user && campaign.created_by === user.id
+            return (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleCopyLink(campaign) }}
+                  className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  Invite
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handlePinCampaign(campaign) }}
+                  className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  {campaign.pinned ? 'Unpin' : 'Pin'}
+                </button>
+                {isOwner && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditingCampaign(campaign); setOpenMenuId(null) }}
+                      className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      Edit Details
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeletingCampaign(campaign); setOpenMenuId(null) }}
+                      className="w-full px-4 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      Delete Campaign
+                    </button>
+                  </>
+                )}
+              </>
+            )
+          })()}
+        </div>
+      )}
     </div>
   )
 }
