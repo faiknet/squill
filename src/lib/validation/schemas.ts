@@ -152,6 +152,7 @@ export const updateEntityTagSchema = z.object({
   name: entityTagNameSchema.optional(),
   description: entityTagDescriptionSchema,
   tagType: tagTypeSchema.optional(),
+  order_index: z.number().int().min(0).optional().nullable(),
 })
 
 // ============================================================================

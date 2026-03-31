@@ -1,22 +1,33 @@
 import React, { useState, useRef, useEffect } from 'react'
-import BoldIcon from '../../assets/icons/Bold.png'
-import ItalicIcon from '../../assets/icons/toolbar-icons/italic.png'
-import UnderlineIcon from '../../assets/icons/toolbar-icons/underline.png'
-import TextColorIcon from '../../assets/icons/toolbar-icons/text-color.png'
-import HighlightIcon from '../../assets/icons/toolbar-icons/highlight-color.png'
-import InsertLinkIcon from '../../assets/icons/toolbar-icons/insert-link.png'
-import InsertImageIcon from '../../assets/icons/toolbar-icons/insert-image.png'
-import AlignLeftIcon from '../../assets/icons/toolbar-icons/align-left.png'
-import AlignCenterIcon from '../../assets/icons/toolbar-icons/align-center.png'
-import AlignRightIcon from '../../assets/icons/toolbar-icons/align-right.png'
-import JustifyIcon from '../../assets/icons/toolbar-icons/justify.png'
-import BulletListIcon from '../../assets/icons/toolbar-icons/bullet-list.png'
-import NumberedListIcon from '../../assets/icons/toolbar-icons/numbered-list.png'
-import ClearFormattingIcon from '../../assets/icons/toolbar-icons/clear-formatting.png'
 import LinkModal from './LinkModal'
 import ImageModal from './ImageModal'
 
 const BRAND_ICON_COLOR = '#265d5c'
+
+// Material Icons component
+const MaterialIcon = ({ icon, size = 20 }) => (
+  <span
+    style={{
+      fontFamily: 'Material Icons',
+      fontSize: `${size}px`,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      letterSpacing: 'normal',
+      textTransform: 'none',
+      whiteSpace: 'nowrap',
+      wordWrap: 'normal',
+      direction: 'ltr',
+      color: BRAND_ICON_COLOR,
+      WebkitFontSmoothing: 'antialiased',
+      MozOsxFontSmoothing: 'grayscale',
+    }}
+  >
+    {icon}
+  </span>
+)
 
 // Popular Google Fonts
 const GOOGLE_FONTS = [
@@ -64,7 +75,7 @@ const HIGHLIGHT_PALETTE = [
   ['#fff2cc', '#d9ead3', '#d0e0e3', '#ead1dc', '#fce5cd', '#cfe2f3', '#c9daf8'],
 ]
 
-function ColorPicker({ value, onChange, colors, label, icon, iconSrc, showUnderline = false }) {
+function ColorPicker({ value, onChange, colors, label, icon, showUnderline = false }) {
   const [isOpen, setIsOpen] = useState(false)
   const [customColor, setCustomColor] = useState('#000000')
   const pickerRef = useRef(null)
@@ -95,35 +106,17 @@ function ColorPicker({ value, onChange, colors, label, icon, iconSrc, showUnderl
         title={label}
       >
         <div className="text-slate-700 dark:text-gray-200 flex items-center gap-1">
-          {iconSrc ? (
-            <span
-              aria-hidden="true"
-              className="inline-block w-4 h-4 object-contain"
-              style={{
-                backgroundColor: BRAND_ICON_COLOR,
-                WebkitMaskImage: `url(${iconSrc})`,
-                maskImage: `url(${iconSrc})`,
-                WebkitMaskRepeat: 'no-repeat',
-                maskRepeat: 'no-repeat',
-                WebkitMaskPosition: 'center',
-                maskPosition: 'center',
-                WebkitMaskSize: 'contain',
-                maskSize: 'contain',
-              }}
-            />
-          ) : (
-            icon
-          )}
+          <MaterialIcon icon={icon} size={18} />
           <svg className="w-2.5 h-2.5 opacity-60" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </div>
-        <div 
+        <div
           className="h-0.5 w-full rounded-full"
           style={{ backgroundColor: currentColor === 'transparent' ? '#e5e7eb' : currentColor }}
         />
       </button>
-      
+
       {isOpen && (
         <div className="absolute top-full left-0 z-50 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-slate-200 dark:border-gray-700 p-3 min-w-[240px]">
           {/* Color grid */}
@@ -168,29 +161,29 @@ export default function GoogleDocsToolbar({ editor }) {
   const [, forceUpdate] = useState({})
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
-  
+
   useEffect(() => {
     if (!editor) return
-    
+
     const handleUpdate = () => {
       forceUpdate({})
     }
-    
+
     editor.on('update', handleUpdate)
     editor.on('selectionUpdate', handleUpdate)
-    
+
     return () => {
       editor.off('update', handleUpdate)
       editor.off('selectionUpdate', handleUpdate)
     }
   }, [editor])
-  
+
   if (!editor) return null
 
   // Get current font size, handling edge cases
   const fontSizeAttr = editor.getAttributes('textStyle').fontSize
   let fontSize = 16 // default
-  
+
   if (fontSizeAttr) {
     const parsed = parseInt(fontSizeAttr)
     if (!isNaN(parsed) && parsed >= 8 && parsed <= 72) {
@@ -216,7 +209,7 @@ export default function GoogleDocsToolbar({ editor }) {
     }
   }
 
-  const IconButton = ({ onClick, isActive, label, iconSrc, svg, className = '' }) => {
+  const IconButton = ({ onClick, isActive, label, icon, className = '' }) => {
     return (
       <button
         type="button"
@@ -224,239 +217,220 @@ export default function GoogleDocsToolbar({ editor }) {
           e.preventDefault()
           onClick()
         }}
-        className={`h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center ${
-          isActive ? 'bg-slate-200 dark:bg-gray-600' : ''
-        } ${className}`}
+        className={`h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center ${isActive ? 'bg-slate-200 dark:bg-gray-600' : ''
+          } ${className}`}
         title={label}
-        >
-        {iconSrc ? (
-          <span
-            aria-hidden="true"
-            className="inline-block w-4 h-4 object-contain"
-            style={{
-              backgroundColor: BRAND_ICON_COLOR,
-              WebkitMaskImage: `url(${iconSrc})`,
-              maskImage: `url(${iconSrc})`,
-              WebkitMaskRepeat: 'no-repeat',
-              maskRepeat: 'no-repeat',
-              WebkitMaskPosition: 'center',
-              maskPosition: 'center',
-              WebkitMaskSize: 'contain',
-              maskSize: 'contain',
-            }}
-          />
-        ) : (
-          <span className="text-slate-700 dark:text-gray-200" style={{ color: BRAND_ICON_COLOR }}>{svg}</span>
-        )}
+      >
+        <MaterialIcon icon={icon} size={18} />
       </button>
     )
   }
 
   return (
     <>
-      <LinkModal 
+      <LinkModal
         isOpen={isLinkModalOpen}
         onClose={() => setIsLinkModalOpen(false)}
         onInsert={handleLinkInsert}
         currentUrl={editor.isActive('link') ? editor.getAttributes('link').href : ''}
       />
-      
-      <ImageModal 
+
+      <ImageModal
         isOpen={isImageModalOpen}
         onClose={() => setIsImageModalOpen(false)}
         onInsert={handleImageInsert}
       />
-      
+
       <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex gap-1 items-center flex-wrap transition-colors duration-200 sticky top-0 z-10">
         {/* Font Size */}
-      <div className="flex items-center border border-slate-200 dark:border-gray-700 rounded">
-        <button
-          type="button"
-          onMouseDown={(e) => {
-            e.preventDefault()
-            // Get current fontSize from selection or default
-            const current = editor.getAttributes('textStyle').fontSize
-            const currentSize = current ? parseInt(current) : 16
-            
-            // Find the next smaller size in the FONT_SIZES array
-            const currentIndex = FONT_SIZES.findIndex(size => parseInt(size) >= currentSize)
-            const newIndex = Math.max(0, currentIndex - 1)
-            const newSize = FONT_SIZES[newIndex]
-            
-            editor.chain().focus().setFontSize(`${newSize}px`).run()
+        <div className="flex items-center border border-slate-200 dark:border-gray-700 rounded">
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              // Get current fontSize from selection or default
+              const current = editor.getAttributes('textStyle').fontSize
+              const currentSize = current ? parseInt(current) : 16
+
+              // Find the next smaller size in the FONT_SIZES array
+              const currentIndex = FONT_SIZES.findIndex(size => parseInt(size) >= currentSize)
+              const newIndex = Math.max(0, currentIndex - 1)
+              const newSize = FONT_SIZES[newIndex]
+
+              editor.chain().focus().setFontSize(`${newSize}px`).run()
+            }}
+            className="h-7 w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-l text-slate-600 dark:text-gray-300"
+            title="Decrease font size"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+            </svg>
+          </button>
+          <select
+            value={fontSize}
+            onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}px`).run()}
+            className="h-7 w-12 text-sm bg-transparent border-x border-slate-200 dark:border-gray-700 text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
+          >
+            {FONT_SIZES.map(size => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              // Get current fontSize from selection or default
+              const current = editor.getAttributes('textStyle').fontSize
+              const currentSize = current ? parseInt(current) : 16
+
+              // Find the next larger size in the FONT_SIZES array
+              const currentIndex = FONT_SIZES.findIndex(size => parseInt(size) > currentSize)
+              const newIndex = currentIndex === -1 ? FONT_SIZES.length - 1 : currentIndex
+              const newSize = FONT_SIZES[newIndex]
+
+              editor.chain().focus().setFontSize(`${newSize}px`).run()
+            }}
+            className="h-7 w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-r text-slate-600 dark:text-gray-300"
+            title="Increase font size"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+
+        {/* Text Formatting */}
+        <IconButton
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          isActive={editor.isActive('bold')}
+          label="Bold (Ctrl+B)"
+          icon="format_bold"
+        />
+        <IconButton
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          isActive={editor.isActive('italic')}
+          label="Italic (Ctrl+I)"
+          icon="format_italic"
+        />
+        <IconButton
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          isActive={editor.isActive('underline')}
+          label="Underline (Ctrl+U)"
+          icon="format_underlined"
+        />
+
+        {/* Text Color */}
+        <ColorPicker
+          value={editor.getAttributes('textStyle').color}
+          onChange={(color) => color ? editor.chain().focus().setColor(color).run() : editor.chain().focus().unsetColor().run()}
+          colors={COLOR_PALETTE}
+          label="Text color"
+          icon="format_color_text"
+        />
+
+        {/* Highlight */}
+        <ColorPicker
+          value={editor.getAttributes('highlight').color}
+          onChange={(color) => color ? editor.chain().focus().toggleHighlight({ color }).run() : editor.chain().focus().unsetHighlight().run()}
+          colors={HIGHLIGHT_PALETTE}
+          label="Highlight color"
+          icon="highlight"
+        />
+
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+
+        {/* Link */}
+        <IconButton
+          onClick={() => setIsLinkModalOpen(true)}
+          isActive={editor.isActive('link')}
+          label="Insert link (Ctrl+K)"
+          icon="add_link"
+        />
+
+        {/* Image */}
+        <IconButton
+          onClick={() => setIsImageModalOpen(true)}
+          label="Insert image"
+          icon="image"
+        />
+
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+
+        {/* Alignment */}
+        <IconButton
+          onClick={() => editor.chain().focus().setTextAlign('left').run()}
+          isActive={editor.isActive({ textAlign: 'left' })}
+          label="Align left (Ctrl+Shift+L)"
+          icon="format_align_left"
+        />
+        <IconButton
+          onClick={() => editor.chain().focus().setTextAlign('center').run()}
+          isActive={editor.isActive({ textAlign: 'center' })}
+          label="Align center (Ctrl+Shift+E)"
+          icon="format_align_center"
+        />
+        <IconButton
+          onClick={() => editor.chain().focus().setTextAlign('right').run()}
+          isActive={editor.isActive({ textAlign: 'right' })}
+          label="Align right (Ctrl+Shift+R)"
+          icon="format_align_right"
+        />
+        <IconButton
+          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+          isActive={editor.isActive({ textAlign: 'justify' })}
+          label="Justify"
+          icon="format_align_justify"
+        />
+
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+
+        {/* Lists */}
+        <IconButton
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          isActive={editor.isActive('bulletList')}
+          label="Bullet list (Ctrl+Shift+8)"
+          icon="format_list_bulleted"
+        />
+        <IconButton
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          isActive={editor.isActive('orderedList')}
+          label="Numbered list (Ctrl+Shift+7)"
+          icon="format_list_numbered"
+        />
+
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+
+        {/* Clear Formatting */}
+        <IconButton
+          onClick={() => {
+            const { state } = editor
+            const { from, to } = state.selection
+
+            // Get all mark types except 'mention'
+            const markTypes = Object.keys(state.schema.marks)
+              .filter(markName => markName !== 'mention')
+              .map(markName => state.schema.marks[markName])
+
+            // Clear nodes and unset all marks except mentions
+            editor.chain()
+              .focus()
+              .clearNodes()
+              .command(({ tr, dispatch }) => {
+                if (dispatch) {
+                  markTypes.forEach(markType => {
+                    tr.removeMark(from, to, markType)
+                  })
+                }
+                return true
+              })
+              .run()
           }}
-          className="h-7 w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-l text-slate-600 dark:text-gray-300"
-          title="Decrease font size"
-        >
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-          </svg>
-        </button>
-        <select
-          value={fontSize}
-          onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}px`).run()}
-          className="h-7 w-12 text-sm bg-transparent border-x border-slate-200 dark:border-gray-700 text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
-        >
-          {FONT_SIZES.map(size => (
-            <option key={size} value={size}>{size}</option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onMouseDown={(e) => {
-            e.preventDefault()
-            // Get current fontSize from selection or default
-            const current = editor.getAttributes('textStyle').fontSize
-            const currentSize = current ? parseInt(current) : 16
-            
-            // Find the next larger size in the FONT_SIZES array
-            const currentIndex = FONT_SIZES.findIndex(size => parseInt(size) > currentSize)
-            const newIndex = currentIndex === -1 ? FONT_SIZES.length - 1 : currentIndex
-            const newSize = FONT_SIZES[newIndex]
-            
-            editor.chain().focus().setFontSize(`${newSize}px`).run()
-          }}
-          className="h-7 w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-r text-slate-600 dark:text-gray-300"
-          title="Increase font size"
-        >
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
+          label="Clear formatting (Ctrl+\\)"
+          icon="format_clear"
+        />
       </div>
-
-      <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
-
-      {/* Text Formatting */}
-      <IconButton 
-        onClick={() => editor.chain().focus().toggleBold().run()} 
-        isActive={editor.isActive('bold')} 
-        label="Bold (Ctrl+B)"
-        iconSrc={BoldIcon}
-      />
-      <IconButton 
-        onClick={() => editor.chain().focus().toggleItalic().run()} 
-        isActive={editor.isActive('italic')} 
-        label="Italic (Ctrl+I)"
-        iconSrc={ItalicIcon}
-      />
-      <IconButton 
-        onClick={() => editor.chain().focus().toggleUnderline().run()} 
-        isActive={editor.isActive('underline')} 
-        label="Underline (Ctrl+U)"
-        iconSrc={UnderlineIcon}
-      />
-
-      {/* Text Color */}
-      <ColorPicker 
-        value={editor.getAttributes('textStyle').color}
-        onChange={(color) => color ? editor.chain().focus().setColor(color).run() : editor.chain().focus().unsetColor().run()}
-        colors={COLOR_PALETTE}
-        label="Text color"
-        iconSrc={TextColorIcon}
-      />
-
-      {/* Highlight */}
-      <ColorPicker 
-        value={editor.getAttributes('highlight').color}
-        onChange={(color) => color ? editor.chain().focus().toggleHighlight({ color }).run() : editor.chain().focus().unsetHighlight().run()}
-        colors={HIGHLIGHT_PALETTE}
-        label="Highlight color"
-        iconSrc={HighlightIcon}
-      />
-
-      <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
-
-      {/* Link */}
-      <IconButton 
-        onClick={() => setIsLinkModalOpen(true)} 
-        isActive={editor.isActive('link')} 
-        label="Insert link (Ctrl+K)"
-        iconSrc={InsertLinkIcon}
-      />
-
-      {/* Image */}
-      <IconButton 
-        onClick={() => setIsImageModalOpen(true)} 
-        label="Insert image"
-        iconSrc={InsertImageIcon}
-      />
-
-      <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
-
-      {/* Alignment */}
-      <IconButton 
-        onClick={() => editor.chain().focus().setTextAlign('left').run()} 
-        isActive={editor.isActive({ textAlign: 'left' })} 
-        label="Align left (Ctrl+Shift+L)"
-        iconSrc={AlignLeftIcon}
-      />
-      <IconButton 
-        onClick={() => editor.chain().focus().setTextAlign('center').run()} 
-        isActive={editor.isActive({ textAlign: 'center' })} 
-        label="Align center (Ctrl+Shift+E)"
-        iconSrc={AlignCenterIcon}
-      />
-      <IconButton 
-        onClick={() => editor.chain().focus().setTextAlign('right').run()} 
-        isActive={editor.isActive({ textAlign: 'right' })} 
-        label="Align right (Ctrl+Shift+R)"
-        iconSrc={AlignRightIcon}
-      />
-      <IconButton 
-        onClick={() => editor.chain().focus().setTextAlign('justify').run()} 
-        isActive={editor.isActive({ textAlign: 'justify' })} 
-        label="Justify"
-        iconSrc={JustifyIcon}
-      />
-
-      <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
-
-      {/* Lists */}
-      <IconButton 
-        onClick={() => editor.chain().focus().toggleBulletList().run()} 
-        isActive={editor.isActive('bulletList')} 
-        label="Bullet list (Ctrl+Shift+8)"
-        iconSrc={BulletListIcon}
-      />
-      <IconButton 
-        onClick={() => editor.chain().focus().toggleOrderedList().run()} 
-        isActive={editor.isActive('orderedList')} 
-        label="Numbered list (Ctrl+Shift+7)"
-        iconSrc={NumberedListIcon}
-      />
-
-      <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
-
-      {/* Clear Formatting */}
-      <IconButton 
-        onClick={() => {
-          const { state } = editor
-          const { from, to } = state.selection
-          
-          // Get all mark types except 'mention'
-          const markTypes = Object.keys(state.schema.marks)
-            .filter(markName => markName !== 'mention')
-            .map(markName => state.schema.marks[markName])
-          
-          // Clear nodes and unset all marks except mentions
-          editor.chain()
-            .focus()
-            .clearNodes()
-            .command(({ tr, dispatch }) => {
-              if (dispatch) {
-                markTypes.forEach(markType => {
-                  tr.removeMark(from, to, markType)
-                })
-              }
-              return true
-            })
-            .run()
-        }}
-        label="Clear formatting (Ctrl+\\)"
-        iconSrc={ClearFormattingIcon}
-      />
-    </div>
     </>
   )
 }

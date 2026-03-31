@@ -152,11 +152,11 @@ export default function Journal() {
       <header className="h-16 px-4 md:px-6 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between gap-2 transition-colors duration-200 shrink-0">
         <div className="flex items-center gap-2 md:gap-4 flex-1 md:flex-none md:w-1/4 min-w-0">
           <Button
-            onClick={() => navigate(`/campaigns/${campaignId}/sessions/${sessionId}`)}
+            onClick={() => navigate(`/campaigns/${campaignId}`)}
             variant="ghost"
             className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
           >
-            <span className="hidden md:inline">← Back</span>
+            <span className="hidden md:inline">Back</span>
             <span className="md:hidden">←</span>
           </Button>
           <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 md:mx-2 shrink-0"></div>
