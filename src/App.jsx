@@ -1,6 +1,7 @@
 import AppRoutes from './routes'
 import { supabase } from './lib/supabase'
 import { Card } from './components/ui'
+import { DarkModeProvider } from './components/DarkModeProvider'
 import BypassApp from './dev/BypassApp'
 
 const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH === 'true'
@@ -26,5 +27,9 @@ export default function App() {
     )
   }
 
-  return <AppRoutes />
+  return (
+    <DarkModeProvider>
+      <AppRoutes />
+    </DarkModeProvider>
+  )
 }

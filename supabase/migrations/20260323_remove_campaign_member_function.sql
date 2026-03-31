@@ -6,6 +6,7 @@ CREATE OR REPLACE FUNCTION remove_campaign_member(
 RETURNS BOOLEAN AS $$
 DECLARE
   v_is_gm BOOLEAN;
+  v_first_session_id UUID;
 BEGIN
   -- Check if current user is the GM of this campaign
   SELECT EXISTS (
@@ -20,6 +21,18 @@ BEGIN
   -- Delete the campaign member
   DELETE FROM campaign_members
   WHERE campaign_id = p_campaign_id AND user_id = p_user_id;
+  
+  -- Log leave activity to the first session of the campaign
+  SELECT s.id INTO v_first_session_id
+  FROM sessions s
+  WHERE s.campaign_id = p_campaign_id
+  ORDER BY s.created_at ASC
+  LIMIT 1;
+
+  IF v_first_session_id IS NOT NULL THEN
+    INSERT INTO session_activity_logs (session_id, user_id, action_type, details)
+    VALUES (v_first_session_id, p_user_id, 'leave_campaign', '{}'::jsonb);
+  END IF;
   
   RETURN FOUND;
 END;

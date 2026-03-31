@@ -50,7 +50,7 @@ export function useSessionData(sessionId, campaignId) {
       if (sessionIds.length > 0) {
         const activityResult = await client
           .from('session_activity_logs')
-          .select('*, sessions!inner(id, name)')
+          .select('*')
           .in('session_id', sessionIds)
           .order('created_at', { ascending: false })
           .limit(100)
@@ -130,7 +130,7 @@ export function useSessionData(sessionId, campaignId) {
         // Fetch activity logs for all sessions
         const { data, error } = await client
           .from('session_activity_logs')
-          .select('*, sessions!inner(id, name)')
+          .select('*')
           .in('session_id', sessionIds)
           .order('created_at', { ascending: false })
           .limit(100)
@@ -182,13 +182,13 @@ export function useSessionData(sessionId, campaignId) {
       }
 
       const now = new Date()
-      // If found, check if it was less than 1 hour ago
+      // If found, check if it was less than the throttle time ago
       if (lastActivity) {
         const lastTime = new Date(lastActivity.created_at)
-        const diffHours = (now - lastTime) / (1000 * 60 * 60)
-        // Only throttle 'edit_document' actions, allow 'delete_entity' to go through
-        if (actionType === 'edit_document' && diffHours < 1) {
-          console.log('Activity log throttled (less than 1 hour since last)', actionType)
+        const diffMinutes = (now - lastTime) / (1000 * 60)
+        // Throttle 'edit_document' actions (5 minute throttle), allow others to go through
+        if (actionType === 'edit_document' && diffMinutes < 5) {
+          console.log('Activity log throttled (less than 5 minutes since last)', actionType)
           return // Skip logging to avoid spam
         }
       }

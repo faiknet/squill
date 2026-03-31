@@ -13,15 +13,15 @@
     width: 6px;
     height: 6px;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-gray-700 rounded-full;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-600;
   }
@@ -137,4 +137,79 @@
   bottom: -5px;
   right: -5px;
   cursor: nwse-resize;
+}
+
+/* Highlight styling - use darker colors in dark mode with lower opacity backgrounds */
+
+/* Bright yellow to dark yellow/olive */
+.dark .ProseMirror mark[data-color="#ffff00"] {
+  background-color: rgba(139, 120, 0, 0.5) !important;
+  color: white !important;
+}
+
+/* Light yellow to darker yellow */
+.dark .ProseMirror mark[data-color="#fff2cc"] {
+  background-color: rgba(120, 100, 0, 0.5) !important;
+  color: white !important;
+}
+
+/* Bright green to dark green */
+.dark .ProseMirror mark[data-color="#00ff00"] {
+  background-color: rgba(80, 120, 80, 0.5) !important;
+  color: white !important;
+}
+
+/* Light green to darker green */
+.dark .ProseMirror mark[data-color="#d9ead3"] {
+  background-color: rgba(60, 100, 60, 0.5) !important;
+  color: white !important;
+}
+
+/* Cyan to dark cyan */
+.dark .ProseMirror mark[data-color="#00ffff"] {
+  background-color: rgba(0, 100, 100, 0.5) !important;
+  color: white !important;
+}
+
+/* Light cyan/gray to darker */
+.dark .ProseMirror mark[data-color="#d0e0e3"] {
+  background-color: rgba(60, 90, 100, 0.5) !important;
+  color: white !important;
+}
+
+/* Magenta to dark magenta */
+.dark .ProseMirror mark[data-color="#ff00ff"] {
+  background-color: rgba(100, 0, 100, 0.5) !important;
+  color: white !important;
+}
+
+/* Red to dark red */
+.dark .ProseMirror mark[data-color="#ff0000"] {
+  background-color: rgba(120, 40, 40, 0.5) !important;
+  color: white !important;
+}
+
+/* Light red/pink to darker */
+.dark .ProseMirror mark[data-color="#ead1dc"] {
+  background-color: rgba(100, 50, 80, 0.5) !important;
+  color: white !important;
+}
+
+/* Blue to dark blue */
+.dark .ProseMirror mark[data-color="#0000ff"] {
+  background-color: rgba(40, 40, 120, 0.5) !important;
+  color: white !important;
+}
+
+/* Light blue to darker */
+.dark .ProseMirror mark[data-color="#cfe2f3"],
+.dark .ProseMirror mark[data-color="#c9daf8"] {
+  background-color: rgba(60, 80, 120, 0.5) !important;
+  color: white !important;
+}
+
+/* Light peach/orange to darker */
+.dark .ProseMirror mark[data-color="#fce5cd"] {
+  background-color: rgba(120, 80, 40, 0.5) !important;
+  color: white !important;
 }

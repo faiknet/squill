@@ -353,8 +353,8 @@ export default function SessionEditor() {
         }
 
         if (log.action_type === 'edit_document') {
-          // Get session name from the joined session record or details fallback
-          const sessionName = log.sessions?.name || log.details?.session_name || 'a session'
+          // Get session name from details fallback
+          const sessionName = log.details?.session_name || 'a session'
           list.push({
             user: userName,
             action: `made changes to ${sessionName}`,
@@ -378,6 +378,18 @@ export default function SessionEditor() {
           list.push({
             user: userName,
             action: `added ${typeLabel}: ${log.details?.label || 'Unknown'}`,
+            timestamp: log.created_at
+          })
+        } else if (log.action_type === 'join_campaign') {
+          list.push({
+            user: userName,
+            action: 'joined the campaign',
+            timestamp: log.created_at
+          })
+        } else if (log.action_type === 'leave_campaign') {
+          list.push({
+            user: userName,
+            action: 'left the campaign',
             timestamp: log.created_at
           })
         }

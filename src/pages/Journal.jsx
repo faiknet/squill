@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSessionData } from '../hooks/useSessionData'
 import { Button, Input, Card } from '../components/ui'
+import NewJournalEntryModal from '../components/journal/NewJournalEntryModal'
 import { useState, useMemo } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -30,6 +31,8 @@ export default function Journal() {
   const [sortBy, setSortBy] = useState({ npc: 'order', inventory: 'order', pet: 'order', location: 'order' })
   const [draggedItem, setDraggedItem] = useState(null)
   const [draggedOverType, setDraggedOverType] = useState(null)
+  const [isNewEntryModalOpen, setIsNewEntryModalOpen] = useState(false)
+  const [newEntrySection, setNewEntrySection] = useState(null)
 
   // Group tags by type
   const groupedTags = useMemo(() => {
@@ -76,6 +79,19 @@ export default function Journal() {
     if (!drafts[type]?.trim()) return
     await addTag(type, drafts[type])
     setDrafts(prev => ({ ...prev, [type]: '' }))
+  }
+
+  const handleNewEntryClick = (section) => {
+    setNewEntrySection(section)
+    setIsNewEntryModalOpen(true)
+  }
+
+  const handleNewEntrySave = async (name) => {
+    if (newEntrySection) {
+      await addTag(newEntrySection.type, name)
+      setIsNewEntryModalOpen(false)
+      setNewEntrySection(null)
+    }
   }
 
   const handleDragStart = (e, tag, type) => {
@@ -236,6 +252,14 @@ export default function Journal() {
 
               {/* Scrollable Entity List */}
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {/* New Entry Button at Top */}
+                <button
+                  onClick={() => handleNewEntryClick(section)}
+                  className="w-full p-3 border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-md hover:border-brand-600 dark:hover:border-brand-600 transition-colors text-center text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 font-medium text-sm"
+                >
+                  New Entry
+                </button>
+
                 {groupedTags[section.type]?.length > 0 ? (
                   groupedTags[section.type].map((tag) => (
                     <div
@@ -273,23 +297,18 @@ export default function Journal() {
                   </div>
                 )}
               </div>
-
-              {/* Add Form */}
-              <div className="p-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/50 shrink-0">
-                <form onSubmit={(e) => handleAdd(e, section.type)} className="flex gap-2">
-                  <Input
-                    value={drafts[section.type]}
-                    onChange={(e) => setDrafts(p => ({ ...p, [section.type]: e.target.value }))}
-                    placeholder={section.placeholder}
-                    className="bg-white dark:bg-gray-900 border-slate-300 dark:border-gray-700 text-slate-900 dark:text-gray-100 text-sm h-9"
-                  />
-
-                </form>
-              </div>
             </div>
           ))}
         </div>
       </main>
+
+      <NewJournalEntryModal
+        isOpen={isNewEntryModalOpen}
+        onClose={() => setIsNewEntryModalOpen(false)}
+        onSave={handleNewEntrySave}
+        sectionType={newEntrySection?.type}
+        sectionTitle={newEntrySection?.title}
+      />
     </div>
   )
 }
