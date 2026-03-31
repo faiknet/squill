@@ -60,7 +60,7 @@ function CampaignList() {
 
       // Parallel queries for efficiency
       const [campaignsResult, pinsResult, partySizesResult, sessionsResult] = await Promise.all([
-        client.from('campaigns').select('id, name, description, created_at, updated_at, created_by, invite_code').order('created_at', { ascending: false }),
+        client.from('campaigns').select('id, slug, name, description, created_at, updated_at, created_by, invite_code').order('created_at', { ascending: false }),
         client.from('campaign_pins').select('campaign_id').eq('user_id', user.id),
         client.rpc('get_campaign_party_sizes'),
         client.from('sessions').select('campaign_id')
@@ -115,7 +115,7 @@ function CampaignList() {
 
       setShowCreateModal(false)
       await loadCampaigns()
-      navigate(`/campaigns/${data.id}`)
+      navigate(`/campaigns/${data.slug}`)
     } catch (err) {
       if (err instanceof ValidationError) {
         setFail(err.getClientMessage())
@@ -293,7 +293,7 @@ function CampaignList() {
                     <button
                       key={campaign.id}
                       onClick={() => {
-                        navigate(`/campaigns/${campaign.id}`)
+                        navigate(`/campaigns/${campaign.slug}`)
                         setMobileMenuOpen(false)
                       }}
                       className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm truncate hover:bg-slate-50 dark:hover:bg-gray-700/50 text-slate-700 dark:text-gray-300"
@@ -432,7 +432,7 @@ function CampaignList() {
                         <tr
                           key={campaign.id}
                           className="hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group"
-                          onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                          onClick={() => navigate(`/campaigns/${campaign.slug}`)}
                         >
                           <td className="px-6 py-4">
                             <div className="flex flex-col max-w-xs">
@@ -529,7 +529,7 @@ function CampaignList() {
                     return (
                       <div
                         key={campaign.id}
-                        onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                        onClick={() => navigate(`/campaigns/${campaign.slug}`)}
                         className="p-4 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                       >
                         <div className="flex items-start justify-between mb-2">

@@ -50,6 +50,7 @@ function EditorLayout({
   activities,
   navigate,
   campaignId,
+  campaignSlug,
   sessionId,
   campaignMembers,
   inviteCode,
@@ -73,7 +74,7 @@ function EditorLayout({
       <header className="h-16 px-4 md:px-6 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between z-10 shrink-0 gap-2 transition-colors duration-200">
         <div className="flex items-center gap-2 md:gap-4 flex-1 md:flex-none md:w-1/4 min-w-0">
           <Button
-            onClick={() => navigate(`/campaigns/${campaignId}`)}
+            onClick={() => navigate(`/campaigns/${campaignSlug}`)}
             variant="ghost"
             className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
           >
@@ -177,6 +178,7 @@ function CollaborativeSessionContent({
   userLabel,
   navigate,
   campaignId,
+  campaignSlug,
   sessionId,
   activities,
   campaignMembers,
@@ -212,6 +214,7 @@ function CollaborativeSessionContent({
       activities={activities}
       navigate={navigate}
       campaignId={campaignId}
+      campaignSlug={campaignSlug}
       sessionId={sessionId}
       campaignMembers={campaignMembers}
       inviteCode={inviteCode}
@@ -234,9 +237,53 @@ function CollaborativeSessionContent({
 // --- Main Component ---
 
 export default function SessionEditor() {
-  const { id: campaignId, sessionId } = useParams()
+  const { campaignSlug, sessionSlug } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
+  const [campaignId, setCampaignId] = useState(null)
+  const [sessionId, setSessionId] = useState(null)
+  const [loadingIds, setLoadingIds] = useState(true)
+
+  // First, resolve slugs to IDs
+  useEffect(() => {
+    const resolveIds = async () => {
+      try {
+        const client = requireSupabase()
+        const { data: campaignData, error: campaignError } = await client
+          .from('campaigns')
+          .select('id')
+          .eq('slug', campaignSlug)
+          .single()
+        
+        if (campaignError || !campaignData) {
+          navigate('/campaigns')
+          return
+        }
+
+        const { data: sessionData, error: sessionError } = await client
+          .from('sessions')
+          .select('id')
+          .eq('slug', sessionSlug)
+          .eq('campaign_id', campaignData.id)
+          .single()
+        
+        if (sessionError || !sessionData) {
+          navigate(`/campaigns/${campaignSlug}`)
+          return
+        }
+
+        setCampaignId(campaignData.id)
+        setSessionId(sessionData.id)
+      } catch (err) {
+        console.error('Error resolving slugs:', err)
+        navigate('/campaigns')
+      } finally {
+        setLoadingIds(false)
+      }
+    }
+
+    resolveIds()
+  }, [campaignSlug, sessionSlug, navigate])
 
   const {
     session,
@@ -422,6 +469,15 @@ export default function SessionEditor() {
       .slice(0, 20)
   }, [tags, campaignMembers, activityLogs])
 
+  // Check if still resolving slug IDs
+  if (loadingIds) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+        <p className="text-slate-500 dark:text-gray-400">Loading...</p>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
@@ -436,7 +492,7 @@ export default function SessionEditor() {
         <div className="text-red-600 dark:text-red-400 p-4 border border-red-200 dark:border-red-800 rounded bg-red-50 dark:bg-red-900/20">
           <h3 className="font-bold mb-2">Error</h3>
           <p>{error}</p>
-          <Button onClick={() => navigate(`/campaigns/${campaignId}`)} className="mt-4">
+          <Button onClick={() => navigate(`/campaigns/${campaignSlug}`)} className="mt-4">
             Back to Campaign
           </Button>
         </div>
@@ -466,6 +522,7 @@ export default function SessionEditor() {
           userLabel={userLabel}
           navigate={navigate}
           campaignId={campaignId}
+          campaignSlug={campaignSlug}
           sessionId={sessionId}
           activities={activities}
           campaignMembers={campaignMembers}
@@ -493,6 +550,7 @@ export default function SessionEditor() {
       activities={activities}
       navigate={navigate}
       campaignId={campaignId}
+      campaignSlug={campaignSlug}
       sessionId={sessionId}
       campaignMembers={campaignMembers}
       inviteCode={inviteCode}

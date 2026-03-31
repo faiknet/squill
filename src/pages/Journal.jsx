@@ -1,8 +1,9 @@
 import { useNavigate, useParams } from 'react-router-dom'
+import { useState, useMemo, useEffect } from 'react'
+import { requireSupabase } from '../lib/supabase'
 import { useSessionData } from '../hooks/useSessionData'
 import { Button, Input, Card } from '../components/ui'
 import NewJournalEntryModal from '../components/journal/NewJournalEntryModal'
-import { useState, useMemo } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 
 const TAG_SECTIONS = [
@@ -13,8 +14,52 @@ const TAG_SECTIONS = [
 ]
 
 export default function Journal() {
-  const { id: campaignId, sessionId } = useParams()
+  const { campaignSlug, sessionSlug } = useParams()
   const navigate = useNavigate()
+  const [campaignId, setCampaignId] = useState(null)
+  const [sessionId, setSessionId] = useState(null)
+  const [loadingIds, setLoadingIds] = useState(true)
+
+  // First, resolve slugs to IDs
+  useEffect(() => {
+    const resolveIds = async () => {
+      try {
+        const client = requireSupabase()
+        const { data: campaignData, error: campaignError } = await client
+          .from('campaigns')
+          .select('id')
+          .eq('slug', campaignSlug)
+          .single()
+        
+        if (campaignError || !campaignData) {
+          navigate('/campaigns')
+          return
+        }
+
+        const { data: sessionData, error: sessionError } = await client
+          .from('sessions')
+          .select('id')
+          .eq('slug', sessionSlug)
+          .eq('campaign_id', campaignData.id)
+          .single()
+        
+        if (sessionError || !sessionData) {
+          navigate(`/campaigns/${campaignSlug}`)
+          return
+        }
+
+        setCampaignId(campaignData.id)
+        setSessionId(sessionData.id)
+      } catch (err) {
+        console.error('Error resolving slugs:', err)
+        navigate('/campaigns')
+      } finally {
+        setLoadingIds(false)
+      }
+    }
+
+    resolveIds()
+  }, [campaignSlug, sessionSlug, navigate])
 
   const {
     session,
@@ -154,6 +199,14 @@ export default function Journal() {
     }
   }
 
+  if (loadingIds) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+        <p className="text-slate-500 dark:text-gray-400">Loading...</p>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
@@ -168,7 +221,7 @@ export default function Journal() {
       <header className="h-16 px-4 md:px-6 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between gap-2 transition-colors duration-200 shrink-0">
         <div className="flex items-center gap-2 md:gap-4 flex-1 md:flex-none md:w-1/4 min-w-0">
           <Button
-            onClick={() => navigate(`/campaigns/${campaignId}`)}
+            onClick={() => navigate(`/campaigns/${campaignSlug}`)}
             variant="ghost"
             className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
           >
@@ -185,7 +238,7 @@ export default function Journal() {
         <div className="flex-1 flex items-center justify-center">
           <nav className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 border border-slate-200 dark:border-gray-700 shrink-0 rounded-md">
             <button
-              onClick={() => navigate(`/campaigns/${campaignId}/sessions/${sessionId}`)}
+              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}`)}
               className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
             >
               <span className="hidden md:inline">Workspace</span>

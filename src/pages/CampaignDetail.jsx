@@ -19,7 +19,7 @@ import {
 } from '../lib/validation'
 
 function CampaignDetail() {
-  const { id } = useParams()
+  const { campaignSlug } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
   const { setMobileMenuOpen } = useMobileMenu()
@@ -53,7 +53,7 @@ function CampaignDetail() {
 
   useEffect(() => {
     loadCampaign()
-  }, [id])
+  }, [campaignSlug])
 
   useEffect(() => {
     return () => {
@@ -82,8 +82,8 @@ function CampaignDetail() {
       const client = requireSupabase()
       const { data: campaignData, error: campaignError } = await client
         .from('campaigns')
-        .select('id, name, description, invite_code, created_by')
-        .eq('id', id)
+        .select('id, slug, name, description, invite_code, created_by')
+        .eq('slug', campaignSlug)
         .single()
 
       if (campaignError || !campaignData) {
@@ -96,7 +96,7 @@ function CampaignDetail() {
       setCampaignDescription(campaignData.description || '')
 
       const { data: membersData, error: membersError } = await client.rpc('get_campaign_members', {
-        p_campaign_id: id,
+        p_campaign_id: campaignData.id,
       })
       if (membersError) {
         const message = String(membersError.message || '')
@@ -162,8 +162,8 @@ function CampaignDetail() {
 
       const { data: sessionsData, error: sessionsError } = await client
         .from('sessions')
-        .select('id, name, session_date, archived, created_at')
-        .eq('campaign_id', id)
+        .select('id, slug, name, session_date, archived, created_at')
+        .eq('campaign_id', campaignData.id)
         .order('created_at', { ascending: false })
 
       if (sessionsError) throw sessionsError
@@ -699,7 +699,7 @@ function CampaignDetail() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-slate-900 dark:text-gray-100 text-lg">
-                        <button onClick={() => navigate(`/campaigns/${id}/sessions/${session.id}`)} className="hover:underline text-left">
+                        <button onClick={() => navigate(`/campaigns/${campaign.slug}/sessions/${session.slug}`)} className="hover:underline text-left">
                           {session.name}
                         </button>
                       </h3>
@@ -748,7 +748,7 @@ function CampaignDetail() {
                       </Button>
                     )}
                     <Button
-                      onClick={() => navigate(`/campaigns/${id}/sessions/${session.id}`)}
+                      onClick={() => navigate(`/campaigns/${campaign.slug}/sessions/${session.slug}`)}
                       className="bg-brand-600 text-white hover:bg-brand-700 text-sm px-3 py-1.5"
                     >
                       Open

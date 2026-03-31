@@ -48,7 +48,7 @@ export default function AppRoutes() {
         }
       />
       <Route
-        path="/campaigns/:id/sessions/:sessionId"
+        path="/campaigns/:campaignSlug/sessions/:sessionSlug"
         element={
           <ProtectedRoute>
             <SessionEditor />
@@ -56,7 +56,7 @@ export default function AppRoutes() {
         }
       />
       <Route
-        path="/campaigns/:id/sessions/:sessionId/journal"
+        path="/campaigns/:campaignSlug/sessions/:sessionSlug/journal"
         element={
           <ProtectedRoute>
             <Journal />
@@ -81,7 +81,7 @@ export default function AppRoutes() {
         )}
       >
         <Route path="/settings" element={<Settings />} />
-        <Route path="/campaigns/:id" element={<CampaignDetail />} />
+        <Route path="/campaigns/:campaignSlug" element={<CampaignDetail />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
