@@ -5,12 +5,14 @@ import { getDisplayLabel } from '../lib/utils'
 import { UserProfileMenu } from '../components/ui'
 import Logo from '../components/ui/logo.webp'
 import { requireSupabase } from '../lib/supabase'
+import { getGuestCampaigns } from '../lib/guestData'
 import { MobileMenuProvider } from '../contexts/MobileMenuContext'
 
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { authState } = useAuth()
+  const { isGuest } = authState
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [campaignsExpanded, setCampaignsExpanded] = useState(true)
   const [campaigns, setCampaigns] = useState([])
@@ -30,6 +32,13 @@ export default function Layout() {
   const loadCampaigns = async () => {
     try {
       setLoadingCampaigns(true)
+
+      // Show demo campaign in guest mode
+      if (isGuest && authState.user?.id) {
+        setCampaigns(getGuestCampaigns(authState.user.id))
+        return
+      }
+
       const client = requireSupabase()
       const { data, error } = await client
         .from('campaigns')

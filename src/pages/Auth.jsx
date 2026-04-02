@@ -6,7 +6,7 @@ import { Button, Input, Card } from '../components/ui'
 
 export default function Auth() {
   const location = useLocation()
-  const { authState, signIn, signUp } = useAuth()
+  const { authState, signIn, signUp, signInAsGuest } = useAuth()
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -52,6 +52,23 @@ export default function Auth() {
     setMode(prev => prev === 'signin' ? 'signup' : 'signin')
     clear()
     setDisplayName('')
+  }
+
+  const onGuestSignIn = async () => {
+    if (loading) return
+    setLoading(true)
+    clear()
+    
+    try {
+      const result = await signInAsGuest()
+      if (!result.success) {
+        setFail(result.error)
+      }
+    } catch (err) {
+      setFail(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -108,6 +125,24 @@ export default function Auth() {
               {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Sign Up'}
             </Button>
           </form>
+
+          <div className="mt-4 flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-200 dark:bg-gray-700" />
+            <span className="text-xs text-slate-500 dark:text-gray-500 uppercase tracking-wider">or</span>
+            <div className="flex-1 h-px bg-slate-200 dark:bg-gray-700" />
+          </div>
+
+          <Button
+            className="mt-4 w-full bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-600 font-medium border border-slate-300 dark:border-gray-600"
+            type="button"
+            onClick={onGuestSignIn}
+            disabled={loading}
+          >
+            Continue as Guest
+          </Button>
+          <p className="mt-2 text-xs text-slate-500 dark:text-gray-500 text-center">
+            No account needed — perfect for exploring the app
+          </p>
 
           <div className="mt-6 pt-6 border-t border-slate-200 dark:border-gray-700 text-sm text-slate-600 dark:text-gray-400">
             {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}{' '}

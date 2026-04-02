@@ -1,10 +1,14 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { useState, useMemo, useEffect } from 'react'
 import { requireSupabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useSupabaseAuth'
 import { useSessionData } from '../hooks/useSessionData'
 import { Button, Input, Card } from '../components/ui'
 import NewJournalEntryModal from '../components/journal/NewJournalEntryModal'
 import { formatDistanceToNow } from 'date-fns'
+import {
+  getGuestSessionBySlug,
+} from '../lib/guestData'
 
 const TAG_SECTIONS = [
   { type: 'npc', title: 'NPCs', placeholder: 'Add NPC Name' },
@@ -16,12 +20,31 @@ const TAG_SECTIONS = [
 export default function Journal() {
   const { campaignSlug, sessionSlug } = useParams()
   const navigate = useNavigate()
+  const { authState } = useAuth()
+  const { isGuest, isLoading: authLoading } = authState
   const [campaignId, setCampaignId] = useState(null)
   const [sessionId, setSessionId] = useState(null)
   const [loadingIds, setLoadingIds] = useState(true)
 
   // First, resolve slugs to IDs
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) return
+
+    // Handle guest users with local demo data
+    if (isGuest) {
+      const userId = authState.user?.id
+      const guestRoute = userId ? getGuestSessionBySlug(userId, campaignSlug, sessionSlug) : null
+      if (!guestRoute) {
+        navigate('/campaigns')
+        return
+      }
+      setCampaignId(guestRoute.campaign.id)
+      setSessionId(guestRoute.session.id)
+      setLoadingIds(false)
+      return
+    }
+
     const resolveIds = async () => {
       try {
         const client = requireSupabase()
@@ -59,7 +82,7 @@ export default function Journal() {
     }
 
     resolveIds()
-  }, [campaignSlug, sessionSlug, navigate])
+  }, [campaignSlug, sessionSlug, navigate, isGuest, authLoading, authState.user?.id])
 
   const {
     session,

@@ -28,9 +28,7 @@ const MentionDropdown = forwardRef(function MentionDropdown({
   onSelect
 }, ref) {
   const suggestions = useMemo(() => {
-    if (!query) return []
-
-    const queryLower = query.toLowerCase()
+    const queryLower = (query || '').toLowerCase()
     const results = []
 
     // Journal entities (NPCs, Inventory, Pets, Locations)

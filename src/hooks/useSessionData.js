@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from './useSupabaseAuth'
 import {
@@ -10,9 +10,26 @@ import {
   validateTagId,
   ValidationError,
 } from '../lib/validation'
+import {
+  GUEST_CAMPAIGN_ID,
+  getGuestSession,
+  getGuestSessionsForCampaign,
+  getGuestSessionNote,
+  getGuestEntityTags,
+  getGuestCampaignMembers,
+  getGuestActivityLogs,
+} from '../lib/guestData'
+
+// Storage key for guest session note (persists within browser session)
+const GUEST_NOTE_STORAGE_KEY = 'squill_guest_session_note'
+const GUEST_TAGS_STORAGE_KEY = 'squill_guest_session_tags'
+const GUEST_EDIT_ACTIVITY_THROTTLE_MS = 2 * 60 * 60 * 1000
+const GUEST_NOTE_SCHEMA_VERSION_KEY = 'squill_guest_session_note_schema_version'
+const GUEST_NOTE_SCHEMA_VERSION = '3'
 
 export function useSessionData(sessionId, campaignId) {
   const { authState } = useAuth()
+  const { isGuest } = authState
   const [session, setSession] = useState(null)
   const [noteContent, setNoteContent] = useState('<p></p>')
   const [tags, setTags] = useState([])
@@ -23,8 +40,76 @@ export function useSessionData(sessionId, campaignId) {
   const [saving, setSaving] = useState(false)
   const [activityLogs, setActivityLogs] = useState([])
   const [sessionNotes, setSessionNotes] = useState([])
+  const guestTagIdCounter = useRef(100)
+
+  // Load guest session data
+  const loadGuestSession = useCallback(() => {
+    const userId = authState.user?.id
+    if (!userId || !sessionId || !campaignId) return
+
+    const guestSession = getGuestSessionsForCampaign(campaignId).find((item) => item.id === sessionId)
+    if (!guestSession) {
+      setError('Guest session not found')
+      setLoading(false)
+      return
+    }
+    
+    // Try to load saved note from sessionStorage, or use default
+    let savedNote = null
+    let savedSchemaVersion = null
+    try {
+      savedNote = sessionStorage.getItem(GUEST_NOTE_STORAGE_KEY)
+      savedSchemaVersion = sessionStorage.getItem(GUEST_NOTE_SCHEMA_VERSION_KEY)
+    } catch {
+      // Ignore storage errors
+    }
+    let noteContentValue = savedNote || getGuestSessionNote()
+
+    // Migrate older guest notes that predate mention-marked defaults
+    if (savedNote && savedSchemaVersion !== GUEST_NOTE_SCHEMA_VERSION) {
+      noteContentValue = getGuestSessionNote()
+      try {
+        sessionStorage.setItem(GUEST_NOTE_STORAGE_KEY, noteContentValue)
+        sessionStorage.setItem(GUEST_NOTE_SCHEMA_VERSION_KEY, GUEST_NOTE_SCHEMA_VERSION)
+      } catch {
+        // Ignore storage errors
+      }
+    } else if (!savedNote) {
+      try {
+        sessionStorage.setItem(GUEST_NOTE_SCHEMA_VERSION_KEY, GUEST_NOTE_SCHEMA_VERSION)
+      } catch {
+        // Ignore storage errors
+      }
+    }
+
+    // Try to load saved tags from sessionStorage, or use default
+    let savedTags = null
+    try {
+      const tagsJson = sessionStorage.getItem(`${GUEST_TAGS_STORAGE_KEY}:${sessionId}`)
+      if (tagsJson) savedTags = JSON.parse(tagsJson)
+    } catch {
+      // Ignore storage errors
+    }
+    const tagsValue = savedTags || getGuestEntityTags(campaignId, sessionId)
+    const activityLogsValue = getGuestActivityLogs(sessionId, userId)
+
+    setSession({ id: guestSession.id, name: guestSession.name, campaign_id: guestSession.campaign_id })
+    setNoteContent(noteContentValue)
+    setTags(tagsValue)
+    setInviteCode('DEMO1234')
+    setCampaignMembers(getGuestCampaignMembers(userId))
+    setActivityLogs(activityLogsValue)
+    setSessionNotes(getGuestSessionsForCampaign(campaignId).map(item => ({ id: item.id, name: item.name })))
+    setLoading(false)
+  }, [authState.user?.id, sessionId, campaignId])
 
   const loadSession = useCallback(async () => {
+    // Handle guest users with local demo data
+    if (isGuest) {
+      loadGuestSession()
+      return
+    }
+
     try {
       const client = requireSupabase()
       
@@ -107,11 +192,12 @@ export function useSessionData(sessionId, campaignId) {
     } finally {
       setLoading(false)
     }
-  }, [sessionId, campaignId])
+  }, [sessionId, campaignId, isGuest, loadGuestSession])
 
   // Poll for activity log changes for ALL sessions in the campaign
   useEffect(() => {
-    if (!campaignId) return
+    // Skip polling for guest users
+    if (!campaignId || isGuest) return
 
     const pollActivityLogs = async () => {
       try {
@@ -149,7 +235,7 @@ export function useSessionData(sessionId, campaignId) {
     // Poll every 5 seconds
     const interval = setInterval(pollActivityLogs, 5000)
     return () => clearInterval(interval)
-  }, [campaignId])
+  }, [campaignId, isGuest])
 
   const logActivity = useCallback(async (actionType, detailsOrName) => {
     try {
@@ -222,7 +308,55 @@ export function useSessionData(sessionId, campaignId) {
   const saveNote = useCallback(async (content) => {
     setSaving(true)
     setError('')
-    console.log('saveNote called, about to save...')
+
+    // For guest users, save to sessionStorage instead
+    if (isGuest) {
+      try {
+        sessionStorage.setItem(GUEST_NOTE_STORAGE_KEY, content)
+        setNoteContent(content)
+
+        const now = Date.now()
+        let shouldLogEditActivity = true
+        const guestEditActivityKey = `squill_guest_last_edit_activity_at:${sessionId || GUEST_SESSION_ID}:${authState.user?.id || 'guest'}`
+
+        try {
+          const lastActivityAtRaw = localStorage.getItem(guestEditActivityKey)
+          const lastActivityAt = Number(lastActivityAtRaw)
+          if (Number.isFinite(lastActivityAt) && now - lastActivityAt < GUEST_EDIT_ACTIVITY_THROTTLE_MS) {
+            shouldLogEditActivity = false
+          }
+        } catch {
+          // Ignore storage errors
+        }
+
+        if (shouldLogEditActivity) {
+          const newActivity = {
+            id: `activity-${now}`,
+            session_id: sessionId,
+            user_id: authState.user?.id,
+            action_type: 'edit_document',
+            details: {
+              session_name: session?.name || 'Session',
+            },
+            created_at: new Date(now).toISOString(),
+          }
+
+          setActivityLogs(prev => [newActivity, ...prev])
+
+          try {
+            localStorage.setItem(guestEditActivityKey, String(now))
+          } catch {
+            // Ignore storage errors
+          }
+        }
+      } catch (err) {
+        setError('Failed to save note locally')
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
     try {
       // Validate content before saving
       const validated = validateUpdateNote({ contentMd: content })
@@ -250,9 +384,50 @@ export function useSessionData(sessionId, campaignId) {
     } finally {
       setSaving(false)
     }
-  }, [sessionId, logActivity, session?.name])
+  }, [sessionId, logActivity, session?.name, isGuest])
 
   const addTag = useCallback(async (type, label) => {
+    // For guest users, add tag to local state only
+    if (isGuest) {
+      const dbType = type === 'inventory' ? 'item' : type
+      const newTag = {
+        id: `guest-tag-${guestTagIdCounter.current++}`,
+        campaign_id: campaignId,
+        session_id: sessionId,
+        label,
+        tag_type: dbType,
+        created_by: authState.user?.id,
+        created_at: new Date().toISOString(),
+        sessions: { name: session?.name || 'Session' },
+      }
+      setTags(prev => {
+        const newTags = [newTag, ...prev]
+        try {
+          sessionStorage.setItem(`${GUEST_TAGS_STORAGE_KEY}:${sessionId}`, JSON.stringify(newTags))
+        } catch {
+          // Ignore storage errors
+        }
+        return newTags
+      })
+      
+      // Add activity log for the tag creation
+      const newActivity = {
+        id: `activity-${Date.now()}`,
+        session_id: sessionId,
+        user_id: authState.user?.id,
+        action_type: 'create_entity',
+        details: {
+          label,
+          type: dbType,
+          session_name: session?.name || 'Session',
+        },
+        created_at: new Date().toISOString(),
+      }
+      setActivityLogs(prev => [newActivity, ...prev])
+      
+      return true
+    }
+
     try {
       // Validate tag data before insertion
       const validated = validateCreateEntityTag({
@@ -307,9 +482,44 @@ export function useSessionData(sessionId, campaignId) {
       setError(err.message || 'Failed to add tag')
       return false
     }
-  }, [sessionId, campaignId, authState, session])
+  }, [sessionId, campaignId, authState, session, isGuest])
 
   const removeTag = useCallback(async (tagId, tagDetails = null) => {
+    // For guest users, remove from local state only
+    if (isGuest) {
+      // Find the tag before removing to get its details for the activity log
+      const tagToRemove = tags.find(t => t.id === tagId)
+      
+      setTags(prev => {
+        const newTags = prev.filter(t => t.id !== tagId)
+        try {
+          sessionStorage.setItem(`${GUEST_TAGS_STORAGE_KEY}:${sessionId}`, JSON.stringify(newTags))
+        } catch {
+          // Ignore storage errors
+        }
+        return newTags
+      })
+      
+      // Add activity log for the tag deletion
+      if (tagToRemove) {
+        const newActivity = {
+          id: `activity-${Date.now()}`,
+          session_id: sessionId,
+          user_id: authState.user?.id,
+          action_type: 'delete_entity',
+          details: {
+            label: tagToRemove.label,
+            type: tagToRemove.tag_type,
+            session_name: session?.name || 'Session',
+          },
+          created_at: new Date().toISOString(),
+        }
+        setActivityLogs(prev => [newActivity, ...prev])
+      }
+      
+      return
+    }
+
     try {
       // Validate tag ID before deletion
       const validatedTagId = validateTagId(tagId)
@@ -352,9 +562,23 @@ export function useSessionData(sessionId, campaignId) {
         setError(err.message || 'Failed to remove tag')
       }
     }
-  }, [tags, logActivity, session?.name, authState.user?.id])
+  }, [tags, logActivity, session?.name, authState.user?.id, isGuest, sessionId])
 
   const updateTag = useCallback(async (tagId, updates) => {
+    // For guest users, update in local state only
+    if (isGuest) {
+      setTags(prev => {
+        const newTags = prev.map(t => t.id === tagId ? { ...t, ...updates } : t)
+        try {
+          sessionStorage.setItem(`${GUEST_TAGS_STORAGE_KEY}:${sessionId}`, JSON.stringify(newTags))
+        } catch {
+          // Ignore storage errors
+        }
+        return newTags
+      })
+      return true
+    }
+
     try {
       // Validate tag ID and updates
       const validatedTagId = validateTagId(tagId)
@@ -377,7 +601,7 @@ export function useSessionData(sessionId, campaignId) {
       }
       return false
     }
-  }, [])
+  }, [isGuest, sessionId])
 
   useEffect(() => {
     if (sessionId && campaignId) loadSession()

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -9,24 +9,57 @@ import TextStyle from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
 import TextAlign from '@tiptap/extension-text-align'
+import { colorFromString } from '../../lib/liveblocks'
+import { MentionMark } from '../../lib/mentionMark'
 import { FontSize } from '../../lib/fontSizeExtension'
 import { IndentExtension } from '../../lib/indentExtension'
 import EditorToolbar from './GoogleDocsToolbar'
+import MentionDropdown from './MentionDropdown'
 
 export default function LocalEditor({
   noteContent,
   setNoteContent,
   sharedMinHeight,
-  collabEnabled
+  collabEnabled,
+  campaignMembers = [],
+  journalEntities = [],
+  sessionNotes = [],
+  currentUserId,
+  userLabel = 'Guest',
+  userColor,
 }) {
+  const [mentionState, setMentionState] = useState({ active: false, query: '', position: null })
+  const mentionStateRef = useRef(mentionState)
+  const mentionDropdownRef = useRef(null)
+
+  useEffect(() => {
+    mentionStateRef.current = mentionState
+  }, [mentionState])
+
+  const userColorMap = useMemo(() => {
+    const styleMap = new Map()
+
+    campaignMembers.forEach(member => {
+      const color = member.color || colorFromString(member.display_name)
+      styleMap.set(member.user_id, color)
+    })
+
+    if (currentUserId) {
+      styleMap.set(currentUserId, userColor || colorFromString(userLabel))
+    }
+
+    return styleMap
+  }, [campaignMembers, currentUserId, userColor, userLabel])
+
   const editor = useEditor({
     extensions: [
-      StarterKit, 
+      StarterKit,
       Underline,
       Link.configure({
         openOnClick: false,
       }),
       ResizableImage,
+      MentionMark,
       FontFamily,
       TextStyle,
       FontSize,
@@ -54,9 +87,41 @@ export default function LocalEditor({
           }
           return false
         },
+        keydown: (view, event) => {
+          if (mentionStateRef.current.active) {
+            if (event.key === 'Escape') {
+              setMentionState({ active: false, query: '', position: null })
+              return true
+            }
+            if (event.key === 'Tab') {
+              event.preventDefault()
+              if (mentionDropdownRef.current) {
+                mentionDropdownRef.current.selectFirst()
+                return true
+              }
+            }
+          }
+          return false
+        },
       },
     },
-    onUpdate: ({ editor: currentEditor }) => setNoteContent(currentEditor.getHTML()),
+    onUpdate: ({ editor: currentEditor }) => {
+      setNoteContent(currentEditor.getHTML())
+
+      const { from } = currentEditor.state.selection
+      const text = currentEditor.state.doc.textBetween(Math.max(0, from - 50), from)
+      const match = text.match(/@([\w]*)$/)
+
+      if (match) {
+        setMentionState({
+          active: true,
+          query: match[1],
+          position: from,
+        })
+      } else {
+        setMentionState({ active: false, query: '', position: null })
+      }
+    },
   }, [])
 
   useEffect(() => {
@@ -74,7 +139,7 @@ export default function LocalEditor({
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          Offline Mode (Liveblocks not configured)
+          Offline Guest Mode - Changes will be lost when you close this tab or sign out.
         </div>
       )}
       <EditorToolbar editor={editor} />
@@ -82,6 +147,19 @@ export default function LocalEditor({
         <div className="absolute inset-0 overflow-y-auto">
           <EditorContent editor={editor} className="h-full" />
         </div>
+        {mentionState.active && mentionState.position && (
+          <MentionDropdown
+            ref={mentionDropdownRef}
+            query={mentionState.query}
+            position={mentionState.position}
+            editor={editor}
+            campaignMembers={campaignMembers}
+            journalEntities={journalEntities}
+            sessionNotes={sessionNotes}
+            userColorMap={userColorMap}
+            onSelect={() => setMentionState({ active: false, query: '', position: null })}
+          />
+        )}
       </div>
     </div>
   )

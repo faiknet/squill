@@ -7,6 +7,9 @@ import { requireSupabase } from '../lib/supabase'
 import { colorFromString, getSessionRoomId } from '../lib/liveblocks'
 import { Button } from '../components/ui'
 import { getDisplayLabel } from '../lib/utils'
+import {
+  getGuestSessionBySlug,
+} from '../lib/guestData'
 import '../styles/mentions.css'
 
 import LocalEditor from '../components/editor/LocalEditor'
@@ -51,6 +54,7 @@ function EditorLayout({
   navigate,
   campaignId,
   campaignSlug,
+  sessionSlug,
   sessionId,
   campaignMembers,
   inviteCode,
@@ -97,7 +101,7 @@ function EditorLayout({
               <span className="md:hidden">Edit</span>
             </button>
             <button
-              onClick={() => navigate(`/campaigns/${campaignId}/sessions/${sessionId}/journal`)}
+              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug || session?.slug || sessionId}/journal`)}
               className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
             >
               Journal
@@ -179,6 +183,7 @@ function CollaborativeSessionContent({
   navigate,
   campaignId,
   campaignSlug,
+  sessionSlug,
   sessionId,
   activities,
   campaignMembers,
@@ -215,6 +220,7 @@ function CollaborativeSessionContent({
       navigate={navigate}
       campaignId={campaignId}
       campaignSlug={campaignSlug}
+      sessionSlug={sessionSlug}
       sessionId={sessionId}
       campaignMembers={campaignMembers}
       inviteCode={inviteCode}
@@ -240,12 +246,30 @@ export default function SessionEditor() {
   const { campaignSlug, sessionSlug } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
+  const { isGuest, isLoading: authLoading } = authState
   const [campaignId, setCampaignId] = useState(null)
   const [sessionId, setSessionId] = useState(null)
   const [loadingIds, setLoadingIds] = useState(true)
 
   // First, resolve slugs to IDs
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) return
+
+    // Handle guest users with local demo data
+    if (isGuest) {
+      const userId = authState.user?.id
+      const guestRoute = userId ? getGuestSessionBySlug(userId, campaignSlug, sessionSlug) : null
+      if (!guestRoute) {
+        navigate('/campaigns')
+        return
+      }
+      setCampaignId(guestRoute.campaign.id)
+      setSessionId(guestRoute.session.id)
+      setLoadingIds(false)
+      return
+    }
+
     const resolveIds = async () => {
       try {
         const client = requireSupabase()
@@ -283,7 +307,7 @@ export default function SessionEditor() {
     }
 
     resolveIds()
-  }, [campaignSlug, sessionSlug, navigate])
+  }, [campaignSlug, sessionSlug, navigate, isGuest, authLoading, authState.user?.id])
 
   const {
     session,
@@ -315,24 +339,26 @@ export default function SessionEditor() {
     if (userColor) {
       window.localStorage.setItem(SESSION_EDITOR_COLOR_STORAGE_KEY, userColor)
       
-      // Also save to database via RPC
-      ;(async () => {
-        try {
-          const client = requireSupabase()
-          const { error } = await client.rpc('set_user_color_preference', {
-            color_hex: userColor
-          })
-          if (error) {
-            console.warn('Could not save color to database:', error.message)
+      // Also save to database via RPC (skip for guests and if no valid user)
+      if (!isGuest && authState.user?.id) {
+        ;(async () => {
+          try {
+            const client = requireSupabase()
+            const { error } = await client.rpc('set_user_color_preference', {
+              color_hex: userColor
+            })
+            if (error) {
+              console.warn('Could not save color to database:', error.message)
+            }
+          } catch (err) {
+            console.warn('Error saving color preference:', err.message)
           }
-        } catch (err) {
-          console.warn('Error saving color preference:', err.message)
-        }
-      })()
+        })()
+      }
     } else {
       window.localStorage.removeItem(SESSION_EDITOR_COLOR_STORAGE_KEY)
     }
-  }, [userColor])
+  }, [userColor, isGuest, authState.user?.id])
 
   // Auto-save note content with debounce
   useEffect(() => {
@@ -359,6 +385,7 @@ export default function SessionEditor() {
 
   // Synthesize activities from tags and members
   const activities = useMemo(() => {
+    console.log('Computing activities from:', { activityLogs, tags: tags?.length, members: campaignMembers?.length })
     const list = []
 
     // Tag activities (Legacy support + Immediate UI update for non-logged items)
@@ -459,7 +486,7 @@ export default function SessionEditor() {
 
     // Filter out duplicates from the combined list based on unique action+timestamp signature
     const seen = new Set()
-    return list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    const finalList = list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       .filter(item => {
         const signature = `${item.action}-${item.timestamp}`
         if (seen.has(signature)) return false
@@ -467,6 +494,8 @@ export default function SessionEditor() {
         return true
       })
       .slice(0, 20)
+    
+    return finalList
   }, [tags, campaignMembers, activityLogs])
 
   // Check if still resolving slug IDs
@@ -500,7 +529,7 @@ export default function SessionEditor() {
     )
   }
 
-  const collabEnabled = Boolean(import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY)
+  const collabEnabled = Boolean(import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY) && !isGuest
   const userLabel = getDisplayLabel(authState, 'Guest')
   const effectiveUserColor = userColor || colorFromString(userLabel)
   const roomId = getSessionRoomId(campaignId, sessionId)
@@ -523,6 +552,7 @@ export default function SessionEditor() {
           navigate={navigate}
           campaignId={campaignId}
           campaignSlug={campaignSlug}
+          sessionSlug={sessionSlug}
           sessionId={sessionId}
           activities={activities}
           campaignMembers={campaignMembers}
@@ -551,6 +581,7 @@ export default function SessionEditor() {
       navigate={navigate}
       campaignId={campaignId}
       campaignSlug={campaignSlug}
+      sessionSlug={sessionSlug}
       sessionId={sessionId}
       campaignMembers={campaignMembers}
       inviteCode={inviteCode}
@@ -559,6 +590,12 @@ export default function SessionEditor() {
         noteContent={noteContent}
         setNoteContent={setNoteContent}
         sharedMinHeight={DEFAULT_EDITOR_HEIGHT_PX}
+        campaignMembers={campaignMembers}
+        journalEntities={tags}
+        sessionNotes={sessionNotes}
+        currentUserId={authState.user?.id}
+        userLabel={userLabel}
+        userColor={effectiveUserColor}
       />
     </EditorLayout>
   )

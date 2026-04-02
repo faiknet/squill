@@ -6,6 +6,7 @@ import { useMobileMenu } from '../contexts/MobileMenuContext'
 import { Button, Card, Input } from '../components/ui'
 import { EditSessionModal, DeleteSessionModal } from '../components/sessions'
 import { colorFromString } from '../lib/liveblocks'
+import { createUrlSlug } from '../lib/utils'
 import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
 import RemovePlayerModal from '../components/campaigns/RemovePlayerModal'
 import TransferGMModal from '../components/campaigns/TransferGMModal'
@@ -17,11 +18,19 @@ import {
   validateSessionId,
   ValidationError,
 } from '../lib/validation'
+import {
+  GUEST_CAMPAIGN_SLUG,
+  getGuestCampaigns,
+  getGuestSessionsForCampaign,
+  createGuestSession,
+  getGuestCampaignMembers,
+} from '../lib/guestData'
 
 function CampaignDetail() {
   const { campaignSlug } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
+  const { isGuest } = authState
   const { setMobileMenuOpen } = useMobileMenu()
   const currentUserId = authState.user?.id ?? null
   const [campaign, setCampaign] = useState(null)
@@ -52,8 +61,10 @@ function CampaignDetail() {
   const menuRef = useRef(null)
 
   useEffect(() => {
+    // Wait for auth state to be ready
+    if (authState.isLoading) return
     loadCampaign()
-  }, [campaignSlug])
+  }, [campaignSlug, isGuest, authState.isLoading])
 
   useEffect(() => {
     return () => {
@@ -78,6 +89,31 @@ function CampaignDetail() {
   }, [memberContextMenuOpen])
 
   const loadCampaign = async () => {
+    // Handle guest user with demo data
+    if (isGuest) {
+      const guestCampaign = getGuestCampaigns(currentUserId).find(c => c.slug === campaignSlug)
+      if (!guestCampaign) {
+        navigate('/campaigns')
+        return
+      }
+      const guestMembers = getGuestCampaignMembers(currentUserId)
+
+      setCampaign({
+        id: guestCampaign.id,
+        slug: guestCampaign.slug,
+        name: guestCampaign.name,
+        description: guestCampaign.description,
+        invite_code: guestCampaign.invite_code,
+        created_by: currentUserId,
+      })
+      setCampaignName(guestCampaign.name)
+      setCampaignDescription(guestCampaign.description)
+      setPartyMembers(guestMembers)
+      setSessions(getGuestSessionsForCampaign(guestCampaign.id))
+      setLoading(false)
+      return
+    }
+
     try {
       const client = requireSupabase()
       const { data: campaignData, error: campaignError } = await client
@@ -183,18 +219,27 @@ function CampaignDetail() {
       const validated = validateCreateSession({
         name: sessionName,
         sessionDate: sessionDate || undefined,
-        campaignId: id
+        campaignId: campaign.id
       })
 
-      const { error } = await requireSupabase().from('sessions').insert([
-        {
-          campaign_id: validated.campaignId,
+      if (isGuest) {
+        createGuestSession(campaign.id, {
           name: validated.name,
-          session_date: validated.sessionDate || null,
-        },
-      ])
+          sessionDate: validated.sessionDate || null,
+          slug: createUrlSlug(validated.name),
+        })
+      } else {
+        const { error } = await requireSupabase().from('sessions').insert([
+          {
+            campaign_id: validated.campaignId,
+            name: validated.name,
+            slug: createUrlSlug(validated.name),
+            session_date: validated.sessionDate || null,
+          },
+        ])
 
-      if (error) throw error
+        if (error) throw error
+      }
 
       setShowCreateSession(false)
       setSessionName('')

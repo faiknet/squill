@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useFormState } from '../hooks/useFormState'
-import { copyInviteLink, getDisplayLabel } from '../lib/utils'
+import { copyInviteLink, getDisplayLabel, createUrlSlug } from '../lib/utils'
 import {
   validateCreateCampaign,
   validateUpdateCampaign,
   validateCampaignId,
   ValidationError,
 } from '../lib/validation'
+import { getGuestCampaigns, createGuestCampaign } from '../lib/guestData'
 import CreateCampaignModal from '../components/campaigns/CreateCampaignModal'
 import EditCampaignModal from '../components/campaigns/EditCampaignModal'
 import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
@@ -19,7 +20,7 @@ function CampaignList() {
   const navigate = useNavigate()
   const location = useLocation()
   const { authState, signOut } = useAuth()
-  const { user } = authState
+  const { user, isGuest } = authState
   const { error, message, setFail, setSuccess, clear } = useFormState()
 
   // Extract current campaign slug from URL (e.g., /campaigns/my-campaign-a1b2)
@@ -42,7 +43,7 @@ function CampaignList() {
   useEffect(() => {
     if (authState.isLoading || !authState.user) return
     loadCampaigns()
-  }, [authState.isLoading, authState.user])
+  }, [authState.isLoading, authState.user, isGuest])
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -56,6 +57,13 @@ function CampaignList() {
 
   const loadCampaigns = async () => {
     if (!user) {
+      setLoading(false)
+      return
+    }
+
+    // Return demo campaign for guest users
+    if (isGuest) {
+      setCampaigns(getGuestCampaigns(user.id))
       setLoading(false)
       return
     }
@@ -110,9 +118,23 @@ function CampaignList() {
       // Validate input before database operation
       const validated = validateCreateCampaign({ name, description })
 
+      if (isGuest) {
+        const slug = createUrlSlug(validated.name)
+        const guestCampaign = createGuestCampaign(user.id, {
+          name: validated.name,
+          description: validated.description,
+          slug,
+        })
+        setShowCreateModal(false)
+        await loadCampaigns()
+        navigate(`/campaigns/${guestCampaign.slug}`)
+        return
+      }
+
       const client = requireSupabase()
+      const slug = createUrlSlug(validated.name)
       const { data, error } = await client.from('campaigns').insert([
-        { name: validated.name, description: validated.description, created_by: user.id }
+        { name: validated.name, description: validated.description, slug, created_by: user.id }
       ]).select().single()
 
       if (error) throw error
