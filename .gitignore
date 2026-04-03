@@ -20,7 +20,6 @@ vite.cache/
 .env
 .env.local
 .env.*.local
-_worker.js
 
 # Logs
 logs/
