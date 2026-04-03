@@ -7,6 +7,7 @@ import {
   validateMarkdownContent,
   validateSignUp,
   validateCreateCampaign,
+  validateCreateSession,
   ValidationError,
 } from '../validation'
 
@@ -179,6 +180,18 @@ describe('Input Validation & Injection Prevention', () => {
       const data = { name: 'Campaign' }
       const result = validateCreateCampaign(data)
       expect(result.description).toBeUndefined()
+    })
+  })
+
+  describe('Session Creation Validation', () => {
+    it('accepts date-only session dates from HTML date inputs', () => {
+      const result = validateCreateSession({
+        name: 'Session 1',
+        sessionDate: '2026-04-03',
+        campaignId: '550e8400-e29b-41d4-a716-446655440000',
+      })
+
+      expect(result.sessionDate).toBe('2026-04-03')
     })
   })
 

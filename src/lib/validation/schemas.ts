@@ -92,7 +92,13 @@ export const sessionNameSchema = z
   .min(1, 'Session name cannot be empty')
   .max(255, 'Session name must be under 255 characters')
 
-export const sessionDateSchema = z.string().datetime().optional().nullable()
+export const sessionDateSchema = z
+  .union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Session date must be in YYYY-MM-DD format'),
+  ])
+  .optional()
+  .nullable()
 
 export const createSessionSchema = z.object({
   name: sessionNameSchema,
