@@ -19,6 +19,13 @@ interface AuthState {
 }
 
 const GUEST_STORAGE_KEY = 'squill_guest_session'
+const PROFILE_UPDATED_EVENT = 'squill:profile-updated'
+
+interface ProfileUpdatedDetail {
+  userId: string
+  displayName: string | null
+  avatarUrl: string | null
+}
 
 function createGuestUser(): User {
   const guestId = crypto.randomUUID()
@@ -164,6 +171,26 @@ export function useSupabaseAuth() {
     }
   }, [loadProfile])
 
+  useEffect(() => {
+    const handleProfileUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<ProfileUpdatedDetail>
+      const detail = customEvent.detail
+      if (!detail?.userId) return
+
+      setAuthState((current) => {
+        if (current.user?.id !== detail.userId) return current
+        return {
+          ...current,
+          displayName: detail.displayName,
+          avatarUrl: detail.avatarUrl,
+        }
+      })
+    }
+
+    window.addEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated as EventListener)
+    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated as EventListener)
+  }, [])
+
   const signIn = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: unknown; user?: User | null; session?: Session | null }> => {
     try {
       // Validate inputs before sending to Supabase
@@ -305,6 +332,13 @@ export function useSupabaseAuth() {
     if (!authState.user) return { success: false, error: 'No authenticated user' }
     const { displayName, avatarUrl } = await loadProfile(authState.user.id)
     setAuthState((current) => ({ ...current, displayName, avatarUrl }))
+    window.dispatchEvent(new CustomEvent<ProfileUpdatedDetail>(PROFILE_UPDATED_EVENT, {
+      detail: {
+        userId: authState.user.id,
+        displayName,
+        avatarUrl,
+      },
+    }))
     return { success: true, displayName, avatarUrl }
   }, [authState.user, loadProfile])
 

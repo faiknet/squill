@@ -14,6 +14,7 @@ import {
 export default function Settings() {
   const { authState, refreshProfile } = useAuth()
   const { theme, setTheme } = useDarkMode()
+  const isGuest = authState.isGuest
   
   // Public Profile State
   const [displayName, setDisplayName] = useState('')
@@ -43,6 +44,11 @@ export default function Settings() {
   }, [authState.displayName, authState.avatarUrl, authState.user])
 
   const handleAvatarUpload = async (event) => {
+    if (isGuest) {
+      profileForm.setFail('Unavailable in Guest Mode')
+      return
+    }
+
     try {
       setUploading(true)
       profileForm.clear()
@@ -98,6 +104,10 @@ export default function Settings() {
   const saveProfile = async (event) => {
     event.preventDefault()
     if (!authState.user) return
+    if (isGuest) {
+      profileForm.setFail('Unavailable in Guest Mode')
+      return
+    }
     setProfileSaving(true)
     profileForm.clear()
 
@@ -132,6 +142,10 @@ export default function Settings() {
 
   const updateEmail = async (event) => {
     event.preventDefault()
+    if (isGuest) {
+      accountForm.setFail('Unavailable in Guest Mode')
+      return
+    }
     if (!email) return
     if (email === authState.user?.email) {
       accountForm.setFail('New email must be different from current email')
@@ -161,6 +175,10 @@ export default function Settings() {
 
   const updatePassword = async (event) => {
     event.preventDefault()
+    if (isGuest) {
+      securityForm.setFail('Unavailable in Guest Mode')
+      return
+    }
     if (!password) return
     if (password !== confirmPassword) {
       securityForm.setFail('Passwords do not match')
@@ -232,7 +250,13 @@ export default function Settings() {
               <Button 
                 type="button"
                 className="bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-700 shadow-sm text-sm"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (isGuest) {
+                    profileForm.setFail('Unavailable in Guest Mode')
+                    return
+                  }
+                  fileInputRef.current?.click()
+                }}
                 disabled={uploading}
               >
                 {uploading ? 'Uploading...' : 'Change Picture'}
@@ -248,7 +272,13 @@ export default function Settings() {
               <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Display Name</label>
               <Input
                 value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
+                onChange={(event) => {
+                  if (isGuest) {
+                    profileForm.setFail('Unavailable in Guest Mode')
+                    return
+                  }
+                  setDisplayName(event.target.value)
+                }}
                 placeholder="Enter your display name"
                 disabled={profileSaving}
                 className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
@@ -294,7 +324,13 @@ export default function Settings() {
               <Input
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  if (isGuest) {
+                    accountForm.setFail('Unavailable in Guest Mode')
+                    return
+                  }
+                  setEmail(event.target.value)
+                }}
                 placeholder="you@example.com"
                 disabled={emailLoading}
                 className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
@@ -316,7 +352,7 @@ export default function Settings() {
             <div className="flex justify-end pt-2">
               <Button 
                 type="submit" 
-                disabled={emailLoading || email === authState.user?.email}
+                disabled={emailLoading || (!isGuest && email === authState.user?.email)}
                 className="bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-700 shadow-sm"
               >
                 {emailLoading ? 'Updating...' : 'Update Email'}
@@ -341,7 +377,13 @@ export default function Settings() {
                 <Input
                   type="password"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => {
+                    if (isGuest) {
+                      securityForm.setFail('Unavailable in Guest Mode')
+                      return
+                    }
+                    setPassword(event.target.value)
+                  }}
                   placeholder="New password"
                   disabled={securityLoading}
                   className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
@@ -352,7 +394,13 @@ export default function Settings() {
                 <Input
                   type="password"
                   value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  onChange={(event) => {
+                    if (isGuest) {
+                      securityForm.setFail('Unavailable in Guest Mode')
+                      return
+                    }
+                    setConfirmPassword(event.target.value)
+                  }}
                   placeholder="Confirm new password"
                   disabled={securityLoading}
                   className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"

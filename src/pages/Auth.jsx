@@ -3,6 +3,8 @@ import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useFormState } from '../hooks/useFormState'
 import { Button, Input, Card } from '../components/ui'
+import Logo from '../components/ui/logo.webp'
+import { DarkModeToggle } from '../components/ui/DarkModeToggle'
 
 export default function Auth() {
   const location = useLocation()
@@ -30,7 +32,7 @@ export default function Auth() {
     try {
       const isSignIn = mode === 'signin'
       const action = isSignIn ? signIn : signUp
-      const result = isSignIn 
+      const result = isSignIn
         ? await action(email, password)
         : await action(email, password, displayName)
 
@@ -58,7 +60,7 @@ export default function Auth() {
     if (loading) return
     setLoading(true)
     clear()
-    
+
     try {
       const result = await signInAsGuest()
       if (!result.success) {
@@ -75,6 +77,15 @@ export default function Auth() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <Card className="max-w-md w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-sm">
         <div className="p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <img
+              src={Logo}
+              alt="Squill logo"
+              draggable={false}
+              className="h-10 w-10 rounded-md object-cover pointer-events-none select-none"
+            />
+            <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-gray-100 pointer-events-none select-none">Squill</span>
+          </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100 mb-2 tracking-tight">
             {mode === 'signin' ? 'Sign In' : 'Create Account'}
           </h1>
@@ -133,7 +144,7 @@ export default function Auth() {
           </div>
 
           <Button
-            className="mt-4 w-full bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-600 font-medium border border-slate-300 dark:border-gray-600"
+            className="mt-4 w-full bg-gray-700 dark:bg-gray-700 text-gray-200 dark:text-gray-200 hover:bg-gray-600 dark:hover:bg-gray-600 font-medium border border-gray-600 dark:border-gray-600"
             type="button"
             onClick={onGuestSignIn}
             disabled={loading}
@@ -159,6 +170,7 @@ export default function Auth() {
           </Link>
         </div>
       </Card>
+      <DarkModeToggle className="fixed bottom-4 right-4 border border-slate-200 bg-white/80 text-slate-700 backdrop-blur-sm shadow-sm dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-200" />
     </div>
   )
 }
