@@ -12,11 +12,14 @@ export default function Auth() {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
   const { error, message, setSuccess, setFail, clear } = useFormState()
 
   const nextPath = new URLSearchParams(location.search).get('next') || '/dashboard'
+  const passwordDoesNotMeetRequirements =
+    mode === 'signup' &&
+    password.length > 0 &&
+    (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password))
 
   if (authState.user) {
     return <Navigate to={nextPath} replace />
@@ -34,14 +37,13 @@ export default function Auth() {
       const action = isSignIn ? signIn : signUp
       const result = isSignIn
         ? await action(email, password)
-        : await action(email, password, displayName)
+        : await action(email, password)
 
       if (!result.success) {
         setFail(result.error)
       } else if (!isSignIn) {
         setSuccess(result.message || 'Account created. Check your email for verification.')
         setMode('signin')
-        setDisplayName('')
       }
     } catch (err) {
       setFail(err)
@@ -53,7 +55,6 @@ export default function Auth() {
   const toggleMode = () => {
     setMode(prev => prev === 'signin' ? 'signup' : 'signin')
     clear()
-    setDisplayName('')
   }
 
   const onGuestSignIn = async () => {
@@ -112,17 +113,6 @@ export default function Auth() {
               disabled={loading}
               className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
             />
-            {mode === 'signup' && (
-              <Input
-                type="text"
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="Your display name"
-                required={mode === 'signup'}
-                disabled={loading}
-                className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
-              />
-            )}
             <Input
               type="password"
               value={password}
@@ -130,9 +120,19 @@ export default function Auth() {
               placeholder="Password"
               required
               disabled={loading}
-              className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+              className={`bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500 ${passwordDoesNotMeetRequirements ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
             />
-            <Button className="w-full bg-brand-600 text-white hover:bg-brand-700 font-medium" type="submit" disabled={loading || (mode === 'signup' && !displayName.trim())}>
+            {passwordDoesNotMeetRequirements && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                Password does not meet requirements.
+              </p>
+            )}
+            {mode === 'signup' && (
+              <p className="mt-1 text-xs text-slate-500/80 dark:text-gray-400/80">
+                Password should be at least 8 characters including a number and an upper case letter.
+              </p>
+            )}
+            <Button className="w-full bg-brand-600 text-white hover:bg-brand-700 font-medium" type="submit" disabled={loading}>
               {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Sign Up'}
             </Button>
           </form>

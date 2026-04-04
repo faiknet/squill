@@ -15,6 +15,14 @@ export const passwordSchema = z
   .string({ required_error: 'Password is required' })
   .min(8, 'Password must be at least 8 characters')
   .max(128, 'Password is too long')
+  .refine(
+    (pwd) => /[A-Z]/.test(pwd),
+    'Password must include at least one uppercase letter'
+  )
+  .refine(
+    (pwd) => /\d/.test(pwd),
+    'Password must include at least one number'
+  )
   // Prevent common injection patterns at password validation level
   .refine(
     (pwd) => !pwd.includes('\0'),

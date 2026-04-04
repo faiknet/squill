@@ -34,6 +34,9 @@ export default function Settings() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const securityForm = useFormState()
   const [securityLoading, setSecurityLoading] = useState(false)
+  const passwordDoesNotMeetRequirements =
+    password.length > 0 &&
+    (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password))
 
   useEffect(() => {
     if (authState.user) {
@@ -386,8 +389,13 @@ export default function Settings() {
                   }}
                   placeholder="New password"
                   disabled={securityLoading}
-                  className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+                  className={`bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500 ${passwordDoesNotMeetRequirements ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
                 />
+                {passwordDoesNotMeetRequirements && (
+                  <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                    Password does not meet requirements.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Confirm Password</label>
@@ -407,6 +415,9 @@ export default function Settings() {
                 />
               </div>
             </div>
+            <p className="mt-1 text-xs text-slate-500/80 dark:text-gray-400/80">
+              Password should be at least 8 characters including a number and an upper case letter.
+            </p>
 
             {securityForm.error && (
               <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-sm">

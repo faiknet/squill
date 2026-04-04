@@ -44,6 +44,14 @@ describe('Input Validation & Injection Prevention', () => {
       expect(() => validatePassword('short')).toThrow(ValidationError)
     })
 
+    it('rejects passwords without uppercase letters', () => {
+      expect(() => validatePassword('validpassword123')).toThrow(ValidationError)
+    })
+
+    it('rejects passwords without numbers', () => {
+      expect(() => validatePassword('ValidPasswordOnly')).toThrow(ValidationError)
+    })
+
     it('rejects passwords with null bytes', () => {
       expect(() => validatePassword('password\0injection')).toThrow(ValidationError)
     })
