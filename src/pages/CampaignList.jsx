@@ -73,7 +73,7 @@ function CampaignList() {
 
       // Parallel queries for efficiency
       const [campaignsResult, pinsResult, partySizesResult, sessionsResult] = await Promise.all([
-        client.from('campaigns').select('id, slug, name, description, created_at, updated_at, created_by, invite_code').order('created_at', { ascending: false }),
+        client.from('campaigns').select('id, slug, name, description, created_at, updated_at, created_by, invite_code, streak_count, streak_cadence').order('created_at', { ascending: false }),
         client.from('campaign_pins').select('campaign_id'),
         client.rpc('get_campaign_party_sizes'),
         client.from('sessions').select('campaign_id')

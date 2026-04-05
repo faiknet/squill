@@ -80,6 +80,10 @@ export const campaignDescriptionSchema = z
     'Description contains invalid characters'
   )
 
+export const campaignStreakCadenceSchema = z.enum(['weekly', 'biweekly', 'monthly'], {
+  errorMap: () => ({ message: 'Invalid streak cadence' }),
+})
+
 export const createCampaignSchema = z.object({
   name: campaignNameSchema,
   description: campaignDescriptionSchema.optional(),
@@ -88,6 +92,7 @@ export const createCampaignSchema = z.object({
 export const updateCampaignSchema = z.object({
   name: campaignNameSchema.optional(),
   description: campaignDescriptionSchema.optional(),
+  streakCadence: campaignStreakCadenceSchema.optional(),
 })
 
 // ============================================================================

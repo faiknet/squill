@@ -10,7 +10,82 @@ export const GUEST_SESSION_SLUG = 'goblin-ambush-demo'
 const GUEST_CAMPAIGNS_STORAGE_KEY = 'squill_guest_campaigns'
 const GUEST_SESSIONS_STORAGE_KEY = 'squill_guest_sessions'
 
+type GuestCampaignRecord = {
+  id: string
+  streak_count?: number
+  streak_cadence?: string
+  streak_last_period_start?: string | null
+  updated_at?: string
+}
+
+function parseIsoDate(dateInput: string) {
+  return new Date(`${dateInput}T00:00:00.000Z`)
+}
+
+function toIsoDate(date: Date) {
+  return date.toISOString().split('T')[0]
+}
+
+function getCampaignPeriodStart(dateInput: string, cadence: string = 'weekly') {
+  const date = parseIsoDate(dateInput)
+  const anchor = new Date('1970-01-05T00:00:00.000Z') // Monday anchor
+  const periodDays = cadence === 'biweekly' ? 14 : cadence === 'monthly' ? 28 : 7
+  const dayMs = 24 * 60 * 60 * 1000
+  const offsetDays = Math.floor((date.getTime() - anchor.getTime()) / dayMs)
+  const periodOffset = Math.floor(offsetDays / periodDays) * periodDays
+  return toIsoDate(new Date(anchor.getTime() + periodOffset * dayMs))
+}
+
+function getNextCampaignPeriodStart(periodStart: string, cadence: string = 'weekly') {
+  const date = parseIsoDate(periodStart)
+  const periodDays = cadence === 'biweekly' ? 14 : cadence === 'monthly' ? 28 : 7
+  date.setUTCDate(date.getUTCDate() + periodDays)
+  return toIsoDate(date)
+}
+
+function applyGuestCampaignStreak(campaign: GuestCampaignRecord, activityDate: string): GuestCampaignRecord {
+  const cadence = campaign.streak_cadence || 'weekly'
+  const periodStart = getCampaignPeriodStart(activityDate, cadence)
+  const lastPeriod = campaign.streak_last_period_start
+
+  if (!lastPeriod) {
+    return {
+      ...campaign,
+      streak_count: 1,
+      streak_last_period_start: periodStart,
+      updated_at: new Date().toISOString(),
+    }
+  }
+
+  if (periodStart === lastPeriod) {
+    return campaign
+  }
+
+  if (periodStart === getNextCampaignPeriodStart(lastPeriod, cadence)) {
+    return {
+      ...campaign,
+      streak_count: (campaign.streak_count || 0) + 1,
+      streak_last_period_start: periodStart,
+      updated_at: new Date().toISOString(),
+    }
+  }
+
+  if (periodStart > lastPeriod) {
+    return {
+      ...campaign,
+      streak_count: 1,
+      streak_last_period_start: periodStart,
+      updated_at: new Date().toISOString(),
+    }
+  }
+
+  return campaign
+}
+
 function buildGuestCampaign(userId: string) {
+  const seededSessionDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const seededPeriodStart = getCampaignPeriodStart(seededSessionDate, 'weekly')
+
   return {
     id: GUEST_CAMPAIGN_ID,
     slug: GUEST_CAMPAIGN_SLUG,
@@ -25,6 +100,9 @@ This demo campaign showcases Squill's features. Feel free to explore, edit sessi
     party_size: 4,
     session_count: 1,
     pinned: true,
+    streak_count: 1,
+    streak_cadence: 'weekly',
+    streak_last_period_start: seededPeriodStart,
   }
 }
 
@@ -96,6 +174,9 @@ export function createGuestCampaign(userId: string, payload: { name: string; des
     party_size: 1,
     session_count: 0,
     pinned: false,
+    streak_count: 0,
+    streak_cadence: 'weekly',
+    streak_last_period_start: null,
   }
 
   const updated = [campaign, ...campaigns]
@@ -165,6 +246,17 @@ export function createGuestSession(campaignId: string, payload: { name: string; 
 
   const updated = [session, ...sessions]
   saveStoredGuestSessions(updated)
+
+  const campaigns = loadStoredGuestCampaigns() || []
+  if (campaigns.length > 0) {
+    const activityDate = payload.sessionDate || now.split('T')[0]
+    const updatedCampaigns = campaigns.map((campaign: GuestCampaignRecord) => {
+      if (campaign.id !== campaignId) return campaign
+      return applyGuestCampaignStreak(campaign, activityDate)
+    })
+    saveStoredGuestCampaigns(updatedCampaigns)
+  }
+
   return session
 }
 

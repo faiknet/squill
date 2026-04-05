@@ -26,6 +26,19 @@ import {
   getGuestCampaignMembers,
 } from '../lib/guestData'
 
+const STREAK_PERIOD_LABELS = {
+  weekly: 'week',
+  biweekly: 'biweekly',
+  monthly: 'month',
+}
+
+function formatCampaignStreak(campaign) {
+  if (!campaign || campaign.streak_count <= 0) return ''
+  const cadence = campaign.streak_cadence || 'weekly'
+  const periodLabel = STREAK_PERIOD_LABELS[cadence] || STREAK_PERIOD_LABELS.weekly
+  return `${campaign.streak_count} ${periodLabel} streak`
+}
+
 function CampaignDetail() {
   const { campaignSlug } = useParams()
   const navigate = useNavigate()
@@ -40,6 +53,7 @@ function CampaignDetail() {
   const [editingCampaign, setEditingCampaign] = useState(false)
   const [campaignName, setCampaignName] = useState('')
   const [campaignDescription, setCampaignDescription] = useState('')
+  const [campaignStreakCadence, setCampaignStreakCadence] = useState('weekly')
   const [campaignSaving, setCampaignSaving] = useState(false)
   const [showCreateSession, setShowCreateSession] = useState(false)
   const [sessionName, setSessionName] = useState('')
@@ -105,9 +119,12 @@ function CampaignDetail() {
         description: guestCampaign.description,
         invite_code: guestCampaign.invite_code,
         created_by: currentUserId,
+        streak_count: guestCampaign.streak_count ?? 0,
+        streak_cadence: guestCampaign.streak_cadence ?? 'weekly',
       })
       setCampaignName(guestCampaign.name)
       setCampaignDescription(guestCampaign.description)
+      setCampaignStreakCadence(guestCampaign.streak_cadence ?? 'weekly')
       setPartyMembers(guestMembers)
       setSessions(getGuestSessionsForCampaign(guestCampaign.id))
       setLoading(false)
@@ -118,7 +135,7 @@ function CampaignDetail() {
       const client = requireSupabase()
       const { data: campaignData, error: campaignError } = await client
         .from('campaigns')
-        .select('id, slug, name, description, invite_code, created_by')
+        .select('id, slug, name, description, invite_code, created_by, streak_count, streak_cadence')
         .eq('slug', campaignSlug)
         .single()
 
@@ -130,6 +147,7 @@ function CampaignDetail() {
       setCampaign(campaignData)
       setCampaignName(campaignData.name || '')
       setCampaignDescription(campaignData.description || '')
+      setCampaignStreakCadence(campaignData.streak_cadence || 'weekly')
 
       const { data: membersData, error: membersError } = await client.rpc('get_campaign_members', {
         p_campaign_id: campaignData.id,
@@ -261,16 +279,18 @@ function CampaignDetail() {
       // Validate inputs before database operation
       const validated = validateUpdateCampaign({
         name: campaignName,
-        description: campaignDescription
+        description: campaignDescription,
+        streakCadence: campaignStreakCadence,
       })
       const validatedId = validateCampaignId(campaign.id)
 
       setCampaignSaving(true)
       setErrorMessage('')
-      const { data: updatedCampaignData, error } = await requireSupabase().rpc('update_campaign_as_gm', {
+      const { data: updatedCampaignData, error } = await requireSupabase().rpc('update_campaign_as_gm_with_streak', {
         p_campaign_id: validatedId,
         p_name: validated.name,
         p_description: validated.description,
+        p_streak_cadence: validated.streakCadence,
       })
 
       if (error) throw error
@@ -278,9 +298,10 @@ function CampaignDetail() {
       if (!updatedCampaign) {
         throw new Error('Only the GM can edit this campaign.')
       }
-      setCampaign(updatedCampaign)
+      setCampaign((previousCampaign) => ({ ...previousCampaign, ...updatedCampaign }))
       setCampaignName(updatedCampaign.name || '')
       setCampaignDescription(updatedCampaign.description || '')
+      setCampaignStreakCadence(updatedCampaign.streak_cadence || 'weekly')
       setEditingCampaign(false)
       await loadCampaign()
     } catch (error) {
@@ -288,8 +309,8 @@ function CampaignDetail() {
         setErrorMessage(error.getClientMessage())
       } else {
         const message = String(error.message || '')
-        if (message.includes('Could not find the function public.update_campaign_as_gm')) {
-          setErrorMessage('Campaign edit helper is unavailable until migration 0008_campaign_gm_manage_rpc.sql is applied in Supabase.')
+        if (message.includes('Could not find the function public.update_campaign_as_gm_with_streak')) {
+          setErrorMessage('Campaign edit helper is unavailable until migration 20260405_campaign_streak_cadence_rpc.sql is applied in Supabase.')
         } else if (message.toLowerCase().includes('row-level security')) {
           setErrorMessage('Only the GM can edit this campaign.')
         } else {
@@ -303,6 +324,15 @@ function CampaignDetail() {
 
   const handleDeleteCampaign = () => {
     setIsDeletingCampaignModalOpen(true)
+  }
+
+  const handleToggleEditCampaign = () => {
+    if (!editingCampaign && campaign) {
+      setCampaignName(campaign.name || '')
+      setCampaignDescription(campaign.description || '')
+      setCampaignStreakCadence(campaign.streak_cadence || 'weekly')
+    }
+    setEditingCampaign((prev) => !prev)
   }
 
   const handleConfirmDeleteCampaign = async () => {
@@ -342,7 +372,7 @@ function CampaignDetail() {
   const handleSaveSession = async (sessionId, updates) => {
     try {
       const client = requireSupabase()
-      
+
       const { data, error } = await client
         .from('sessions')
         .update(updates)
@@ -480,6 +510,8 @@ function CampaignDetail() {
 
   const visibleSessions = sessions.filter((session) => (showArchived ? true : !session.archived))
   const isGM = Boolean(campaign && currentUserId && campaign.created_by === currentUserId)
+  const campaignStreakText = formatCampaignStreak(campaign)
+  const campaignStreakCount = campaign?.streak_count ?? 0
 
   if (loading) {
     return (
@@ -506,12 +538,24 @@ function CampaignDetail() {
                 </svg>
               </button>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-gray-100 break-all">{campaign.name}</h1>
+
               {isGM && (
                 <span className="inline-flex items-center rounded-md bg-brand-50 dark:bg-brand-900/30 px-2 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 ring-1 ring-inset ring-brand-700/10 shrink-0">
                   GM
                 </span>
               )}
+              {campaignStreakText && (
+                <span
+                  className="inline-flex items-center ml-2 gap-1 text-amber-700 dark:text-amber-300"
+                  title={campaignStreakText}
+                  aria-label={campaignStreakText}
+                >
+                  <img src="/icons/streak.png" alt="" className="h-7 w-7 shrink-0" aria-hidden="true" />
+                  <span className="text-base font-semibold leading-none">{campaignStreakCount}</span>
+                </span>
+              )}
             </div>
+
             {campaign.description && (
               <p className="mt-2 text-slate-500 dark:text-gray-400 max-w-2xl text-sm md:text-base">{campaign.description}</p>
             )}
@@ -531,7 +575,7 @@ function CampaignDetail() {
                 <>
                   <Button
                     variant="outline"
-                    onClick={() => setEditingCampaign((prev) => !prev)}
+                    onClick={handleToggleEditCampaign}
                     className="bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700"
                   >
                     {editingCampaign ? 'Cancel Edit' : 'Edit'}
@@ -655,8 +699,29 @@ function CampaignDetail() {
                   className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder-slate-400 dark:placeholder-gray-600"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Streak Cadence</label>
+                <select
+                  value={campaignStreakCadence}
+                  onChange={(e) => setCampaignStreakCadence(e.target.value)}
+                  className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Biweekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
               <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setEditingCampaign(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setCampaignName(campaign?.name || '')
+                    setCampaignDescription(campaign?.description || '')
+                    setCampaignStreakCadence(campaign?.streak_cadence || 'weekly')
+                    setEditingCampaign(false)
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" className="bg-brand-600 text-white hover:bg-brand-700" disabled={campaignSaving}>
