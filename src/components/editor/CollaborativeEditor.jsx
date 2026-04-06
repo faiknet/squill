@@ -32,6 +32,8 @@ export default function CollaborativeEditor({
   journalEntities = [],
   sessionNotes = [],
   currentUserId,
+  isSidebarCollapsed = false,
+  onExpandSidebar,
 }) {
   const room = useRoom()
   const others = useOthers()
@@ -243,7 +245,11 @@ export default function CollaborativeEditor({
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800 relative">
       <style>{userStyles}</style>
-      <EditorToolbar editor={editor} />
+      <EditorToolbar
+        editor={editor}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onExpandSidebar={onExpandSidebar}
+      />
       <div className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0 overflow-y-auto">
           <EditorContent editor={editor} className="h-full" />

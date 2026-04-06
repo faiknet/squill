@@ -156,7 +156,7 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
   )
 }
 
-export default function GoogleDocsToolbar({ editor }) {
+export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, onExpandSidebar }) {
   // Force re-render when editor updates
   const [, forceUpdate] = useState({})
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
@@ -430,6 +430,23 @@ export default function GoogleDocsToolbar({ editor }) {
           label="Clear formatting (Ctrl+\\)"
           icon="format_clear"
         />
+
+        {isSidebarCollapsed && (
+          <div className="ml-auto">
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onExpandSidebar?.()
+              }}
+              className="h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+              style={{ color: BRAND_ICON_COLOR }}
+              title="Expand member sidebar"
+            >
+              <img src="/icons/expandcontent.svg" alt="" className="h-[18px] w-[18px]" />
+            </button>
+          </div>
+        )}
       </div>
     </>
   )

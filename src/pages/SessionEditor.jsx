@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, cloneElement, isValidElement } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { RoomProvider, useOthers, useSelf } from '@liveblocks/react'
 import { useAuth } from '../hooks/useSupabaseAuth'
@@ -18,6 +18,8 @@ import PresenceSidebar from '../components/editor/PresenceSidebar'
 
 const SESSION_EDITOR_COLOR_STORAGE_KEY = 'squill:session-editor:user-color'
 const DEFAULT_EDITOR_HEIGHT_PX = 350
+const SIDEBAR_MAX_WIDTH_PX = 352
+const SIDEBAR_VIEWING_MIN_WIDTH_PX = 150
 
 // SavedIndicator component
 function SavedIndicator() {
@@ -62,15 +64,69 @@ function EditorLayout({
 }) {
   const [copied, setCopied] = useState(false)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_MAX_WIDTH_PX)
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const sidebarRef = useRef(null)
   const shareUrl = inviteCode
     ? `${window.location.origin}/join/${inviteCode}`
     : window.location.href
+
+  useEffect(() => {
+    if (!isResizingSidebar) return
+
+    const handleMouseMove = (event) => {
+      if (!sidebarRef.current) return
+      const { right } = sidebarRef.current.getBoundingClientRect()
+      const nextWidth = right - event.clientX
+      if (nextWidth <= SIDEBAR_VIEWING_MIN_WIDTH_PX) {
+        setSidebarWidth(SIDEBAR_VIEWING_MIN_WIDTH_PX)
+        setIsSidebarCollapsed(true)
+        setIsResizingSidebar(false)
+        return
+      }
+      const clampedWidth = Math.min(
+        SIDEBAR_MAX_WIDTH_PX,
+        Math.max(SIDEBAR_VIEWING_MIN_WIDTH_PX, nextWidth)
+      )
+      setSidebarWidth(clampedWidth)
+    }
+
+    const stopResizing = () => setIsResizingSidebar(false)
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', stopResizing)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', stopResizing)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizingSidebar])
+
+  const startSidebarResize = (event) => {
+    event.preventDefault()
+    setIsResizingSidebar(true)
+  }
+
+  const reopenSidebar = () => {
+    setSidebarWidth(SIDEBAR_MAX_WIDTH_PX)
+    setIsSidebarCollapsed(false)
+  }
 
   const handleShare = () => {
     navigator.clipboard.writeText(shareUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  const editorChild = isValidElement(children)
+    ? cloneElement(children, { isSidebarCollapsed, onExpandSidebar: reopenSidebar })
+    : children
+  const desktopSidebarWidth = isSidebarCollapsed ? 0 : sidebarWidth
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col font-sans overflow-hidden transition-colors duration-200">
@@ -139,14 +195,30 @@ function EditorLayout({
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Editor Area */}
         <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 relative min-w-0 transition-colors duration-200 border-r border-slate-200 dark:border-gray-700">
-          {children}
+          {editorChild}
         </div>
 
         {/* Right Sidebar: Presence & Activity - Hidden on Mobile */}
         <div className={`
-          absolute inset-0 z-20 bg-white dark:bg-gray-900 lg:static lg:block lg:z-auto lg:w-[22rem] border-l border-slate-200 dark:border-gray-700 transition-transform duration-200
+          absolute inset-0 z-20 bg-white dark:bg-gray-900 lg:static lg:z-auto lg:w-[var(--sidebar-width)] lg:max-w-[var(--sidebar-max-width)] lg:min-w-0 border-l border-slate-200 dark:border-gray-700 transition-transform duration-200 relative lg:overflow-hidden
+          ${isResizingSidebar ? 'lg:transition-none' : 'lg:transition-[width] lg:duration-300 lg:ease-in-out'}
+          ${isSidebarCollapsed ? 'lg:border-l-0' : ''}
           ${showMobileSidebar ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
-        `}>
+        `}
+          ref={sidebarRef}
+          style={{
+            '--sidebar-width': `${desktopSidebarWidth}px`,
+            '--sidebar-max-width': `${SIDEBAR_MAX_WIDTH_PX}px`,
+          }}
+        >
+          <button
+            type="button"
+            aria-label="Resize member sidebar"
+            onMouseDown={startSidebarResize}
+            className={`hidden absolute left-0 top-0 h-full w-2 -translate-x-1/2 cursor-col-resize z-20 group ${isSidebarCollapsed ? 'lg:hidden' : 'lg:block'}`}
+          >
+            <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-slate-200 dark:bg-gray-700 group-hover:bg-slate-400 dark:group-hover:bg-gray-500" />
+          </button>
           {/* Mobile Close Header */}
           <div className="lg:hidden p-4 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-900">
             <h3 className="font-bold text-slate-900 dark:text-gray-100">Members & Activity</h3>
@@ -278,7 +350,7 @@ export default function SessionEditor() {
           .select('id')
           .eq('slug', campaignSlug)
           .single()
-        
+
         if (campaignError || !campaignData) {
           navigate('/campaigns')
           return
@@ -290,7 +362,7 @@ export default function SessionEditor() {
           .eq('slug', sessionSlug)
           .eq('campaign_id', campaignData.id)
           .single()
-        
+
         if (sessionError || !sessionData) {
           navigate(`/campaigns/${campaignSlug}`)
           return
@@ -338,10 +410,10 @@ export default function SessionEditor() {
   useEffect(() => {
     if (userColor) {
       window.localStorage.setItem(SESSION_EDITOR_COLOR_STORAGE_KEY, userColor)
-      
+
       // Also save to database via RPC (skip for guests and if no valid user)
       if (!isGuest && authState.user?.id) {
-        ;(async () => {
+        ; (async () => {
           try {
             const client = requireSupabase()
             const { error } = await client.rpc('set_user_color_preference', {
@@ -494,7 +566,7 @@ export default function SessionEditor() {
         return true
       })
       .slice(0, 20)
-    
+
     return finalList
   }, [tags, campaignMembers, activityLogs])
 
