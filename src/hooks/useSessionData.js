@@ -99,7 +99,15 @@ export function useSessionData(sessionId, campaignId) {
     setInviteCode('DEMO1234')
     setCampaignMembers(getGuestCampaignMembers(userId))
     setActivityLogs(activityLogsValue)
-    setSessionNotes(getGuestSessionsForCampaign(campaignId).map(item => ({ id: item.id, name: item.name })))
+    setSessionNotes(
+      getGuestSessionsForCampaign(campaignId).map(item => ({
+        id: item.id,
+        name: item.name,
+        slug: item.slug,
+        session_date: item.session_date,
+        created_at: item.created_at,
+      }))
+    )
     setLoading(false)
   }, [authState.user?.id, sessionId, campaignId])
 
@@ -120,7 +128,7 @@ export function useSessionData(sessionId, campaignId) {
         client.rpc('get_campaign_members', { p_campaign_id: campaignId }),
         client.from('campaigns').select('invite_code').eq('id', campaignId).single(),
         // Get all sessions in this campaign
-        client.from('sessions').select('id, name').eq('campaign_id', campaignId),
+        client.from('sessions').select('id, name, slug, session_date, created_at').eq('campaign_id', campaignId),
       ])
 
       if (sessionRes.error) throw sessionRes.error

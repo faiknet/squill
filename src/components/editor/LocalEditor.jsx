@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
+import { useParams } from 'react-router-dom'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
@@ -9,12 +10,16 @@ import TextStyle from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
 import TextAlign from '@tiptap/extension-text-align'
+import { getMarkRange } from '@tiptap/core'
+import { TextSelection } from '@tiptap/pm/state'
 import { colorFromString } from '../../lib/liveblocks'
 import { MentionMark } from '../../lib/mentionMark'
 import { FontSize } from '../../lib/fontSizeExtension'
 import { IndentExtension } from '../../lib/indentExtension'
 import EditorToolbar from './GoogleDocsToolbar'
 import MentionDropdown from './MentionDropdown'
+import JournalEntryMentionModal from './JournalEntryMentionModal'
+import SessionMentionModal from './SessionMentionModal'
 
 export default function LocalEditor({
   noteContent,
@@ -33,10 +38,77 @@ export default function LocalEditor({
   const [mentionState, setMentionState] = useState({ active: false, query: '', position: null })
   const mentionStateRef = useRef(mentionState)
   const mentionDropdownRef = useRef(null)
+  const [selectedJournalEntry, setSelectedJournalEntry] = useState(null)
+  const [selectedJournalEntryAnchor, setSelectedJournalEntryAnchor] = useState(null)
+  const [selectedSessionMention, setSelectedSessionMention] = useState(null)
+  const [selectedSessionMentionAnchor, setSelectedSessionMentionAnchor] = useState(null)
+  const { campaignSlug } = useParams()
 
   useEffect(() => {
     mentionStateRef.current = mentionState
   }, [mentionState])
+
+  const openJournalEntryModal = (mentionAttrs, anchorRect = null) => {
+    const entity = journalEntities.find((item) => String(item.id) === String(mentionAttrs.mentionId))
+    if (entity) {
+      setSelectedJournalEntry(entity)
+      setSelectedJournalEntryAnchor(anchorRect)
+      return
+    }
+
+    setSelectedJournalEntry({
+      id: mentionAttrs.mentionId,
+      label: mentionAttrs.mentionLabel,
+      tag_type: mentionAttrs.mentionEntityType,
+      created_at: null,
+    })
+    setSelectedJournalEntryAnchor(anchorRect)
+  }
+
+  const closeJournalEntryModal = () => {
+    setSelectedJournalEntry(null)
+    setSelectedJournalEntryAnchor(null)
+  }
+
+  const openSessionMentionModal = (mentionAttrs, anchorRect = null) => {
+    const session = sessionNotes.find((item) => String(item.id) === String(mentionAttrs.mentionId))
+    if (session) {
+      setSelectedSessionMention(session)
+      setSelectedSessionMentionAnchor(anchorRect)
+      return
+    }
+
+    setSelectedSessionMention({
+      id: mentionAttrs.mentionId,
+      name: mentionAttrs.mentionLabel,
+      label: mentionAttrs.mentionLabel,
+      slug: null,
+      session_date: null,
+      created_at: null,
+    })
+    setSelectedSessionMentionAnchor(anchorRect)
+  }
+
+  const closeSessionMentionModal = () => {
+    setSelectedSessionMention(null)
+    setSelectedSessionMentionAnchor(null)
+  }
+
+  const getMentionAttrsFromEventTarget = (eventTarget) => {
+    const sourceElement = eventTarget?.nodeType === Node.TEXT_NODE
+      ? eventTarget.parentElement
+      : eventTarget
+    const mentionElement = sourceElement?.closest?.('[data-mention-id]')
+    if (!mentionElement) return null
+
+    return {
+      mentionType: mentionElement.getAttribute('data-mention-type') || '',
+      mentionEntityType: mentionElement.getAttribute('data-mention-entity-type') || '',
+      mentionId: mentionElement.getAttribute('data-mention-id') || '',
+      mentionLabel: mentionElement.getAttribute('data-mention-label') || mentionElement.textContent || '',
+      anchorRect: mentionElement.getBoundingClientRect(),
+    }
+  }
 
   const userColorMap = useMemo(() => {
     const styleMap = new Map()
@@ -77,6 +149,64 @@ export default function LocalEditor({
       attributes: {
         class: 'w-full min-h-full bg-white dark:bg-gray-800 text-slate-900 dark:text-gray-100 text-base focus:outline-none px-12 md:px-24 lg:px-32 xl:px-48 py-8 md:py-12 prose prose-slate dark:prose-invert max-w-none transition-colors duration-200',
       },
+      handleClick: (view, pos, event) => {
+        const { schema, doc, tr } = view.state
+        const resolvedPos = doc.resolve(pos)
+
+        const clickedMentionAttrs = getMentionAttrsFromEventTarget(event.target)
+        if (
+          clickedMentionAttrs &&
+          (
+            clickedMentionAttrs.mentionType === 'entity' ||
+            (clickedMentionAttrs.mentionEntityType && clickedMentionAttrs.mentionId)
+          )
+        ) {
+          closeSessionMentionModal()
+          openJournalEntryModal(clickedMentionAttrs, clickedMentionAttrs.anchorRect)
+          return true
+        }
+
+        if (clickedMentionAttrs?.mentionType === 'session' && clickedMentionAttrs.mentionId) {
+          closeJournalEntryModal()
+          openSessionMentionModal(clickedMentionAttrs, clickedMentionAttrs.anchorRect)
+          return true
+        }
+
+        const range = getMarkRange(resolvedPos, schema.marks.mention)
+
+        if (!range) return false
+
+        const mentionMark = resolvedPos.marks().find((mark) => mark.type.name === 'mention')
+        if (!mentionMark) return false
+
+        if (mentionMark.attrs.mentionType === 'entity') {
+          closeSessionMentionModal()
+          const coords = view.coordsAtPos(range.from)
+          openJournalEntryModal(mentionMark.attrs, {
+            top: coords.top,
+            left: coords.left,
+            bottom: coords.bottom,
+            right: coords.left,
+          })
+          return true
+        }
+
+        if (mentionMark.attrs.mentionType === 'session' && mentionMark.attrs.mentionId) {
+          closeJournalEntryModal()
+          const coords = view.coordsAtPos(range.from)
+          openSessionMentionModal(mentionMark.attrs, {
+            top: coords.top,
+            left: coords.left,
+            bottom: coords.bottom,
+            right: coords.left,
+          })
+          return true
+        }
+
+        const selection = TextSelection.create(doc, range.from, range.to)
+        view.dispatch(tr.setSelection(selection))
+        return true
+      },
       handleDOMEvents: {
         click: (view, event) => {
           // Handle link clicks - only open on Ctrl/Cmd+click
@@ -90,6 +220,13 @@ export default function LocalEditor({
           return false
         },
         keydown: (view, event) => {
+          if (selectedJournalEntry) {
+            closeJournalEntryModal()
+          }
+          if (selectedSessionMention) {
+            closeSessionMentionModal()
+          }
+
           if (mentionStateRef.current.active) {
             if (event.key === 'Escape') {
               setMentionState({ active: false, query: '', position: null })
@@ -166,6 +303,17 @@ export default function LocalEditor({
             onSelect={() => setMentionState({ active: false, query: '', position: null })}
           />
         )}
+        <JournalEntryMentionModal
+          entry={selectedJournalEntry}
+          anchorRect={selectedJournalEntryAnchor}
+          onClose={closeJournalEntryModal}
+        />
+        <SessionMentionModal
+          session={selectedSessionMention}
+          anchorRect={selectedSessionMentionAnchor}
+          campaignSlug={campaignSlug}
+          onClose={closeSessionMentionModal}
+        />
       </div>
     </div>
   )

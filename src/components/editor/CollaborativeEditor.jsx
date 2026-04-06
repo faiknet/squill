@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
@@ -21,6 +21,8 @@ import { FontSize } from '../../lib/fontSizeExtension'
 import { IndentExtension } from '../../lib/indentExtension'
 import EditorToolbar from './GoogleDocsToolbar'
 import MentionDropdown from './MentionDropdown'
+import JournalEntryMentionModal from './JournalEntryMentionModal'
+import SessionMentionModal from './SessionMentionModal'
 
 export default function CollaborativeEditor({
   noteContent,
@@ -44,6 +46,10 @@ export default function CollaborativeEditor({
   const typingTimeoutRef = useRef(null)
   const [mentionState, setMentionState] = useState({ active: false, query: '', position: null })
   const mentionStateRef = useRef(mentionState)
+  const [selectedJournalEntry, setSelectedJournalEntry] = useState(null)
+  const [selectedJournalEntryAnchor, setSelectedJournalEntryAnchor] = useState(null)
+  const [selectedSessionMention, setSelectedSessionMention] = useState(null)
+  const [selectedSessionMentionAnchor, setSelectedSessionMentionAnchor] = useState(null)
   
   // Keep ref in sync with state for event handlers
   useEffect(() => {
@@ -53,8 +59,7 @@ export default function CollaborativeEditor({
   // Ref to access the select method from outside
   const mentionDropdownRef = useRef(null)
   
-  const navigate = useNavigate()
-  const { id: campaignId } = useParams()
+  const { campaignSlug } = useParams()
 
   // --- Dynamic Styles for User Mentions ---
   const userColorMap = useMemo(() => {
@@ -114,6 +119,68 @@ export default function CollaborativeEditor({
     }
   }
 
+  const openJournalEntryModal = (mentionAttrs, anchorRect = null) => {
+    const entity = journalEntities.find((item) => String(item.id) === String(mentionAttrs.mentionId))
+    if (entity) {
+      setSelectedJournalEntry(entity)
+      setSelectedJournalEntryAnchor(anchorRect)
+      return
+    }
+
+    setSelectedJournalEntry({
+      id: mentionAttrs.mentionId,
+      label: mentionAttrs.mentionLabel,
+      tag_type: mentionAttrs.mentionEntityType,
+      created_at: null,
+    })
+    setSelectedJournalEntryAnchor(anchorRect)
+  }
+
+  const closeJournalEntryModal = () => {
+    setSelectedJournalEntry(null)
+    setSelectedJournalEntryAnchor(null)
+  }
+
+  const openSessionMentionModal = (mentionAttrs, anchorRect = null) => {
+    const session = sessionNotes.find((item) => String(item.id) === String(mentionAttrs.mentionId))
+    if (session) {
+      setSelectedSessionMention(session)
+      setSelectedSessionMentionAnchor(anchorRect)
+      return
+    }
+
+    setSelectedSessionMention({
+      id: mentionAttrs.mentionId,
+      name: mentionAttrs.mentionLabel,
+      label: mentionAttrs.mentionLabel,
+      slug: null,
+      session_date: null,
+      created_at: null,
+    })
+    setSelectedSessionMentionAnchor(anchorRect)
+  }
+
+  const closeSessionMentionModal = () => {
+    setSelectedSessionMention(null)
+    setSelectedSessionMentionAnchor(null)
+  }
+
+  const getMentionAttrsFromEventTarget = (eventTarget) => {
+    const sourceElement = eventTarget?.nodeType === Node.TEXT_NODE
+      ? eventTarget.parentElement
+      : eventTarget
+    const mentionElement = sourceElement?.closest?.('[data-mention-id]')
+    if (!mentionElement) return null
+
+    return {
+      mentionType: mentionElement.getAttribute('data-mention-type') || '',
+      mentionEntityType: mentionElement.getAttribute('data-mention-entity-type') || '',
+      mentionId: mentionElement.getAttribute('data-mention-id') || '',
+      mentionLabel: mentionElement.getAttribute('data-mention-label') || mentionElement.textContent || '',
+      anchorRect: mentionElement.getBoundingClientRect(),
+    }
+  }
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ history: false }), // YJS handles history
@@ -141,6 +208,25 @@ export default function CollaborativeEditor({
       handleClick: (view, pos, event) => {
         const { schema, doc, tr } = view.state
         const resolvedPos = doc.resolve(pos)
+
+        const clickedMentionAttrs = getMentionAttrsFromEventTarget(event.target)
+        if (
+          clickedMentionAttrs &&
+          (
+            clickedMentionAttrs.mentionType === 'entity' ||
+            (clickedMentionAttrs.mentionEntityType && clickedMentionAttrs.mentionId)
+          )
+        ) {
+          closeSessionMentionModal()
+          openJournalEntryModal(clickedMentionAttrs, clickedMentionAttrs.anchorRect)
+          return true
+        }
+
+        if (clickedMentionAttrs?.mentionType === 'session' && clickedMentionAttrs.mentionId) {
+          closeJournalEntryModal()
+          openSessionMentionModal(clickedMentionAttrs, clickedMentionAttrs.anchorRect)
+          return true
+        }
         
         // Check if click target is an <a> tag (direct DOM click)
         if (event.target.tagName === 'A' && event.target.href) {
@@ -171,12 +257,28 @@ export default function CollaborativeEditor({
           const mentionMark = resolvedPos.marks().find(m => m.type.name === 'mention')
           
           if (mentionMark) {
-            if (mentionMark.attrs.mentionType === 'session' && (event.ctrlKey || event.metaKey)) {
-              const sessionId = mentionMark.attrs.mentionId
-              if (sessionId && campaignId) {
-                navigate(`/campaigns/${campaignId}/sessions/${sessionId}`)
-                return true
-              }
+            if (mentionMark.attrs.mentionType === 'entity') {
+              closeSessionMentionModal()
+              const coords = view.coordsAtPos(range.from)
+              openJournalEntryModal(mentionMark.attrs, {
+                top: coords.top,
+                left: coords.left,
+                bottom: coords.bottom,
+                right: coords.left,
+              })
+              return true
+            }
+
+            if (mentionMark.attrs.mentionType === 'session' && mentionMark.attrs.mentionId) {
+              closeJournalEntryModal()
+              const coords = view.coordsAtPos(range.from)
+              openSessionMentionModal(mentionMark.attrs, {
+                top: coords.top,
+                left: coords.left,
+                bottom: coords.bottom,
+                right: coords.left,
+              })
+              return true
             }
             
             // Otherwise, select the whole mention (Notion-style)
@@ -200,6 +302,13 @@ export default function CollaborativeEditor({
           return false
         },
         keydown: (view, event) => {
+          if (selectedJournalEntry) {
+            closeJournalEntryModal()
+          }
+          if (selectedSessionMention) {
+            closeSessionMentionModal()
+          }
+
           if (mentionStateRef.current.active) {
             if (event.key === 'Escape') {
               setMentionState({ active: false, query: '', position: null })
@@ -267,6 +376,17 @@ export default function CollaborativeEditor({
             onSelect={() => setMentionState({ active: false, query: '', position: null })}
           />
         )}
+        <JournalEntryMentionModal
+          entry={selectedJournalEntry}
+          anchorRect={selectedJournalEntryAnchor}
+          onClose={closeJournalEntryModal}
+        />
+        <SessionMentionModal
+          session={selectedSessionMention}
+          anchorRect={selectedSessionMentionAnchor}
+          campaignSlug={campaignSlug}
+          onClose={closeSessionMentionModal}
+        />
       </div>
     </div>
   )
