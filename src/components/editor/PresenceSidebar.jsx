@@ -16,7 +16,8 @@ export default function PresenceSidebar({
   campaignMembers = [], // from Supabase
   activities = [],
   userColor,
-  setUserColor
+  setUserColor,
+  showOfflineMembers = true
 }) {
   const sortedActivities = useMemo(() => {
     return [...activities].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
@@ -101,6 +102,11 @@ export default function PresenceSidebar({
     })
   }, [activeUsers, currentUser, campaignMembers])
 
+  const visibleMemberStatusList = useMemo(() => {
+    if (showOfflineMembers) return memberStatusList
+    return memberStatusList.filter((member) => member.isOnline)
+  }, [memberStatusList, showOfflineMembers])
+
   return (
     <aside className="w-full bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 flex flex-col h-full font-sans transition-colors duration-200">
       {/* Members Section */}
@@ -109,7 +115,7 @@ export default function PresenceSidebar({
           Member List
         </h3>
         <div className="space-y-3">
-          {memberStatusList.map((user) => (
+          {visibleMemberStatusList.map((user) => (
             <div key={user.id} className={`flex items-start gap-3 ${!user.isOnline ? 'opacity-50' : ''}`}>
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0 select-none"
@@ -132,7 +138,7 @@ export default function PresenceSidebar({
             </div>
           ))}
 
-          {memberStatusList.length === 0 && (
+          {visibleMemberStatusList.length === 0 && (
             <p className="text-xs text-slate-500 dark:text-gray-600 italic">No members found.</p>
           )}
         </div>

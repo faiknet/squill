@@ -24,44 +24,54 @@ span[data-mention-type]:hover {
   box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
 }
 
+/* Entity mentions share icon rendering so icon follows text color */
+span[data-mention-type="entity"][data-mention-entity-type] {
+  position: relative;
+  padding-left: 20px; /* Space for icon */
+}
+
+span[data-mention-type="entity"][data-mention-entity-type]::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  background-color: currentColor;
+  pointer-events: none;
+  -webkit-mask-image: var(--mention-entity-icon);
+  -webkit-mask-size: 14px 14px;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-image: var(--mention-entity-icon);
+  mask-size: 14px 14px;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
 /* NPC mentions - Blue */
 span[data-mention-entity-type="npc"] {
   color: #3b82f6;
-  padding-left: 20px; /* Space for icon */
-  background-image: url('/icons/NPCs.png');
-  background-size: 16px 16px;
-  background-repeat: no-repeat;
-  background-position: 2px center;
+  --mention-entity-icon: url('/icons/NPCs.png');
 }
 
 /* Inventory mentions - Brown */
 span[data-mention-entity-type="item"] {
   color: #a16207;
-  padding-left: 20px;
-  background-image: url('/icons/Inventory.png');
-  background-size: 16px 16px;
-  background-repeat: no-repeat;
-  background-position: 2px center;
+  --mention-entity-icon: url('/icons/Inventory.png');
 }
 
 /* Pet mentions - Purple */
 span[data-mention-entity-type="pet"] {
   color: #a855f7;
-  padding-left: 20px;
-  background-image: url('/icons/Pets.png');
-  background-size: 16px 16px;
-  background-repeat: no-repeat;
-  background-position: 2px center;
+  --mention-entity-icon: url('/icons/Pets.png');
 }
 
 /* Location mentions - Green */
 span[data-mention-entity-type="location"] {
   color: #22c55e;
-  padding-left: 20px;
-  background-image: url('/icons/Location.png');
-  background-size: 16px 16px;
-  background-repeat: no-repeat;
-  background-position: 2px center;
+  --mention-entity-icon: url('/icons/Location.png');
 }
 
 /* Session mentions - Red */
@@ -78,3 +88,24 @@ span[data-mention-type="session"] {
 .dark span[data-mention-type="entity"][data-mention-entity-type="pet"] { color: #c084fc; }
 .dark span[data-mention-type="entity"][data-mention-entity-type="location"] { color: #4ade80; }
 .dark span[data-mention-type="session"] { color: #f87171; }
+
+/* User-level custom overrides */
+html[data-npc-reference-mention-custom-color="true"] span[data-mention-type="entity"][data-mention-entity-type="npc"] {
+  color: var(--npc-reference-mention-color);
+}
+
+html[data-item-reference-mention-custom-color="true"] span[data-mention-type="entity"][data-mention-entity-type="item"] {
+  color: var(--item-reference-mention-color);
+}
+
+html[data-pet-reference-mention-custom-color="true"] span[data-mention-type="entity"][data-mention-entity-type="pet"] {
+  color: var(--pet-reference-mention-color);
+}
+
+html[data-location-reference-mention-custom-color="true"] span[data-mention-type="entity"][data-mention-entity-type="location"] {
+  color: var(--location-reference-mention-color);
+}
+
+html[data-session-reference-mention-custom-color="true"] span[data-mention-type="session"] {
+  color: var(--session-reference-mention-color);
+}

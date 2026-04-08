@@ -10,6 +10,7 @@ import { getDisplayLabel } from '../lib/utils'
 import {
   getGuestSessionBySlug,
 } from '../lib/guestData'
+import { getShowOfflineMembersPreference } from '../lib/sessionDisplayPreferences'
 import '../styles/mentions.css'
 
 import LocalEditor from '../components/editor/LocalEditor'
@@ -60,6 +61,7 @@ function EditorLayout({
   sessionId,
   campaignMembers,
   inviteCode,
+  showOfflineMembers,
   children
 }) {
   const [copied, setCopied] = useState(false)
@@ -162,6 +164,12 @@ function EditorLayout({
             >
               Journal
             </button>
+            <button
+              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug || session?.slug || sessionId}/preferences`)}
+              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              Preferences
+            </button>
           </nav>
         </div>
 
@@ -236,6 +244,7 @@ function EditorLayout({
             campaignMembers={campaignMembers}
             userColor={userColor}
             setUserColor={setUserColor}
+            showOfflineMembers={showOfflineMembers}
           />
         </div>
       </div>
@@ -260,6 +269,7 @@ function CollaborativeSessionContent({
   activities,
   campaignMembers,
   inviteCode,
+  showOfflineMembers,
   tags,
   sessionNotes,
   currentUserId
@@ -296,6 +306,7 @@ function CollaborativeSessionContent({
       sessionId={sessionId}
       campaignMembers={campaignMembers}
       inviteCode={inviteCode}
+      showOfflineMembers={showOfflineMembers}
     >
       <CollaborativeEditor
         noteContent={noteContent}
@@ -401,6 +412,7 @@ export default function SessionEditor() {
     const stored = window.localStorage.getItem(SESSION_EDITOR_COLOR_STORAGE_KEY)
     return stored || ''
   })
+  const [showOfflineMembers] = useState(() => getShowOfflineMembersPreference())
 
   // Refs to track saving state and prevent initial save
   const lastSavedContent = useRef(null)
@@ -629,6 +641,7 @@ export default function SessionEditor() {
           activities={activities}
           campaignMembers={campaignMembers}
           inviteCode={inviteCode}
+          showOfflineMembers={showOfflineMembers}
           tags={tags}
           sessionNotes={sessionNotes}
           currentUserId={authState.user?.id}
@@ -657,6 +670,7 @@ export default function SessionEditor() {
       sessionId={sessionId}
       campaignMembers={campaignMembers}
       inviteCode={inviteCode}
+      showOfflineMembers={showOfflineMembers}
     >
       <LocalEditor
         noteContent={noteContent}

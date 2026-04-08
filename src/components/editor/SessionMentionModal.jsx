@@ -60,7 +60,7 @@ export default function SessionMentionModal({ session, anchorRect, campaignSlug,
     return { top, left }
   }, [anchorRect])
 
-  const jumpHref = useMemo(() => {
+  const teleportHref = useMemo(() => {
     if (!session || !campaignSlug) return null
     const targetSession = session.slug || session.id
     if (!targetSession) return null
@@ -81,15 +81,15 @@ export default function SessionMentionModal({ session, anchorRect, campaignSlug,
           <p className="text-slate-500 dark:text-gray-400">Date</p>
           <p className="font-medium text-slate-900 dark:text-gray-100">{formatSessionDate(session)}</p>
         </div>
-        {jumpHref && (
+        {teleportHref && (
           <div>
             <a
-              href={jumpHref}
+              href={teleportHref}
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 font-medium underline"
             >
-              Jump
+              Teleport
             </a>
           </div>
         )}

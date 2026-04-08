@@ -272,6 +272,12 @@ export default function Journal() {
             >
               Journal
             </button>
+            <button
+              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}/preferences`)}
+              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              Preferences
+            </button>
           </nav>
         </div>
 

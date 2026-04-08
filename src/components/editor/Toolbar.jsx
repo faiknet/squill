@@ -20,6 +20,15 @@ const FONT_SIZES = [
   { name: 'Huge', value: '24px' },
 ]
 
+export const FONT_SIZE_OPTIONS = [
+  { value: '12px', name: 'Small' },
+  { value: '16px', name: 'Normal', active: true },
+  { value: '20px', name: 'Large' },
+  { value: '24px', name: 'Huge' },
+  { value: '32px', name: 'Extra Large' },
+  { value: '48px', name: 'Giant' },
+]
+
 const COLORS = [
   '#000000', '#4b5563', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'
 ]

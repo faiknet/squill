@@ -7,6 +7,7 @@ import CampaignList from '../pages/CampaignList'
 import CampaignDetail from '../pages/CampaignDetail'
 import SessionEditor from '../pages/SessionEditor'
 import Journal from '../pages/Journal'
+import SessionPreferences from '../pages/SessionPreferences'
 import Settings from '../pages/Settings'
 import JoinCampaign from '../pages/JoinCampaign'
 import Auth from '../pages/Auth'
@@ -60,6 +61,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <Journal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campaigns/:campaignSlug/sessions/:sessionSlug/preferences"
+        element={
+          <ProtectedRoute>
+            <SessionPreferences />
           </ProtectedRoute>
         }
       />

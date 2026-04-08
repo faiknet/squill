@@ -5,10 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { LiveblocksProvider } from '@liveblocks/react'
 
 import App from './App'
+import { applyMentionColorPreferences } from './lib/mentionColorPreferences'
 import './index.css'
 
 const queryClient = new QueryClient()
 const liveblocksPublicKey = import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY
+applyMentionColorPreferences()
 
 const rootElement = document.getElementById('root')
 if (rootElement) {
