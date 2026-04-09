@@ -1,4 +1,4 @@
-export const SHOW_OFFLINE_MEMBERS_STORAGE_KEY = 'squill:preferences:member-list:show-offline'
+const SHOW_OFFLINE_MEMBERS_STORAGE_KEY = 'squill:preferences:member-list:show-offline'
 export const DEFAULT_SHOW_OFFLINE_MEMBERS = true
 
 export function getShowOfflineMembersPreference() {

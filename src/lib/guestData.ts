@@ -4,9 +4,9 @@
 
 // Stable IDs for guest demo data (consistent across page loads within a session)
 export const GUEST_CAMPAIGN_ID = '00000000-0000-0000-0000-000000000001'
-export const GUEST_SESSION_ID = '00000000-0000-0000-0000-000000000002'
+const GUEST_SESSION_ID = '00000000-0000-0000-0000-000000000002'
 export const GUEST_CAMPAIGN_SLUG = 'the-lost-mines-of-phandelver-demo'
-export const GUEST_SESSION_SLUG = 'goblin-ambush-demo'
+const GUEST_SESSION_SLUG = 'goblin-ambush-demo'
 const GUEST_CAMPAIGNS_STORAGE_KEY = 'squill_guest_campaigns'
 const GUEST_SESSIONS_STORAGE_KEY = 'squill_guest_sessions'
 
@@ -144,10 +144,6 @@ function saveStoredGuestSessions(sessions: unknown[]) {
   }
 }
 
-export function getGuestCampaign(userId: string) {
-  return buildGuestCampaign(userId)
-}
-
 export function getGuestCampaigns(userId: string) {
   const stored = loadStoredGuestCampaigns()
   if (stored && stored.length > 0) return stored
@@ -216,7 +212,7 @@ export function getGuestSessionsForCampaign(campaignId: string) {
   return sessionsForCampaign
 }
 
-export function getGuestCampaignBySlug(userId: string, campaignSlug: string) {
+function getGuestCampaignBySlug(userId: string, campaignSlug: string) {
   const campaigns = getGuestCampaigns(userId)
   return campaigns.find((campaign) => campaign.slug === campaignSlug) || null
 }

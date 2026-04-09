@@ -53,7 +53,7 @@ function parseZodError(error: z.ZodError): Array<{ field: string; message: strin
  * @returns Validated and type-safe data
  * @throws ValidationError with structured issues and safe client message
  */
-export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
+function validate<T>(schema: ZodSchema<T>, data: unknown): T {
   const result = schema.safeParse(data)
   if (!result.success) {
     throw new ValidationError(
@@ -62,14 +62,6 @@ export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
     )
   }
   return result.data as T
-}
-
-/**
- * Soft validation that doesn't throw — returns parsed data or null
- */
-export function validateSoft<T>(schema: ZodSchema<T>, data: unknown): T | null {
-  const result = schema.safeParse(data)
-  return result.success ? (result.data as T) : null
 }
 
 // ============================================================================
@@ -86,10 +78,6 @@ export function validateSignUp(data: unknown) {
 
 export function validateResetPassword(data: unknown) {
   return validate(schemas.resetPasswordSchema, data)
-}
-
-export function validateUpdatePassword(data: unknown) {
-  return validate(schemas.updatePasswordSchema, data)
 }
 
 export function validateEmail(email: unknown): string {
@@ -120,10 +108,6 @@ export function validateCampaignName(name: unknown): string {
   return validate(schemas.campaignNameSchema, name)
 }
 
-export function validateCampaignDescription(description: unknown): string {
-  return validate(schemas.campaignDescriptionSchema, description)
-}
-
 export function validateCampaignId(id: unknown): string {
   return validate(schemas.campaignIdSchema, id)
 }
@@ -138,10 +122,6 @@ export function validateCreateSession(data: unknown) {
 
 export function validateUpdateSession(data: unknown) {
   return validate(schemas.updateSessionSchema, data)
-}
-
-export function validateSessionName(name: unknown): string {
-  return validate(schemas.sessionNameSchema, name)
 }
 
 export function validateSessionId(id: unknown): string {
@@ -172,10 +152,6 @@ export function validateUpdateEntityTag(data: unknown) {
   return validate(schemas.updateEntityTagSchema, data)
 }
 
-export function validateTagType(type: unknown) {
-  return validate(schemas.tagTypeSchema, type)
-}
-
 export function validateTagId(id: unknown): string {
   return validate(schemas.tagIdSchema, id)
 }
@@ -188,75 +164,3 @@ export function validateUpdateProfile(data: unknown) {
   return validate(schemas.updateProfileSchema, data)
 }
 
-// ============================================================================
-// ID/UUID Validation
-// ============================================================================
-
-export function validateUserId(id: unknown): string {
-  return validate(schemas.userIdSchema, id)
-}
-
-export function validateId(id: unknown): string {
-  return validate(schemas.uuidSchema, id)
-}
-
-// ============================================================================
-// Invite Code Validation
-// ============================================================================
-
-export function validateInviteCode(code: unknown): string {
-  return validate(schemas.inviteCodeSchema, code)
-}
-
-// ============================================================================
-// Batch Validation Helper
-// ============================================================================
-
-/**
- * Validate multiple fields at once. Returns first validation error encountered.
- *
- * @param validations - Array of [field, schema, value] tuples
- * @throws ValidationError with the first validation failure
- */
-export function validateBatch(
-  validations: Array<[field: string, schema: ZodSchema, value: unknown]>
-) {
-  for (const [field, schema, value] of validations) {
-    const result = schema.safeParse(value)
-    if (!result.success) {
-      const issues = parseZodError(result.error).map((issue) => ({
-        field: `${field}.${issue.field}`.replace(/\.$/, ''),
-        message: issue.message,
-      }))
-      throw new ValidationError(issues, `Validation failed for ${field}`)
-    }
-  }
-}
-
-// ============================================================================
-// Content Sanitization (Additional Layer)
-// ============================================================================
-
-/**
- * Remove potentially dangerous HTML/script content from markdown
- * Note: Markdown typically compiles to HTML safely, but this adds defense in depth
- */
-export function sanitizeMarkdown(content: string): string {
-  // Remove null bytes (common injection vector)
-  let sanitized = content.replace(/\0/g, '')
-
-  // Remove control characters except newlines and tabs
-  sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-
-  return sanitized
-}
-
-/**
- * Safely extract text from user input (trim and normalize whitespace)
- */
-export function normalizeText(text: string): string {
-  return text
-    .trim()
-    .replace(/\s+/g, ' ') // Normalize multiple spaces
-    .slice(0, 5000) // Safety limit
-}

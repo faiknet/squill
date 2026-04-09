@@ -54,10 +54,6 @@ export const resetPasswordSchema = z.object({
   email: emailSchema,
 })
 
-export const updatePasswordSchema = z.object({
-  newPassword: passwordSchema,
-})
-
 // ============================================================================
 // Campaign Schemas
 // ============================================================================
@@ -72,7 +68,7 @@ export const campaignNameSchema = z
     'Campaign name contains invalid characters'
   )
 
-export const campaignDescriptionSchema = z
+const campaignDescriptionSchema = z
   .string({ required_error: 'Campaign description is required' })
   .max(5000, 'Description must be under 5000 characters')
   .refine(
@@ -80,7 +76,7 @@ export const campaignDescriptionSchema = z
     'Description contains invalid characters'
   )
 
-export const campaignStreakCadenceSchema = z.enum(['weekly', 'biweekly', 'monthly'], {
+const campaignStreakCadenceSchema = z.enum(['weekly', 'biweekly', 'monthly'], {
   errorMap: () => ({ message: 'Invalid streak cadence' }),
 })
 
@@ -99,13 +95,13 @@ export const updateCampaignSchema = z.object({
 // Session Schemas
 // ============================================================================
 
-export const sessionNameSchema = z
+const sessionNameSchema = z
   .string({ required_error: 'Session name is required' })
   .trim()
   .min(1, 'Session name cannot be empty')
   .max(255, 'Session name must be under 255 characters')
 
-export const sessionDateSchema = z
+const sessionDateSchema = z
   .union([
     z.string().datetime(),
     z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Session date must be in YYYY-MM-DD format'),
@@ -144,17 +140,17 @@ export const updateNoteSchema = z.object({
 // Entity Tag Schemas
 // ============================================================================
 
-export const tagTypeSchema = z.enum(['npc', 'location', 'item', 'pet'], {
+const tagTypeSchema = z.enum(['npc', 'location', 'item', 'pet'], {
   errorMap: () => ({ message: 'Invalid tag type' }),
 })
 
-export const entityTagNameSchema = z
+const entityTagNameSchema = z
   .string({ required_error: 'Tag name is required' })
   .trim()
   .min(1, 'Tag name cannot be empty')
   .max(100, 'Tag name must be under 100 characters')
 
-export const entityTagDescriptionSchema = z
+const entityTagDescriptionSchema = z
   .string()
   .max(500, 'Description must be under 500 characters')
   .optional()
@@ -192,19 +188,8 @@ export const updateProfileSchema = z.object({
 // Invite Code Schemas
 // ============================================================================
 
-export const inviteCodeSchema = z
-  .string({ required_error: 'Invite code is required' })
-  .trim()
-  .length(8, 'Invalid invite code length')
-  .regex(/^[A-Z0-9]+$/, 'Invalid invite code format')
-
-// ============================================================================
-// UUID Validation
-// ============================================================================
-
-export const uuidSchema = z.string().uuid('Invalid ID format')
+const uuidSchema = z.string().uuid('Invalid ID format')
 
 export const campaignIdSchema = uuidSchema
 export const sessionIdSchema = uuidSchema
 export const tagIdSchema = uuidSchema
-export const userIdSchema = uuidSchema

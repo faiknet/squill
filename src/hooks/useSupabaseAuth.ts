@@ -69,7 +69,7 @@ function clearGuestSession(): void {
   sessionStorage.removeItem(GUEST_STORAGE_KEY)
 }
 
-export function useSupabaseAuth() {
+function useSupabaseAuth() {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     session: null,
