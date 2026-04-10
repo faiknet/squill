@@ -12,10 +12,12 @@ export default function ExportSessionNotesModal({
   hasContent = true,
 }) {
   const [selectedFormat, setSelectedFormat] = useState('docx')
+  const [keepJournalEntityFormatting, setKeepJournalEntityFormatting] = useState(true)
 
   useEffect(() => {
     if (isOpen) {
       setSelectedFormat('docx')
+      setKeepJournalEntityFormatting(true)
     }
   }, [isOpen])
 
@@ -58,6 +60,29 @@ export default function ExportSessionNotesModal({
             ))}
           </div>
 
+          <div className="mt-4 flex justify-end">
+            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-gray-300">
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={keepJournalEntityFormatting}
+                  onChange={(event) => setKeepJournalEntityFormatting(event.target.checked)}
+                  className="h-4 w-4"
+                />
+                <span>Keep Journal Entity formatting</span>
+              </label>
+              <span className="relative inline-flex h-6 w-6 items-center justify-center group">
+                <img src="/icons/Help.svg" alt="" className="h-4 w-4 opacity-80" />
+                <span
+                  role="tooltip"
+                  className="pointer-events-none absolute -top-2 right-0 z-10 w-72 -translate-y-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs leading-snug text-slate-700 opacity-0 shadow-md transition-none group-hover:opacity-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                >
+                  Uncheck to remove colours and icons from journal entities (NPCs, Inventory, Pets, Locations, Sessions, and Users)
+                </span>
+              </span>
+            </div>
+          </div>
+
           {!hasContent && (
             <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">
               Notes are currently empty. Add content before exporting.
@@ -79,7 +104,7 @@ export default function ExportSessionNotesModal({
             </Button>
             <Button
               type="button"
-              onClick={() => onExport(selectedFormat)}
+              onClick={() => onExport(selectedFormat, keepJournalEntityFormatting)}
               disabled={isExporting || !hasContent}
               className="bg-brand-600 text-white hover:bg-brand-700 shadow-sm min-w-[132px]"
             >

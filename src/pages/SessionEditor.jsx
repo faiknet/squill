@@ -23,6 +23,61 @@ const SESSION_EDITOR_COLOR_STORAGE_KEY = 'squill:session-editor:user-color'
 const DEFAULT_EDITOR_HEIGHT_PX = 350
 const SIDEBAR_MAX_WIDTH_PX = 352
 const SIDEBAR_VIEWING_MIN_WIDTH_PX = 150
+const EXPORT_REFERENCE_BLACK_COLOR = '#000000'
+const EXPORT_REFERENCE_COLOR_OVERRIDES = [
+  {
+    attribute: 'data-npc-reference-mention-custom-color',
+    cssVariable: '--npc-reference-mention-color',
+  },
+  {
+    attribute: 'data-item-reference-mention-custom-color',
+    cssVariable: '--item-reference-mention-color',
+  },
+  {
+    attribute: 'data-pet-reference-mention-custom-color',
+    cssVariable: '--pet-reference-mention-color',
+  },
+  {
+    attribute: 'data-location-reference-mention-custom-color',
+    cssVariable: '--location-reference-mention-color',
+  },
+  {
+    attribute: 'data-session-reference-mention-custom-color',
+    cssVariable: '--session-reference-mention-color',
+  },
+]
+
+function snapshotReferenceColorOverrides(rootElement) {
+  return EXPORT_REFERENCE_COLOR_OVERRIDES.map(({ attribute, cssVariable }) => ({
+    attribute,
+    cssVariable,
+    attributeValue: rootElement.getAttribute(attribute),
+    cssVariableValue: rootElement.style.getPropertyValue(cssVariable),
+  }))
+}
+
+function applyBlackReferenceColorOverrides(rootElement) {
+  EXPORT_REFERENCE_COLOR_OVERRIDES.forEach(({ attribute, cssVariable }) => {
+    rootElement.setAttribute(attribute, 'true')
+    rootElement.style.setProperty(cssVariable, EXPORT_REFERENCE_BLACK_COLOR)
+  })
+}
+
+function restoreReferenceColorOverrides(rootElement, snapshot) {
+  snapshot.forEach(({ attribute, cssVariable, attributeValue, cssVariableValue }) => {
+    if (attributeValue === null) {
+      rootElement.removeAttribute(attribute)
+    } else {
+      rootElement.setAttribute(attribute, attributeValue)
+    }
+
+    if (cssVariableValue) {
+      rootElement.style.setProperty(cssVariable, cssVariableValue)
+    } else {
+      rootElement.style.removeProperty(cssVariable)
+    }
+  })
+}
 
 // SavedIndicator component
 function SavedIndicator() {
@@ -141,21 +196,34 @@ function EditorLayout({
     setIsExportModalOpen(false)
   }
 
-  const handleExport = async (format) => {
+  const handleExport = async (format, keepJournalEntityFormatting = true) => {
     setIsExporting(true)
     setExportError('')
+    const shouldForceBlackReferenceColors = !keepJournalEntityFormatting
+    const rootElement = document.documentElement
+    const colorOverrideSnapshot = shouldForceBlackReferenceColors
+      ? snapshotReferenceColorOverrides(rootElement)
+      : null
 
     try {
+      if (shouldForceBlackReferenceColors) {
+        applyBlackReferenceColorOverrides(rootElement)
+      }
+
       await exportSessionNotes({
         format,
         noteContent,
         sessionName: session?.name || 'session-notes',
+        keepJournalEntityFormatting,
       })
       setIsExportModalOpen(false)
     } catch (error) {
       console.error('Failed to export session notes:', error)
       setExportError(error?.message || 'Failed to export notes. Please try again.')
     } finally {
+      if (colorOverrideSnapshot) {
+        restoreReferenceColorOverrides(rootElement, colorOverrideSnapshot)
+      }
       setIsExporting(false)
     }
   }

@@ -6,6 +6,7 @@ const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordproces
 const ODT_MIME_TYPE = 'application/vnd.oasis.opendocument.text'
 const RTF_MIME_TYPE = 'application/rtf'
 const TEXT_MIME_TYPE = 'text/plain;charset=utf-8'
+const EXPORT_REFERENCE_BLACK_COLOR = '#000000'
 const NOTE_EXPORT_RENDER_CLASS =
   'w-full min-h-full bg-white text-slate-900 text-base focus:outline-none px-12 md:px-24 lg:px-32 xl:px-48 py-8 md:py-12 prose prose-slate max-w-none transition-colors duration-200'
 const MENTION_ENTITY_ICON_MAP = {
@@ -86,7 +87,7 @@ function wrapHtmlDocument(title, bodyHtml) {
 </html>`
 }
 
-function createRenderContainer(noteHtml) {
+function createRenderContainer(noteHtml, { forceBlackReferenceColors = false } = {}) {
   const root = document.createElement('div')
   root.style.position = 'fixed'
   root.style.top = '0'
@@ -97,6 +98,12 @@ function createRenderContainer(noteHtml) {
   root.style.pointerEvents = 'none'
   root.style.zIndex = '-1'
   root.style.overflow = 'hidden'
+
+  if (forceBlackReferenceColors) {
+    const mentionColorOverride = document.createElement('style')
+    mentionColorOverride.textContent = `span[data-mention-type]{color:${EXPORT_REFERENCE_BLACK_COLOR} !important;}`
+    root.appendChild(mentionColorOverride)
+  }
 
   const content = document.createElement('div')
   content.className = NOTE_EXPORT_RENDER_CLASS
@@ -122,8 +129,8 @@ function applyInlineStyles(contentRoot) {
   })
 }
 
-function createStyledHtml(noteHtml) {
-  const { root, content } = createRenderContainer(noteHtml)
+function createStyledHtml(noteHtml, options = {}) {
+  const { root, content } = createRenderContainer(noteHtml, options)
 
   try {
     applyInlineStyles(content)
@@ -248,7 +255,7 @@ function normalizeListsForPdf(content) {
   })
 }
 
-function normalizePdfExportDom(content) {
+function normalizePdfExportDom(content, { forceBlackReferenceColors = false } = {}) {
   const SAFE_PDF_STYLE_KEYS = new Set([
     'font-weight',
     'font-style',
@@ -351,7 +358,11 @@ function normalizePdfExportDom(content) {
       entityColorFallbacks[mentionEntityType] ||
       mentionTypeColorFallbacks[mentionType] ||
       '#1f2937'
-    const resolvedColor = normalizeColorToken(mentionColor || computedColor) ? (mentionColor || computedColor) : fallbackColor
+    const resolvedColor = forceBlackReferenceColors
+      ? EXPORT_REFERENCE_BLACK_COLOR
+      : normalizeColorToken(mentionColor || computedColor)
+        ? (mentionColor || computedColor)
+        : fallbackColor
 
     const simplifiedMention = document.createElement('span')
     simplifiedMention.textContent = element.textContent || element.getAttribute('data-mention-label') || ''
@@ -501,13 +512,13 @@ async function exportDocx(htmlDocument, fileBaseName) {
   downloadBlob(toBlob(docxOutput, DOCX_MIME_TYPE), `${fileBaseName}.docx`)
 }
 
-async function exportPdf(noteHtml, fileBaseName) {
-  const { root, content } = createRenderContainer(noteHtml)
+async function exportPdf(noteHtml, fileBaseName, options = {}) {
+  const { root, content } = createRenderContainer(noteHtml, options)
 
   try {
     applyInlineStyles(content)
     normalizeListsForPdf(content)
-    normalizePdfExportDom(content)
+    normalizePdfExportDom(content, options)
     await inlineImageSources(content)
     const html = content.innerHTML
 
@@ -702,13 +713,19 @@ async function exportRtf(htmlFragment, fileBaseName) {
   downloadBlob(new Blob([rtfContent], { type: RTF_MIME_TYPE }), `${fileBaseName}.rtf`)
 }
 
-export async function exportSessionNotes({ format, noteContent, sessionName }) {
+export async function exportSessionNotes({
+  format,
+  noteContent,
+  sessionName,
+  keepJournalEntityFormatting = true,
+}) {
   if (!format) {
     throw new Error('A file format is required to export notes.')
   }
 
+  const forceBlackReferenceColors = !keepJournalEntityFormatting
   const fileBaseName = sanitizeFileName(sessionName)
-  const styledHtml = createStyledHtml(noteContent)
+  const styledHtml = createStyledHtml(noteContent, { forceBlackReferenceColors })
   const htmlDocument = wrapHtmlDocument(sessionName || 'Session Notes', styledHtml)
 
   if (format === 'txt') {
@@ -722,7 +739,7 @@ export async function exportSessionNotes({ format, noteContent, sessionName }) {
   }
 
   if (format === 'pdf') {
-    await exportPdf(noteContent, fileBaseName)
+    await exportPdf(noteContent, fileBaseName, { forceBlackReferenceColors })
     return
   }
 
