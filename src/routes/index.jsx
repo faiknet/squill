@@ -1,19 +1,27 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useSupabaseAuth'
-import Layout from './Layout'
 
-// Pages
-import CampaignList from '../pages/CampaignList'
-import CampaignDetail from '../pages/CampaignDetail'
-import SessionEditor from '../pages/SessionEditor'
-import Journal from '../pages/Journal'
-import SessionPreferences from '../pages/SessionPreferences'
-import Settings from '../pages/Settings'
-import JoinCampaign from '../pages/JoinCampaign'
-import Auth from '../pages/Auth'
-import AuthResetPassword from '../pages/AuthResetPassword'
-import VerifyEmail from '../pages/VerifyEmail'
-import NotFound from './NotFound'
+const Layout = lazy(() => import('./Layout'))
+const CampaignList = lazy(() => import('../pages/CampaignList'))
+const CampaignDetail = lazy(() => import('../pages/CampaignDetail'))
+const SessionEditor = lazy(() => import('../pages/SessionEditor'))
+const Journal = lazy(() => import('../pages/Journal'))
+const SessionPreferences = lazy(() => import('../pages/SessionPreferences'))
+const Settings = lazy(() => import('../pages/Settings'))
+const JoinCampaign = lazy(() => import('../pages/JoinCampaign'))
+const Auth = lazy(() => import('../pages/Auth'))
+const AuthResetPassword = lazy(() => import('../pages/AuthResetPassword'))
+const VerifyEmail = lazy(() => import('../pages/VerifyEmail'))
+const NotFound = lazy(() => import('./NotFound'))
+
+function RouteLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-slate-500 dark:text-gray-400 flex items-center justify-center">
+      Loading...
+    </div>
+  )
+}
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -32,68 +40,70 @@ function ProtectedRoute({ children }) {
 
 export default function AppRoutes() {
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/auth/reset-password" element={<AuthResetPassword />} />
-      <Route path="/auth/verify-email" element={<VerifyEmail />} />
-      <Route path="/join/:code" element={<JoinCampaign />} />
+    <Suspense fallback={<RouteLoadingFallback />}>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/reset-password" element={<AuthResetPassword />} />
+        <Route path="/auth/verify-email" element={<VerifyEmail />} />
+        <Route path="/join/:code" element={<JoinCampaign />} />
 
-      {/* Campaigns - standalone layout (no Layout wrapper) */}
-      <Route
-        path="/campaigns"
-        element={
-          <ProtectedRoute>
-            <CampaignList />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/campaigns/:campaignSlug/sessions/:sessionSlug"
-        element={
-          <ProtectedRoute>
-            <SessionEditor />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/campaigns/:campaignSlug/sessions/:sessionSlug/journal"
-        element={
-          <ProtectedRoute>
-            <Journal />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/campaigns/:campaignSlug/sessions/:sessionSlug/preferences"
-        element={
-          <ProtectedRoute>
-            <SessionPreferences />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/dashboard"
-        element={<Navigate to="/campaigns" replace />}
-      />
-      <Route
-        path="/"
-        element={<Navigate to="/campaigns" replace />}
-      />
+        {/* Campaigns - standalone layout (no Layout wrapper) */}
+        <Route
+          path="/campaigns"
+          element={
+            <ProtectedRoute>
+              <CampaignList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignSlug/sessions/:sessionSlug"
+          element={
+            <ProtectedRoute>
+              <SessionEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignSlug/sessions/:sessionSlug/journal"
+          element={
+            <ProtectedRoute>
+              <Journal />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignSlug/sessions/:sessionSlug/preferences"
+          element={
+            <ProtectedRoute>
+              <SessionPreferences />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={<Navigate to="/campaigns" replace />}
+        />
+        <Route
+          path="/"
+          element={<Navigate to="/campaigns" replace />}
+        />
 
-      {/* Protected routes with Layout */}
-      <Route
-        element={(
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        )}
-      >
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/campaigns/:campaignSlug" element={<CampaignDetail />} />
-      </Route>
+        {/* Protected routes with Layout */}
+        <Route
+          element={(
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          )}
+        >
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/campaigns/:campaignSlug" element={<CampaignDetail />} />
+        </Route>
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   )
 }

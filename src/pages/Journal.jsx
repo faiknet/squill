@@ -1,14 +1,9 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { useState, useMemo, useEffect } from 'react'
-import { requireSupabase } from '../lib/supabase'
-import { useAuth } from '../hooks/useSupabaseAuth'
+import { useState, useMemo } from 'react'
 import { useSessionData } from '../hooks/useSessionData'
 import { Button, Input, Card } from '../components/ui'
 import NewJournalEntryModal from '../components/journal/NewJournalEntryModal'
 import { formatDistanceToNow } from 'date-fns'
-import {
-  getGuestSessionBySlug,
-} from '../lib/guestData'
 
 const TAG_SECTIONS = [
   { type: 'npc', title: 'NPCs', placeholder: 'Add NPC Name' },
@@ -20,69 +15,6 @@ const TAG_SECTIONS = [
 export default function Journal() {
   const { campaignSlug, sessionSlug } = useParams()
   const navigate = useNavigate()
-  const { authState } = useAuth()
-  const { isGuest, isLoading: authLoading } = authState
-  const [campaignId, setCampaignId] = useState(null)
-  const [sessionId, setSessionId] = useState(null)
-  const [loadingIds, setLoadingIds] = useState(true)
-
-  // First, resolve slugs to IDs
-  useEffect(() => {
-    // Wait for auth to finish loading
-    if (authLoading) return
-
-    // Handle guest users with local demo data
-    if (isGuest) {
-      const userId = authState.user?.id
-      const guestRoute = userId ? getGuestSessionBySlug(userId, campaignSlug, sessionSlug) : null
-      if (!guestRoute) {
-        navigate('/campaigns')
-        return
-      }
-      setCampaignId(guestRoute.campaign.id)
-      setSessionId(guestRoute.session.id)
-      setLoadingIds(false)
-      return
-    }
-
-    const resolveIds = async () => {
-      try {
-        const client = requireSupabase()
-        const { data: campaignData, error: campaignError } = await client
-          .from('campaigns')
-          .select('id')
-          .eq('slug', campaignSlug)
-          .single()
-        
-        if (campaignError || !campaignData) {
-          navigate('/campaigns')
-          return
-        }
-
-        const { data: sessionData, error: sessionError } = await client
-          .from('sessions')
-          .select('id')
-          .eq('slug', sessionSlug)
-          .eq('campaign_id', campaignData.id)
-          .single()
-        
-        if (sessionError || !sessionData) {
-          navigate(`/campaigns/${campaignSlug}`)
-          return
-        }
-
-        setCampaignId(campaignData.id)
-        setSessionId(sessionData.id)
-      } catch (err) {
-        console.error('Error resolving slugs:', err)
-        navigate('/campaigns')
-      } finally {
-        setLoadingIds(false)
-      }
-    }
-
-    resolveIds()
-  }, [campaignSlug, sessionSlug, navigate, isGuest, authLoading, authState.user?.id])
 
   const {
     session,
@@ -92,7 +24,7 @@ export default function Journal() {
     addTag,
     removeTag,
     updateTag
-  } = useSessionData(sessionId, campaignId)
+  } = useSessionData(null, null, { campaignSlug, sessionSlug })
 
   const [drafts, setDrafts] = useState({ npc: '', inventory: '', pet: '', location: '' })
   const [searchTerms, setSearchTerms] = useState({ npc: '', inventory: '', pet: '', location: '' })
@@ -220,14 +152,6 @@ export default function Journal() {
     } catch (error) {
       return 'recently'
     }
-  }
-
-  if (loadingIds) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
-        <p className="text-slate-500 dark:text-gray-400">Loading...</p>
-      </div>
-    )
   }
 
   if (loading) {

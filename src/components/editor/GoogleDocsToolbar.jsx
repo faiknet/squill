@@ -211,18 +211,18 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
 
   const IconButton = ({ onClick, isActive, label, icon, className = '' }) => {
     return (
-      <button
-        type="button"
-        onMouseDown={(e) => {
-          e.preventDefault()
-          onClick()
-        }}
-        className={`h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center ${isActive ? 'bg-slate-200 dark:bg-gray-600' : ''
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault()
+            onClick()
+          }}
+          className={`h-7 w-8 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center overflow-hidden ${isActive ? 'bg-slate-200 dark:bg-gray-600' : ''
           } ${className}`}
-        title={label}
-      >
-        <MaterialIcon icon={icon} size={18} />
-      </button>
+          title={label}
+        >
+          <MaterialIcon icon={icon} size={18} />
+        </button>
     )
   }
 
@@ -439,7 +439,7 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
                 e.preventDefault()
                 onExpandSidebar?.()
               }}
-              className="h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+              className="h-7 w-8 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center overflow-hidden"
               style={{ color: BRAND_ICON_COLOR }}
               title="Expand member sidebar"
             >

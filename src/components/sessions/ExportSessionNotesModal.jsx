@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button, Card } from '../ui'
-import { SESSION_EXPORT_FORMATS } from '../../lib/sessionNoteExport'
+import { SESSION_EXPORT_FORMATS } from '../../lib/sessionExportFormats'
 
 export default function ExportSessionNotesModal({
   isOpen,

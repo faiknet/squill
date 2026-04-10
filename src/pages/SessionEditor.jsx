@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, cloneElement, isValidElement } from 'react'
+import { useState, useEffect, useMemo, useRef, cloneElement, isValidElement, lazy, Suspense } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { RoomProvider, useOthers, useSelf } from '@liveblocks/react'
 import { useAuth } from '../hooks/useSupabaseAuth'
@@ -7,17 +7,14 @@ import { requireSupabase } from '../lib/supabase'
 import { colorFromString, getSessionRoomId } from '../lib/liveblocks'
 import { Button } from '../components/ui'
 import ExportSessionNotesModal from '../components/sessions/ExportSessionNotesModal'
-import { exportSessionNotes } from '../lib/sessionNoteExport'
 import { getDisplayLabel } from '../lib/utils'
-import {
-  getGuestSessionBySlug,
-} from '../lib/guestData'
 import { getShowOfflineMembersPreference } from '../lib/sessionDisplayPreferences'
 import '../styles/mentions.css'
 
-import LocalEditor from '../components/editor/LocalEditor'
-import CollaborativeEditor from '../components/editor/CollaborativeEditor'
 import PresenceSidebar from '../components/editor/PresenceSidebar'
+
+const LocalEditor = lazy(() => import('../components/editor/LocalEditor'))
+const CollaborativeEditor = lazy(() => import('../components/editor/CollaborativeEditor'))
 
 const SESSION_EDITOR_COLOR_STORAGE_KEY = 'squill:session-editor:user-color'
 const DEFAULT_EDITOR_HEIGHT_PX = 350
@@ -210,6 +207,7 @@ function EditorLayout({
         applyBlackReferenceColorOverrides(rootElement)
       }
 
+      const { exportSessionNotes } = await import('../lib/sessionNoteExport')
       await exportSessionNotes({
         format,
         noteContent,
@@ -427,17 +425,19 @@ function CollaborativeSessionContent({
       inviteCode={inviteCode}
       showOfflineMembers={showOfflineMembers}
     >
-      <CollaborativeEditor
-        noteContent={noteContent}
-        setNoteContent={setNoteContent}
-        userLabel={userLabel}
-        userColor={effectiveUserColor}
-        sharedMinHeight={DEFAULT_EDITOR_HEIGHT_PX}
-        campaignMembers={campaignMembers}
-        journalEntities={tags}
-        sessionNotes={sessionNotes}
-        currentUserId={currentUserId}
-      />
+      <Suspense fallback={<div className="p-6 text-sm text-slate-500 dark:text-gray-400">Loading editor...</div>}>
+        <CollaborativeEditor
+          noteContent={noteContent}
+          setNoteContent={setNoteContent}
+          userLabel={userLabel}
+          userColor={effectiveUserColor}
+          sharedMinHeight={DEFAULT_EDITOR_HEIGHT_PX}
+          campaignMembers={campaignMembers}
+          journalEntities={tags}
+          sessionNotes={sessionNotes}
+          currentUserId={currentUserId}
+        />
+      </Suspense>
     </EditorLayout>
   )
 }
@@ -448,68 +448,7 @@ export default function SessionEditor() {
   const { campaignSlug, sessionSlug } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
-  const { isGuest, isLoading: authLoading } = authState
-  const [campaignId, setCampaignId] = useState(null)
-  const [sessionId, setSessionId] = useState(null)
-  const [loadingIds, setLoadingIds] = useState(true)
-
-  // First, resolve slugs to IDs
-  useEffect(() => {
-    // Wait for auth to finish loading
-    if (authLoading) return
-
-    // Handle guest users with local demo data
-    if (isGuest) {
-      const userId = authState.user?.id
-      const guestRoute = userId ? getGuestSessionBySlug(userId, campaignSlug, sessionSlug) : null
-      if (!guestRoute) {
-        navigate('/campaigns')
-        return
-      }
-      setCampaignId(guestRoute.campaign.id)
-      setSessionId(guestRoute.session.id)
-      setLoadingIds(false)
-      return
-    }
-
-    const resolveIds = async () => {
-      try {
-        const client = requireSupabase()
-        const { data: campaignData, error: campaignError } = await client
-          .from('campaigns')
-          .select('id')
-          .eq('slug', campaignSlug)
-          .single()
-
-        if (campaignError || !campaignData) {
-          navigate('/campaigns')
-          return
-        }
-
-        const { data: sessionData, error: sessionError } = await client
-          .from('sessions')
-          .select('id')
-          .eq('slug', sessionSlug)
-          .eq('campaign_id', campaignData.id)
-          .single()
-
-        if (sessionError || !sessionData) {
-          navigate(`/campaigns/${campaignSlug}`)
-          return
-        }
-
-        setCampaignId(campaignData.id)
-        setSessionId(sessionData.id)
-      } catch (err) {
-        console.error('Error resolving slugs:', err)
-        navigate('/campaigns')
-      } finally {
-        setLoadingIds(false)
-      }
-    }
-
-    resolveIds()
-  }, [campaignSlug, sessionSlug, navigate, isGuest, authLoading, authState.user?.id])
+  const { isGuest } = authState
 
   const {
     session,
@@ -524,7 +463,7 @@ export default function SessionEditor() {
     error,
     saving,
     saveNote,
-  } = useSessionData(sessionId, campaignId)
+  } = useSessionData(null, null, { campaignSlug, sessionSlug })
 
   const [userColor, setUserColor] = useState(() => {
     if (typeof window === 'undefined') return ''
@@ -701,15 +640,6 @@ export default function SessionEditor() {
     return finalList
   }, [tags, campaignMembers, activityLogs])
 
-  // Check if still resolving slug IDs
-  if (loadingIds) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
-        <p className="text-slate-500 dark:text-gray-400">Loading...</p>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
@@ -735,6 +665,8 @@ export default function SessionEditor() {
   const collabEnabled = Boolean(import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY) && !isGuest
   const userLabel = getDisplayLabel(authState, 'Guest')
   const effectiveUserColor = userColor || colorFromString(userLabel)
+  const campaignId = session?.campaign_id || null
+  const sessionId = session?.id || null
   const roomId = getSessionRoomId(campaignId, sessionId)
 
   if (collabEnabled) {
@@ -791,17 +723,19 @@ export default function SessionEditor() {
       inviteCode={inviteCode}
       showOfflineMembers={showOfflineMembers}
     >
-      <LocalEditor
-        noteContent={noteContent}
-        setNoteContent={setNoteContent}
-        sharedMinHeight={DEFAULT_EDITOR_HEIGHT_PX}
-        campaignMembers={campaignMembers}
-        journalEntities={tags}
-        sessionNotes={sessionNotes}
-        currentUserId={authState.user?.id}
-        userLabel={userLabel}
-        userColor={effectiveUserColor}
-      />
+      <Suspense fallback={<div className="p-6 text-sm text-slate-500 dark:text-gray-400">Loading editor...</div>}>
+        <LocalEditor
+          noteContent={noteContent}
+          setNoteContent={setNoteContent}
+          sharedMinHeight={DEFAULT_EDITOR_HEIGHT_PX}
+          campaignMembers={campaignMembers}
+          journalEntities={tags}
+          sessionNotes={sessionNotes}
+          currentUserId={authState.user?.id}
+          userLabel={userLabel}
+          userColor={effectiveUserColor}
+        />
+      </Suspense>
     </EditorLayout>
   )
 }

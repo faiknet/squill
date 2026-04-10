@@ -360,7 +360,7 @@ export default function CollaborativeEditor({
         onExpandSidebar={onExpandSidebar}
       />
       <div className="relative flex-1 overflow-hidden">
-        <div className="absolute inset-0 overflow-y-auto">
+        <div className="absolute inset-0 overflow-y-scroll [scrollbar-gutter:stable]">
           <EditorContent editor={editor} className="h-full" />
         </div>
         {mentionState.active && mentionState.position && (
