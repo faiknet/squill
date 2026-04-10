@@ -6,6 +6,8 @@ import { useSessionData } from '../hooks/useSessionData'
 import { requireSupabase } from '../lib/supabase'
 import { colorFromString, getSessionRoomId } from '../lib/liveblocks'
 import { Button } from '../components/ui'
+import ExportSessionNotesModal from '../components/sessions/ExportSessionNotesModal'
+import { exportSessionNotes } from '../lib/sessionNoteExport'
 import { getDisplayLabel } from '../lib/utils'
 import {
   getGuestSessionBySlug,
@@ -65,6 +67,9 @@ function EditorLayout({
   children
 }) {
   const [copied, setCopied] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_MAX_WIDTH_PX)
   const [isResizingSidebar, setIsResizingSidebar] = useState(false)
@@ -125,6 +130,36 @@ function EditorLayout({
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleOpenExportModal = () => {
+    setExportError('')
+    setIsExportModalOpen(true)
+  }
+
+  const handleCloseExportModal = () => {
+    if (isExporting) return
+    setExportError('')
+    setIsExportModalOpen(false)
+  }
+
+  const handleExport = async (format) => {
+    setIsExporting(true)
+    setExportError('')
+
+    try {
+      await exportSessionNotes({
+        format,
+        noteContent,
+        sessionName: session?.name || 'session-notes',
+      })
+      setIsExportModalOpen(false)
+    } catch (error) {
+      console.error('Failed to export session notes:', error)
+      setExportError(error?.message || 'Failed to export notes. Please try again.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const editorChild = isValidElement(children)
     ? cloneElement(children, { isSidebarCollapsed, onExpandSidebar: reopenSidebar })
     : children
@@ -182,6 +217,13 @@ function EditorLayout({
           {!saving && (
             <SavedIndicator />
           )}
+          <Button
+            variant="outline"
+            className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-800 min-w-[60px] md:min-w-[80px] h-8 md:h-9 text-xs md:text-sm px-2 md:px-4"
+            onClick={handleOpenExportModal}
+          >
+            Export
+          </Button>
           <Button
             variant="outline"
             className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-800 min-w-[60px] md:min-w-[80px] h-8 md:h-9 text-xs md:text-sm px-2 md:px-4"
@@ -248,6 +290,15 @@ function EditorLayout({
           />
         </div>
       </div>
+      <ExportSessionNotesModal
+        isOpen={isExportModalOpen}
+        onClose={handleCloseExportModal}
+        onExport={handleExport}
+        sessionName={session?.name}
+        isExporting={isExporting}
+        exportError={exportError}
+        hasContent={Boolean(noteContent && noteContent !== '<p></p>')}
+      />
     </div>
   )
 }

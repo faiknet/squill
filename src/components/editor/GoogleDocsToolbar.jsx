@@ -243,7 +243,7 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
 
       <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex gap-1 items-center flex-wrap transition-colors duration-200 sticky top-0 z-10">
         {/* Font Size */}
-        <div className="flex items-center border border-slate-200 dark:border-gray-700 rounded">
+        <div className="flex items-center ">
           <button
             type="button"
             onMouseDown={(e) => {
@@ -269,7 +269,7 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
           <select
             value={fontSize}
             onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}px`).run()}
-            className="h-7 w-12 text-sm bg-transparent border-x border-slate-200 dark:border-gray-700 text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
+            className="h-7 w-12 text-sm bg-transparent border border-slate-200 dark:border-gray-700 rounded-[8px]  text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
           >
             {FONT_SIZES.map(size => (
               <option key={size} value={size}>{size}</option>
