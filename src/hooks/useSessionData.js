@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from './useSupabaseAuth'
-import { fetchSessionPageData } from '../lib/sessionPageQuery'
 import {
   validateUpdateNote,
   validateCreateEntityTag,
@@ -13,8 +11,9 @@ import {
   ValidationError,
 } from '../lib/validation'
 import {
+  GUEST_CAMPAIGN_ID,
+  getGuestSession,
   getGuestSessionsForCampaign,
-  getGuestSessionBySlug,
   getGuestSessionNote,
   getGuestEntityTags,
   getGuestCampaignMembers,
@@ -28,11 +27,9 @@ const GUEST_EDIT_ACTIVITY_THROTTLE_MS = 2 * 60 * 60 * 1000
 const GUEST_NOTE_SCHEMA_VERSION_KEY = 'squill_guest_session_note_schema_version'
 const GUEST_NOTE_SCHEMA_VERSION = '3'
 
-export function useSessionData(sessionId, campaignId, routeParams = {}) {
-  const queryClient = useQueryClient()
+export function useSessionData(sessionId, campaignId) {
   const { authState } = useAuth()
   const { isGuest } = authState
-  const { campaignSlug = null, sessionSlug = null } = routeParams
   const [session, setSession] = useState(null)
   const [noteContent, setNoteContent] = useState('<p></p>')
   const [tags, setTags] = useState([])
@@ -43,92 +40,14 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
   const [saving, setSaving] = useState(false)
   const [activityLogs, setActivityLogs] = useState([])
   const [sessionNotes, setSessionNotes] = useState([])
-  const [resolvedSessionId, setResolvedSessionId] = useState(sessionId || null)
-  const [resolvedCampaignId, setResolvedCampaignId] = useState(campaignId || null)
   const guestTagIdCounter = useRef(100)
 
-  useEffect(() => {
-    if (sessionId && campaignId) {
-      setResolvedSessionId(sessionId)
-      setResolvedCampaignId(campaignId)
-    }
-  }, [sessionId, campaignId])
-
-  const resolveRouteIds = useCallback(async () => {
-    if (resolvedSessionId && resolvedCampaignId) {
-      return { sessionId: resolvedSessionId, campaignId: resolvedCampaignId }
-    }
-
-    if (!campaignSlug || !sessionSlug) return null
-
-    try {
-      return await queryClient.fetchQuery({
-        queryKey: [
-          'session-route-ids',
-          isGuest ? 'guest' : 'auth',
-          authState.user?.id || 'anonymous',
-          campaignSlug,
-          sessionSlug,
-        ],
-        staleTime: 5 * 60 * 1000,
-        queryFn: async () => {
-          if (isGuest) {
-            const userId = authState.user?.id
-            if (!userId) throw new Error('Guest user not found.')
-            const guestRoute = getGuestSessionBySlug(userId, campaignSlug, sessionSlug)
-            if (!guestRoute) throw new Error('Session not found.')
-            return { sessionId: guestRoute.session.id, campaignId: guestRoute.campaign.id }
-          }
-
-          const client = requireSupabase()
-          const joinedRoute = await client
-            .from('sessions')
-            .select('id, campaign_id, campaigns!inner(slug)')
-            .eq('slug', sessionSlug)
-            .eq('campaigns.slug', campaignSlug)
-            .maybeSingle()
-
-          if (!joinedRoute.error && joinedRoute.data) {
-            return { sessionId: joinedRoute.data.id, campaignId: joinedRoute.data.campaign_id }
-          }
-
-          const { data: campaignData, error: campaignError } = await client
-            .from('campaigns')
-            .select('id')
-            .eq('slug', campaignSlug)
-            .maybeSingle()
-          if (campaignError || !campaignData) throw new Error('Campaign not found.')
-
-          const { data: sessionData, error: sessionError } = await client
-            .from('sessions')
-            .select('id')
-            .eq('slug', sessionSlug)
-            .eq('campaign_id', campaignData.id)
-            .maybeSingle()
-          if (sessionError || !sessionData) throw new Error('Session not found.')
-
-          return { sessionId: sessionData.id, campaignId: campaignData.id }
-        },
-      })
-    } catch {
-      return null
-    }
-  }, [
-    queryClient,
-    resolvedSessionId,
-    resolvedCampaignId,
-    isGuest,
-    authState.user?.id,
-    campaignSlug,
-    sessionSlug,
-  ])
-
   // Load guest session data
-  const loadGuestSession = useCallback((activeSessionId, activeCampaignId) => {
+  const loadGuestSession = useCallback(() => {
     const userId = authState.user?.id
-    if (!userId || !activeSessionId || !activeCampaignId) return
+    if (!userId || !sessionId || !campaignId) return
 
-    const guestSession = getGuestSessionsForCampaign(activeCampaignId).find((item) => item.id === activeSessionId)
+    const guestSession = getGuestSessionsForCampaign(campaignId).find((item) => item.id === sessionId)
     if (!guestSession) {
       setError('Guest session not found')
       setLoading(false)
@@ -166,13 +85,13 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
     // Try to load saved tags from sessionStorage, or use default
     let savedTags = null
     try {
-      const tagsJson = sessionStorage.getItem(`${GUEST_TAGS_STORAGE_KEY}:${activeSessionId}`)
+      const tagsJson = sessionStorage.getItem(`${GUEST_TAGS_STORAGE_KEY}:${sessionId}`)
       if (tagsJson) savedTags = JSON.parse(tagsJson)
     } catch {
       // Ignore storage errors
     }
-    const tagsValue = savedTags || getGuestEntityTags(activeCampaignId, activeSessionId)
-    const activityLogsValue = getGuestActivityLogs(activeSessionId, userId)
+    const tagsValue = savedTags || getGuestEntityTags(campaignId, sessionId)
+    const activityLogsValue = getGuestActivityLogs(sessionId, userId)
 
     setSession({ id: guestSession.id, name: guestSession.name, campaign_id: guestSession.campaign_id })
     setNoteContent(noteContentValue)
@@ -181,7 +100,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
     setCampaignMembers(getGuestCampaignMembers(userId))
     setActivityLogs(activityLogsValue)
     setSessionNotes(
-      getGuestSessionsForCampaign(activeCampaignId).map(item => ({
+      getGuestSessionsForCampaign(campaignId).map(item => ({
         id: item.id,
         name: item.name,
         slug: item.slug,
@@ -190,90 +109,119 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       }))
     )
     setLoading(false)
-  }, [authState.user?.id])
+  }, [authState.user?.id, sessionId, campaignId])
 
   const loadSession = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    const routeIds = await resolveRouteIds()
-    if (!routeIds) {
-      setError('Session not found.')
-      setLoading(false)
-      return
-    }
-
-    const activeSessionId = routeIds.sessionId
-    const activeCampaignId = routeIds.campaignId
-    setResolvedSessionId(activeSessionId)
-    setResolvedCampaignId(activeCampaignId)
-
     // Handle guest users with local demo data
     if (isGuest) {
-      loadGuestSession(activeSessionId, activeCampaignId)
+      loadGuestSession()
       return
     }
 
     try {
       const client = requireSupabase()
-      const payload = await queryClient.fetchQuery({
-        queryKey: ['session-page-data', activeCampaignId, activeSessionId],
-        staleTime: 30 * 1000,
-        queryFn: () => fetchSessionPageData(client, activeCampaignId, activeSessionId),
-      })
+      
+      const [sessionRes, noteRes, tagsRes, membersRes, campaignRes, allSessionsRes] = await Promise.all([
+        client.from('sessions').select('id, name, campaign_id').eq('id', sessionId).single(),
+        client.from('session_notes').select('content_md, updated_at').eq('session_id', sessionId).maybeSingle(),
+        client.from('entity_tags').select('*, sessions(name)').eq('campaign_id', campaignId).order('created_at', { ascending: false }),
+        client.rpc('get_campaign_members', { p_campaign_id: campaignId }),
+        client.from('campaigns').select('invite_code').eq('id', campaignId).single(),
+        // Get all sessions in this campaign
+        client.from('sessions').select('id, name, slug, session_date, created_at').eq('campaign_id', campaignId),
+      ])
 
-      setSession(payload.session || null)
-      setNoteContent(payload.noteContent || '<p></p>')
-      setTags(payload.tags || [])
-      setCampaignMembers(payload.campaignMembers || [])
-      setInviteCode(payload.inviteCode || null)
-      setActivityLogs(payload.activityLogs || [])
-      setSessionNotes(payload.sessionNotes || [])
+      if (sessionRes.error) throw sessionRes.error
+      
+      // Get all session notes for mention dropdown
+      const allSessionsList = allSessionsRes.data || []
+      setSessionNotes(allSessionsList)
+
+      // Now fetch activity logs for all sessions in the campaign
+      const sessionIds = allSessionsList.map(s => s.id)
+      let activityData = []
+      if (sessionIds.length > 0) {
+        const activityResult = await client
+          .from('session_activity_logs')
+          .select('*')
+          .in('session_id', sessionIds)
+          .order('created_at', { ascending: false })
+          .limit(100)
+        activityData = activityResult.data || []
+      }
+
+      console.log('Activity logs loaded:', activityData)
+      
+      setSession(sessionRes.data)
+      setNoteContent(noteRes.data?.content_md || '<p></p>')
+      setTags(tagsRes.data || [])
+      setInviteCode(campaignRes.data?.invite_code || null)
+      setActivityLogs(activityData)
+      
+      // Handle members RPC potential error (e.g., if function missing)
+      if (membersRes.error) {
+        console.warn('Failed to load members', membersRes.error)
+        setCampaignMembers([])
+      } else {
+        // Fetch user colors for all members
+        const memberIds = membersRes.data?.map(m => m.user_id) || []
+        if (memberIds.length > 0) {
+          try {
+            const colorRes = await client.rpc('get_user_colors', {
+              user_ids: memberIds
+            })
+            
+            if (colorRes.error) {
+              console.warn('Failed to load user colors', colorRes.error)
+              setCampaignMembers(membersRes.data || [])
+            } else {
+              const colorMap = new Map()
+              colorRes.data?.forEach(item => {
+                colorMap.set(item.user_id, item.editor_color)
+              })
+              
+              // Add color to members
+              const membersWithColor = membersRes.data.map(member => ({
+                ...member,
+                color: colorMap.get(member.user_id)
+              }))
+              setCampaignMembers(membersWithColor)
+            }
+          } catch (err) {
+            console.debug('Error fetching colors:', err.message)
+            setCampaignMembers(membersRes.data || [])
+          }
+        } else {
+          setCampaignMembers(membersRes.data || [])
+        }
+      }
     } catch (err) {
       setError(err.message || 'Failed to load session')
     } finally {
       setLoading(false)
     }
-  }, [isGuest, loadGuestSession, resolveRouteIds, queryClient])
+  }, [sessionId, campaignId, isGuest, loadGuestSession])
 
-  // Keep activity logs fresh with realtime events and adaptive backoff polling
+  // Poll for activity log changes for ALL sessions in the campaign
   useEffect(() => {
-    if (!resolvedCampaignId || isGuest) return
-
-    const client = requireSupabase()
-    let disposed = false
-    let pollTimeoutId = null
-    let failureCount = 0
-    let realtimeConnected = false
-    const realtimeChannel = client
-      .channel(`session-activity-${resolvedCampaignId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'session_activity_logs' },
-        async () => {
-          await pollActivityLogs()
-          scheduleNextPoll()
-        }
-      )
-
-    const getSessionIds = async () => {
-      const knownSessionIds = (sessionNotes || []).map((item) => item.id).filter(Boolean)
-      if (knownSessionIds.length > 0) return knownSessionIds
-      const { data: sessionList } = await client
-        .from('sessions')
-        .select('id')
-        .eq('campaign_id', resolvedCampaignId)
-      return (sessionList || []).map((item) => item.id).filter(Boolean)
-    }
+    // Skip polling for guest users
+    if (!campaignId || isGuest) return
 
     const pollActivityLogs = async () => {
       try {
-        const sessionIds = await getSessionIds()
-        if (sessionIds.length === 0) {
-          failureCount = 0
-          if (!disposed) setActivityLogs([])
-          return true
-        }
+        const client = requireSupabase()
+        
+        // Get all session IDs in this campaign
+        const { data: sessionList } = await client
+          .from('sessions')
+          .select('id')
+          .eq('campaign_id', campaignId)
+        
+        const sessionIds = sessionList?.map(s => s.id) || []
+        
+        if (sessionIds.length === 0) return
 
+        // Fetch activity logs for all sessions
         const { data, error } = await client
           .from('session_activity_logs')
           .select('*')
@@ -282,72 +230,23 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
           .limit(100)
 
         if (error) {
-          throw error
+          console.error('Error polling activity logs:', error)
         } else {
-          failureCount = 0
-          if (!disposed) setActivityLogs(data || [])
+          console.log('Activity logs polled:', data?.length || 0)
+          setActivityLogs(data || [])
         }
-        return true
       } catch (err) {
-        failureCount = Math.min(failureCount + 1, 5)
-        console.error('Activity refresh failed:', err)
-        return false
+        console.error('Poll failed:', err)
       }
     }
 
-    const scheduleNextPoll = () => {
-      if (disposed) return
-      if (pollTimeoutId) clearTimeout(pollTimeoutId)
-
-      const baseDelay = realtimeConnected ? 30000 : 5000
-      const delayWithBackoff = realtimeConnected
-        ? baseDelay
-        : Math.min(60000, baseDelay * (2 ** failureCount))
-      const visibilityAdjustedDelay =
-        typeof document !== 'undefined' && document.hidden
-          ? Math.max(delayWithBackoff, 30000)
-          : delayWithBackoff
-
-      pollTimeoutId = setTimeout(async () => {
-        await pollActivityLogs()
-        scheduleNextPoll()
-      }, visibilityAdjustedDelay)
-    }
-
-    const handleVisibilityChange = async () => {
-      if (disposed || typeof document === 'undefined') return
-      if (!document.hidden) {
-        await pollActivityLogs()
-      }
-      scheduleNextPoll()
-    }
-
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', handleVisibilityChange)
-    }
-
-    realtimeChannel.subscribe((status) => {
-      realtimeConnected = status === 'SUBSCRIBED'
-      scheduleNextPoll()
-    })
-
-    void pollActivityLogs().then(() => {
-      scheduleNextPoll()
-    })
-
-    return () => {
-      disposed = true
-      if (pollTimeoutId) clearTimeout(pollTimeoutId)
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', handleVisibilityChange)
-      }
-      void client.removeChannel(realtimeChannel)
-    }
-  }, [resolvedCampaignId, isGuest, sessionNotes])
+    // Poll every 5 seconds
+    const interval = setInterval(pollActivityLogs, 5000)
+    return () => clearInterval(interval)
+  }, [campaignId, isGuest])
 
   const logActivity = useCallback(async (actionType, detailsOrName) => {
     try {
-      if (!resolvedSessionId) return
       const client = requireSupabase()
       const userId = authState.user?.id
       // Allow passing either a string (sessionName) or an object for details
@@ -355,7 +254,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
         ? { session_name: detailsOrName } 
         : (detailsOrName || {})
         
-      console.log('logActivity called:', { actionType, userId, sessionId: resolvedSessionId, details })
+      console.log('logActivity called:', { actionType, userId, sessionId, details })
       if (!userId) {
         console.warn('No userId, skipping activity log')
         return
@@ -365,7 +264,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       const { data: lastActivity, error: checkError } = await client
         .from('session_activity_logs')
         .select('created_at')
-        .eq('session_id', resolvedSessionId)
+        .eq('session_id', sessionId)
         .eq('user_id', userId)
         .eq('action_type', actionType)
         .order('created_at', { ascending: false })
@@ -393,7 +292,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       const { data: newActivity, error } = await client
         .from('session_activity_logs')
         .insert({
-          session_id: resolvedSessionId,
+          session_id: sessionId,
           user_id: userId,
           action_type: actionType,
           details: details
@@ -412,10 +311,9 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
     } catch (err) {
       console.error('Failed to log activity', err)
     }
-  }, [resolvedSessionId, authState.user?.id])
+  }, [sessionId, authState.user?.id])
 
   const saveNote = useCallback(async (content) => {
-    if (!resolvedSessionId) return
     setSaving(true)
     setError('')
 
@@ -427,7 +325,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
 
         const now = Date.now()
         let shouldLogEditActivity = true
-        const guestEditActivityKey = `squill_guest_last_edit_activity_at:${resolvedSessionId}:${authState.user?.id || 'guest'}`
+        const guestEditActivityKey = `squill_guest_last_edit_activity_at:${sessionId || GUEST_SESSION_ID}:${authState.user?.id || 'guest'}`
 
         try {
           const lastActivityAtRaw = localStorage.getItem(guestEditActivityKey)
@@ -442,7 +340,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
         if (shouldLogEditActivity) {
           const newActivity = {
             id: `activity-${now}`,
-            session_id: resolvedSessionId,
+            session_id: sessionId,
             user_id: authState.user?.id,
             action_type: 'edit_document',
             details: {
@@ -470,7 +368,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
     try {
       // Validate content before saving
       const validated = validateUpdateNote({ contentMd: content })
-      const validatedSessionId = validateSessionId(resolvedSessionId)
+      const validatedSessionId = validateSessionId(sessionId)
       
       const { error } = await requireSupabase().from('session_notes').upsert({
         session_id: validatedSessionId,
@@ -494,17 +392,16 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
     } finally {
       setSaving(false)
     }
-  }, [resolvedSessionId, logActivity, session?.name, isGuest, authState.user?.id])
+  }, [sessionId, logActivity, session?.name, isGuest])
 
   const addTag = useCallback(async (type, label) => {
-    if (!resolvedSessionId || !resolvedCampaignId) return false
     // For guest users, add tag to local state only
     if (isGuest) {
       const dbType = type === 'inventory' ? 'item' : type
       const newTag = {
         id: `guest-tag-${guestTagIdCounter.current++}`,
-        campaign_id: resolvedCampaignId,
-        session_id: resolvedSessionId,
+        campaign_id: campaignId,
+        session_id: sessionId,
         label,
         tag_type: dbType,
         created_by: authState.user?.id,
@@ -514,7 +411,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       setTags(prev => {
         const newTags = [newTag, ...prev]
         try {
-          sessionStorage.setItem(`${GUEST_TAGS_STORAGE_KEY}:${resolvedSessionId}`, JSON.stringify(newTags))
+          sessionStorage.setItem(`${GUEST_TAGS_STORAGE_KEY}:${sessionId}`, JSON.stringify(newTags))
         } catch {
           // Ignore storage errors
         }
@@ -524,7 +421,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       // Add activity log for the tag creation
       const newActivity = {
         id: `activity-${Date.now()}`,
-        session_id: resolvedSessionId,
+        session_id: sessionId,
         user_id: authState.user?.id,
         action_type: 'create_entity',
         details: {
@@ -544,7 +441,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       const validated = validateCreateEntityTag({
         name: label,
         tagType: type === 'inventory' ? 'item' : type,
-        sessionId: resolvedSessionId,
+        sessionId: sessionId,
         description: undefined
       })
 
@@ -554,8 +451,8 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       const { data, error } = await requireSupabase()
         .from('entity_tags')
         .insert({
-          session_id: resolvedSessionId,
-          campaign_id: resolvedCampaignId,
+          session_id: sessionId,
+          campaign_id: campaignId,
           label: validated.name,
           tag_type: dbType,
           created_by: authState.user?.id,
@@ -593,10 +490,9 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       setError(err.message || 'Failed to add tag')
       return false
     }
-  }, [resolvedSessionId, resolvedCampaignId, authState, session, isGuest, logActivity])
+  }, [sessionId, campaignId, authState, session, isGuest])
 
   const removeTag = useCallback(async (tagId, tagDetails = null) => {
-    if (!resolvedSessionId) return
     // For guest users, remove from local state only
     if (isGuest) {
       // Find the tag before removing to get its details for the activity log
@@ -605,7 +501,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       setTags(prev => {
         const newTags = prev.filter(t => t.id !== tagId)
         try {
-          sessionStorage.setItem(`${GUEST_TAGS_STORAGE_KEY}:${resolvedSessionId}`, JSON.stringify(newTags))
+          sessionStorage.setItem(`${GUEST_TAGS_STORAGE_KEY}:${sessionId}`, JSON.stringify(newTags))
         } catch {
           // Ignore storage errors
         }
@@ -616,7 +512,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       if (tagToRemove) {
         const newActivity = {
           id: `activity-${Date.now()}`,
-          session_id: resolvedSessionId,
+          session_id: sessionId,
           user_id: authState.user?.id,
           action_type: 'delete_entity',
           details: {
@@ -674,7 +570,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
         setError(err.message || 'Failed to remove tag')
       }
     }
-  }, [tags, logActivity, session?.name, authState.user?.id, isGuest, resolvedSessionId])
+  }, [tags, logActivity, session?.name, authState.user?.id, isGuest, sessionId])
 
   const updateTag = useCallback(async (tagId, updates) => {
     // For guest users, update in local state only
@@ -682,9 +578,7 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       setTags(prev => {
         const newTags = prev.map(t => t.id === tagId ? { ...t, ...updates } : t)
         try {
-          if (resolvedSessionId) {
-            sessionStorage.setItem(`${GUEST_TAGS_STORAGE_KEY}:${resolvedSessionId}`, JSON.stringify(newTags))
-          }
+          sessionStorage.setItem(`${GUEST_TAGS_STORAGE_KEY}:${sessionId}`, JSON.stringify(newTags))
         } catch {
           // Ignore storage errors
         }
@@ -715,16 +609,11 @@ export function useSessionData(sessionId, campaignId, routeParams = {}) {
       }
       return false
     }
-  }, [isGuest, resolvedSessionId])
+  }, [isGuest, sessionId])
 
   useEffect(() => {
-    if (authState.isLoading) return
-    if ((sessionId && campaignId) || (campaignSlug && sessionSlug)) {
-      loadSession()
-    } else {
-      setLoading(false)
-    }
-  }, [authState.isLoading, sessionId, campaignId, campaignSlug, sessionSlug, loadSession])
+    if (sessionId && campaignId) loadSession()
+  }, [sessionId, campaignId, loadSession])
 
   return {
     session,

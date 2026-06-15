@@ -1,3 +1,7 @@
+import React from 'react'
+import { Document, Page, StyleSheet, pdf } from '@react-pdf/renderer'
+import Html from 'react-pdf-html'
+
 const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const ODT_MIME_TYPE = 'application/vnd.oasis.opendocument.text'
 const RTF_MIME_TYPE = 'application/rtf'
@@ -11,6 +15,34 @@ const MENTION_ENTITY_ICON_MAP = {
   pet: '/icons/Pets.png',
   location: '/icons/Location.png',
 }
+
+export const SESSION_EXPORT_FORMATS = [
+  {
+    value: 'docx',
+    label: 'Word (.docx)',
+    description: 'Best for Microsoft Word and Google Docs with rich formatting.',
+  },
+  {
+    value: 'pdf',
+    label: 'PDF (.pdf)',
+    description: 'Fixed-layout export for sharing and printing.',
+  },
+  {
+    value: 'odt',
+    label: 'OpenDocument (.odt)',
+    description: 'Open format for LibreOffice and open standards workflows.',
+  },
+  {
+    value: 'txt',
+    label: 'Plain text (.txt)',
+    description: 'Text-only export (formatting is not supported).',
+  },
+  {
+    value: 'rtf',
+    label: 'Rich Text (.rtf)',
+    description: 'Widely compatible rich text format with partial styling support.',
+  },
+]
 
 const INLINE_STYLE_PROPERTIES = [
   'font-family',
@@ -481,12 +513,6 @@ async function exportDocx(htmlDocument, fileBaseName) {
 }
 
 async function exportPdf(noteHtml, fileBaseName, options = {}) {
-  const [{ default: React }, pdfRenderer, { default: Html }] = await Promise.all([
-    import('react'),
-    import('@react-pdf/renderer'),
-    import('react-pdf-html'),
-  ])
-  const { Document, Page, StyleSheet, pdf } = pdfRenderer
   const { root, content } = createRenderContainer(noteHtml, options)
 
   try {

@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useMobileMenu } from '../contexts/MobileMenuContext'
@@ -11,7 +10,6 @@ import { createUrlSlug } from '../lib/utils'
 import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
 import RemovePlayerModal from '../components/campaigns/RemovePlayerModal'
 import TransferGMModal from '../components/campaigns/TransferGMModal'
-import { fetchSessionPageData } from '../lib/sessionPageQuery'
 import {
   validateUpdateCampaign,
   validateCreateSession,
@@ -44,7 +42,6 @@ function formatCampaignStreak(campaign) {
 function CampaignDetail() {
   const { campaignSlug } = useParams()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const { authState } = useAuth()
   const { isGuest } = authState
   const { setMobileMenuOpen } = useMobileMenu()
@@ -231,20 +228,6 @@ function CampaignDetail() {
       setLoading(false)
     }
   }
-
-  const prefetchSessionRouteData = useCallback(async (session) => {
-    if (!campaign?.id || !session?.id || isGuest) return
-    try {
-      const client = requireSupabase()
-      await queryClient.prefetchQuery({
-        queryKey: ['session-page-data', campaign.id, session.id],
-        staleTime: 30 * 1000,
-        queryFn: () => fetchSessionPageData(client, campaign.id, session.id),
-      })
-    } catch {
-      // Best-effort prefetch only
-    }
-  }, [queryClient, campaign?.id, isGuest])
 
   const handleCreateSession = async (e) => {
     e.preventDefault()
@@ -837,12 +820,7 @@ function CampaignDetail() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-slate-900 dark:text-gray-100 text-lg">
-                        <button
-                          onMouseEnter={() => prefetchSessionRouteData(session)}
-                          onFocus={() => prefetchSessionRouteData(session)}
-                          onClick={() => navigate(`/campaigns/${campaign.slug}/sessions/${session.slug}`)}
-                          className="hover:underline text-left"
-                        >
+                        <button onClick={() => navigate(`/campaigns/${campaign.slug}/sessions/${session.slug}`)} className="hover:underline text-left">
                           {session.name}
                         </button>
                       </h3>
@@ -891,8 +869,6 @@ function CampaignDetail() {
                       </Button>
                     )}
                     <Button
-                      onMouseEnter={() => prefetchSessionRouteData(session)}
-                      onFocus={() => prefetchSessionRouteData(session)}
                       onClick={() => navigate(`/campaigns/${campaign.slug}/sessions/${session.slug}`)}
                       className="bg-brand-600 text-white hover:bg-brand-700 text-sm px-3 py-1.5"
                     >
