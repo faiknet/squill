@@ -69,7 +69,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0
-        bg-white dark:bg-gray-800 flex flex-col
+        bg-white dark:bg-gray-800 flex flex-col shadow-[4px_0_12px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_12px_rgba(0,0,0,0.35)]
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-5 flex items-center justify-between">
@@ -155,7 +155,7 @@ export default function Layout() {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-slate-100 dark:border-gray-700 relative">
+        <div className="p-4 relative">
           <UserProfileMenu />
         </div>
       </aside>

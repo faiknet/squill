@@ -275,7 +275,7 @@ export default memo(function CampaignList() {
       {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
-        bg-white dark:bg-gray-800 flex flex-col
+        bg-white dark:bg-gray-800 flex flex-col shadow-[4px_0_12px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_12px_rgba(0,0,0,0.35)]
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-5 flex items-center justify-between">
@@ -451,7 +451,7 @@ export default memo(function CampaignList() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-sm overflow-x-auto">
+          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] overflow-x-auto">
             {/* Desktop Table View */}
             <table className="w-full text-left hidden lg:table">
               <thead>
@@ -553,7 +553,7 @@ export default memo(function CampaignList() {
                       <div
                         key={campaign.id}
                         onClick={() => navigate(`/campaigns/${campaign.slug}`)}
-                        className={`p-4 rounded-xl border transition-all cursor-pointer shadow-sm hover:shadow ${
+                        className={`p-4 rounded-xl border transition-all cursor-pointer shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] ${
                           isSelected
                             ? 'bg-brand-50/50 dark:bg-brand-900/15 border-brand-200 dark:border-brand-900 ring-2 ring-brand-500'
                             : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700/80'

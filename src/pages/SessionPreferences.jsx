@@ -421,14 +421,14 @@ export default function SessionPreferences() {
                   </button>
                   <Input
                     type="text"
-                    placeholder={resolvedCampaignName ? `e.g. Dungeon Master` : "Enter display name..."}
+                    placeholder={resolvedCampaignName ? `e.g. Voldryn Stoneborn` : "Enter display name..."}
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     disabled={displayNameLoading}
                     className="w-full text-sm h-10 mb-2 bg-slate-50 dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100"
                   />
                 </div>
-                <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-gray-700/50">
+                <div className="flex items-center justify-end mt-2">
                   <div className="flex items-center gap-2">
                     {savedSuccess && <span className="text-xs text-green-600 dark:text-green-400">Saved!</span>}
                     <Button
@@ -485,7 +485,7 @@ export default function SessionPreferences() {
                   <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Show Offline Members</h3>
                   <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">When disabled, campaign members marked Offline are hidden from the sidebar.</p>
                 </div>
-                <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100 dark:border-gray-700/50">
+                <div className="flex items-center justify-between mt-auto ">
                   <span className="text-xs font-medium text-slate-500 dark:text-gray-400">Sidebar Visibility</span>
                   <label className="relative inline-flex items-center cursor-pointer select-none">
                     <input

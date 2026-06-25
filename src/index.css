@@ -6,6 +6,15 @@
   body {
     font-family: 'Inter', sans-serif;
   }
+
+  /* Enable smooth touch momentum scrolling on mobile/iOS devices */
+  .overflow-y-auto,
+  .overflow-auto,
+  main,
+  aside,
+  nav {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @layer utilities {

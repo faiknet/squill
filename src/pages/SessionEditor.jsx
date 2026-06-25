@@ -312,7 +312,7 @@ const EditorLayout = memo(function EditorLayout({
             <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-slate-200 dark:bg-gray-700 group-hover:bg-slate-400 dark:group-hover:bg-gray-500" />
           </button>
           {/* Mobile Close Header */}
-          <div className="lg:hidden p-4 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-900">
+          <div className="lg:hidden p-4  flex items-center justify-between bg-white dark:bg-gray-900">
             <h3 className="font-bold text-slate-900 dark:text-gray-100">Members & Activity</h3>
             <button
               onClick={() => setShowMobileSidebar(false)}
