@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useSupabaseAuth'
 import { useSessionData } from '../hooks/useSessionData'
 import { Button, Input, Card } from '../components/ui'
 import NewJournalEntryModal from '../components/journal/NewJournalEntryModal'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNowCustom } from '../lib/dateUtils'
 import {
   getGuestSessionBySlug,
 } from '../lib/guestData'
@@ -215,7 +215,7 @@ export default function Journal() {
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'recently'
     try {
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+      return formatDistanceToNowCustom(new Date(timestamp), { addSuffix: true })
         .replace('about ', '')
     } catch (error) {
       return 'recently'

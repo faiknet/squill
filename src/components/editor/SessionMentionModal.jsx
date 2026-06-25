@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { format } from 'date-fns'
+import { formatDatePPP } from '../../lib/dateUtils'
 
 function formatSessionDate(session) {
   const rawValue = session?.session_date || session?.created_at
@@ -7,7 +7,7 @@ function formatSessionDate(session) {
 
   const date = new Date(rawValue)
   if (Number.isNaN(date.getTime())) return 'Unknown'
-  return format(date, 'PPP')
+  return formatDatePPP(date)
 }
 
 export default function SessionMentionModal({ session, anchorRect, campaignSlug, onClose }) {

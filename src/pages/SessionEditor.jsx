@@ -100,7 +100,8 @@ function SavedIndicator() {
 
 // --- Helper Components for Layout ---
 
-function EditorLayout({
+import { memo } from 'react'
+const EditorLayout = memo(function EditorLayout({
   session,
   saving,
   saveNote,
@@ -130,6 +131,8 @@ function EditorLayout({
   const [isResizingSidebar, setIsResizingSidebar] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const sidebarRef = useRef(null)
+  // RAF handle for throttling resize — prevents 60+ React state updates per second
+  const resizeRafRef = useRef(null)
   const shareUrl = inviteCode
     ? `${window.location.origin}/join/${inviteCode}`
     : window.location.href
@@ -138,23 +141,35 @@ function EditorLayout({
     if (!isResizingSidebar) return
 
     const handleMouseMove = (event) => {
-      if (!sidebarRef.current) return
-      const { right } = sidebarRef.current.getBoundingClientRect()
-      const nextWidth = right - event.clientX
-      if (nextWidth <= SIDEBAR_VIEWING_MIN_WIDTH_PX) {
-        setSidebarWidth(SIDEBAR_VIEWING_MIN_WIDTH_PX)
-        setIsSidebarCollapsed(true)
-        setIsResizingSidebar(false)
-        return
-      }
-      const clampedWidth = Math.min(
-        SIDEBAR_MAX_WIDTH_PX,
-        Math.max(SIDEBAR_VIEWING_MIN_WIDTH_PX, nextWidth)
-      )
-      setSidebarWidth(clampedWidth)
+      // Throttle via requestAnimationFrame: coalesce multiple mousemove events into
+      // a single React state update per animation frame (~16ms), eliminating layout thrashing
+      if (resizeRafRef.current !== null) return
+      resizeRafRef.current = requestAnimationFrame(() => {
+        resizeRafRef.current = null
+        if (!sidebarRef.current) return
+        const { right } = sidebarRef.current.getBoundingClientRect()
+        const nextWidth = right - event.clientX
+        if (nextWidth <= SIDEBAR_VIEWING_MIN_WIDTH_PX) {
+          setSidebarWidth(SIDEBAR_VIEWING_MIN_WIDTH_PX)
+          setIsSidebarCollapsed(true)
+          setIsResizingSidebar(false)
+          return
+        }
+        const clampedWidth = Math.min(
+          SIDEBAR_MAX_WIDTH_PX,
+          Math.max(SIDEBAR_VIEWING_MIN_WIDTH_PX, nextWidth)
+        )
+        setSidebarWidth(clampedWidth)
+      })
     }
 
-    const stopResizing = () => setIsResizingSidebar(false)
+    const stopResizing = () => {
+      if (resizeRafRef.current !== null) {
+        cancelAnimationFrame(resizeRafRef.current)
+        resizeRafRef.current = null
+      }
+      setIsResizingSidebar(false)
+    }
 
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', stopResizing)
@@ -166,6 +181,10 @@ function EditorLayout({
       document.removeEventListener('mouseup', stopResizing)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
+      if (resizeRafRef.current !== null) {
+        cancelAnimationFrame(resizeRafRef.current)
+        resizeRafRef.current = null
+      }
     }
   }, [isResizingSidebar])
 
@@ -369,9 +388,9 @@ function EditorLayout({
       />
     </div>
   )
-}
+})
 
-function CollaborativeSessionContent({
+const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
   session,
   saving,
   saveNote,
@@ -440,11 +459,11 @@ function CollaborativeSessionContent({
       />
     </EditorLayout>
   )
-}
+})
 
 // --- Main Component ---
 
-export default function SessionEditor() {
+export default memo(function SessionEditor() {
   const { campaignSlug, sessionSlug } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
@@ -531,7 +550,9 @@ export default function SessionEditor() {
     const stored = window.localStorage.getItem(SESSION_EDITOR_COLOR_STORAGE_KEY)
     return stored || ''
   })
-  const [showOfflineMembers] = useState(() => getShowOfflineMembersPreference())
+  // Read once at module load — this value never changes during a session,
+  // so useState (which re-renders) is unnecessary here
+  const showOfflineMembers = getShowOfflineMembersPreference()
 
   // Refs to track saving state and prevent initial save
   const lastSavedContent = useRef(null)
@@ -591,6 +612,12 @@ export default function SessionEditor() {
     console.log('Computing activities from:', { activityLogs, tags: tags?.length, members: campaignMembers?.length })
     const list = []
 
+    // Map for O(1) lookups instead of .find() inside loops
+    const memberMap = new Map()
+    if (campaignMembers) {
+      campaignMembers.forEach(m => memberMap.set(m.user_id, m.display_name))
+    }
+
     // Tag activities (Legacy support + Immediate UI update for non-logged items)
     // We filter out any tags that ALREADY have a create_entity log to avoid duplicates
     if (tags) {
@@ -606,9 +633,8 @@ export default function SessionEditor() {
         if (!hasLog) {
           let creatorName = 'Member'
           const creatorId = tag.created_by || tag.user_id
-          if (creatorId && campaignMembers) {
-            const creator = campaignMembers.find(m => m.user_id === creatorId)
-            if (creator) creatorName = creator.display_name
+          if (creatorId && memberMap.has(creatorId)) {
+            creatorName = memberMap.get(creatorId)
           }
 
           list.push({
@@ -624,9 +650,8 @@ export default function SessionEditor() {
     if (activityLogs) {
       activityLogs.forEach(log => {
         let userName = 'Member'
-        if (log.user_id && campaignMembers) {
-          const user = campaignMembers.find(m => m.user_id === log.user_id)
-          if (user) userName = user.display_name
+        if (log.user_id && memberMap.has(log.user_id)) {
+          userName = memberMap.get(log.user_id)
         }
 
         if (log.action_type === 'edit_document') {
@@ -804,4 +829,4 @@ export default function SessionEditor() {
       />
     </EditorLayout>
   )
-}
+})

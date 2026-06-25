@@ -109,6 +109,7 @@ export default function StreakInfoModal({ isOpen, onClose, campaign }) {
         {/* Header */}
         <div className="border-b border-slate-200 dark:border-gray-700 p-6">
           <div className="flex items-center gap-3">
+            <img src="/icons/streak.png" alt="" className="h-8 w-8 shrink-0" aria-hidden="true" loading="lazy" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100 tracking-tight">
               Activity Streak
             </h2>
@@ -120,7 +121,7 @@ export default function StreakInfoModal({ isOpen, onClose, campaign }) {
 
           {/* Current Streak */}
           <div className="flex items-center justify-center gap-3 py-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
-            <img src="/icons/streak.png" alt="" className="h-10 w-10 shrink-0" aria-hidden="true" />
+            <img src="/icons/streak.png" alt="" className="h-10 w-10 shrink-0" aria-hidden="true" loading="lazy" />
             <div>
               <p className="text-2xl font-bold text-amber-700 dark:text-amber-300 leading-none">
                 {streakCount > 0 ? streakCount : '—'}

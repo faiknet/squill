@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useParams } from 'react-router-dom'
 import StarterKit from '@tiptap/starter-kit'
@@ -43,6 +43,10 @@ export default function LocalEditor({
   const [selectedSessionMention, setSelectedSessionMention] = useState(null)
   const [selectedSessionMentionAnchor, setSelectedSessionMentionAnchor] = useState(null)
   const { campaignSlug } = useParams()
+  // Debounce timer ref for setNoteContent — prevents serializing HTML on every keystroke
+  const noteContentDebounceRef = useRef(null)
+  // Track whether the editor has been initially seeded with content
+  const isFirstLoadRef = useRef(true)
 
   useEffect(() => {
     mentionStateRef.current = mentionState
@@ -245,7 +249,12 @@ export default function LocalEditor({
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
-      setNoteContent(currentEditor.getHTML())
+      // Debounce HTML serialization: only call setNoteContent after 100ms of inactivity
+      // so rapid keystrokes don't serialize on every single character
+      clearTimeout(noteContentDebounceRef.current)
+      noteContentDebounceRef.current = setTimeout(() => {
+        setNoteContent(currentEditor.getHTML())
+      }, 100)
 
       const { from } = currentEditor.state.selection
       const text = currentEditor.state.doc.textBetween(Math.max(0, from - 50), from)
@@ -265,9 +274,15 @@ export default function LocalEditor({
 
   useEffect(() => {
     if (!editor) return
-    const current = editor.getHTML()
-    if (current !== noteContent) {
-      editor.commands.setContent(noteContent, { emitUpdate: false })
+    // Only sync external content changes on first load (initial mount).
+    // After that, the editor is the source of truth — the onUpdate debounce
+    // propagates changes outward, not inward.
+    if (isFirstLoadRef.current) {
+      isFirstLoadRef.current = false
+      const current = editor.getHTML()
+      if (current !== noteContent) {
+        editor.commands.setContent(noteContent, { emitUpdate: false })
+      }
     }
   }, [editor, noteContent])
 

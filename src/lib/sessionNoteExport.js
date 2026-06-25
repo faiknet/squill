@@ -1,6 +1,6 @@
 import React from 'react'
-import { Document, Page, StyleSheet, pdf } from '@react-pdf/renderer'
-import Html from 'react-pdf-html'
+// @react-pdf/renderer and react-pdf-html are loaded dynamically inside exportPdf()
+// to keep them out of the initial bundle (~500KB savings)
 
 const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const ODT_MIME_TYPE = 'application/vnd.oasis.opendocument.text'
@@ -513,6 +513,13 @@ async function exportDocx(htmlDocument, fileBaseName) {
 }
 
 async function exportPdf(noteHtml, fileBaseName, options = {}) {
+  // Dynamically import PDF renderer only when actually exporting to PDF
+  // This keeps ~500KB out of the initial JS bundle
+  const [{ Document, Page, StyleSheet, pdf }, { default: Html }] = await Promise.all([
+    import('@react-pdf/renderer'),
+    import('react-pdf-html'),
+  ])
+
   const { root, content } = createRenderContainer(noteHtml, options)
 
   try {

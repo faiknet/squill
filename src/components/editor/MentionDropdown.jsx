@@ -248,4 +248,5 @@ const MentionDropdown = forwardRef(function MentionDropdown({
   )
 })
 
-export default MentionDropdown
+import { memo } from 'react'
+export default memo(MentionDropdown)

@@ -208,6 +208,8 @@ export function useSessionData(sessionId, campaignId) {
     if (!campaignId || isGuest) return
 
     const pollActivityLogs = async () => {
+      if (document.hidden) return // Save resources when tab is backgrounded
+      
       try {
         const client = requireSupabase()
         
@@ -240,9 +242,19 @@ export function useSessionData(sessionId, campaignId) {
       }
     }
 
-    // Poll every 5 seconds
-    const interval = setInterval(pollActivityLogs, 5000)
-    return () => clearInterval(interval)
+    // Poll every 30 seconds instead of 5
+    const interval = setInterval(pollActivityLogs, 30000)
+
+    // Trigger an immediate poll when the user returns to the tab
+    const handleVisibilityChange = () => {
+      if (!document.hidden) pollActivityLogs()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [campaignId, isGuest])
 
   const logActivity = useCallback(async (actionType, detailsOrName) => {

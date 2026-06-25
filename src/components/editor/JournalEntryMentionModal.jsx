@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNowCustom } from '../../lib/dateUtils'
 
 function formatEntryType(type) {
   if (!type) return 'Unknown'
@@ -14,7 +14,7 @@ function formatSessionAdded(entry) {
   }
 
   try {
-    const distance = formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })
+    const distance = formatDistanceToNowCustom(new Date(entry.created_at), { addSuffix: true })
       .replace('about ', '')
     return `Added ${distance} in ${sessionName}`
   } catch {

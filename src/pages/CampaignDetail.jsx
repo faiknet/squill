@@ -151,9 +151,21 @@ function CampaignDetail() {
       setCampaignDescription(campaignData.description || '')
       setCampaignStreakCadence(campaignData.streak_cadence || 'weekly')
 
-      const { data: membersData, error: membersError } = await client.rpc('get_campaign_members', {
-        p_campaign_id: campaignData.id,
-      })
+      // Fetch members and sessions in parallel
+      const [membersRes, sessionsRes] = await Promise.all([
+        client.rpc('get_campaign_members', { p_campaign_id: campaignData.id }),
+        client.from('sessions')
+          .select('id, slug, name, session_date, archived, created_at')
+          .eq('campaign_id', campaignData.id)
+          .order('created_at', { ascending: false })
+      ])
+
+      const { data: membersData, error: membersError } = membersRes
+      const { data: sessionsData, error: sessionsError } = sessionsRes
+
+      if (sessionsError) throw sessionsError
+      setSessions(sessionsData || [])
+
       if (membersError) {
         const message = String(membersError.message || '')
         if (message.includes('Could not find the function public.get_campaign_members')) {
@@ -215,15 +227,6 @@ function CampaignDetail() {
           setPartyMembers(membersData || [])
         }
       }
-
-      const { data: sessionsData, error: sessionsError } = await client
-        .from('sessions')
-        .select('id, slug, name, session_date, archived, created_at')
-        .eq('campaign_id', campaignData.id)
-        .order('created_at', { ascending: false })
-
-      if (sessionsError) throw sessionsError
-      setSessions(sessionsData || [])
     } catch (error) {
       setErrorMessage(error.message || 'Failed to load campaign')
     } finally {
@@ -554,7 +557,7 @@ function CampaignDetail() {
                   title={campaignStreakText}
                   aria-label={campaignStreakText}
                 >
-                  <img src="/icons/streak.png" alt="" className="h-7 w-7 shrink-0" aria-hidden="true" />
+                  <img src="/icons/streak.png" alt="" className="h-7 w-7 shrink-0" aria-hidden="true" loading="lazy" />
                   <span className="text-base font-semibold leading-none">{campaignStreakCount}</span>
                 </button>
               )}
@@ -945,4 +948,5 @@ function CampaignDetail() {
   )
 }
 
-export default CampaignDetail
+import { memo } from 'react'
+export default memo(CampaignDetail)

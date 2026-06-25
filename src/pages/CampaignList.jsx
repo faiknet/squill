@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef, memo } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useFormState } from '../hooks/useFormState'
@@ -16,7 +16,7 @@ import EditCampaignModal from '../components/campaigns/EditCampaignModal'
 import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
 import Logo from '../components/ui/logo.webp'
 
-function CampaignList() {
+export default memo(function CampaignList() {
   const navigate = useNavigate()
   const location = useLocation()
   const { authState, signOut } = useAuth()
@@ -30,7 +30,9 @@ function CampaignList() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [openMenuId, setOpenMenuId] = useState(null)
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
+  // useRef instead of useState: menuPosition only positions an absolutely-placed menu,
+  // it doesn't need to trigger a React re-render
+  const menuPositionRef = useRef({ top: 0, left: 0 })
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [campaignsExpanded, setCampaignsExpanded] = useState(true)
@@ -39,6 +41,13 @@ function CampaignList() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState(null)
   const [deletingCampaign, setDeletingCampaign] = useState(null)
+
+  // Memoize filtered list so the filter() doesn't run twice per render
+  // (once for desktop table, once for mobile cards)
+  const filteredCampaigns = useMemo(
+    () => campaigns.filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase())),
+    [campaigns, searchQuery]
+  )
 
   useEffect(() => {
     if (authState.isLoading || !authState.user) return
@@ -274,7 +283,7 @@ function CampaignList() {
             onClick={() => navigate('/campaigns')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <img src={Logo} alt="Squill Logo" className="size-8" />
+            <img src={Logo} alt="Squill Logo" className="size-8" loading="lazy" />
             <h1 className="text-2xl font-bold tracking-tight">Squill</h1>
           </button>
           <button
@@ -465,9 +474,7 @@ function CampaignList() {
                     </td>
                   </tr>
                 ) : (
-                  campaigns
-                    .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((campaign) => {
+                  filteredCampaigns.map((campaign) => {
                       const isOwner = user && campaign.created_by === user.id
                       const isSelected = campaign.slug === currentCampaignSlug
                       return (
@@ -511,7 +518,7 @@ function CampaignList() {
                                   setOpenMenuId(null)
                                 } else {
                                   const rect = e.currentTarget.getBoundingClientRect()
-                                  setMenuPosition({ top: rect.bottom + 8, left: rect.right - 192 })
+                                  menuPositionRef.current = { top: rect.bottom + 8, left: rect.right - 192 }
                                   setOpenMenuId(campaign.id)
                                 }
                               }}
@@ -539,9 +546,7 @@ function CampaignList() {
                   </button>
                 </div>
               ) : (
-                campaigns
-                  .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                  .map((campaign) => {
+                filteredCampaigns.map((campaign) => {
                     const isOwner = user && campaign.created_by === user.id
                     const isSelected = campaign.slug === currentCampaignSlug
                     return (
@@ -716,6 +721,6 @@ function CampaignList() {
       )}
     </div>
   )
-}
+})
 
-export default CampaignList
+

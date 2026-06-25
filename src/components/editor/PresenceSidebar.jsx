@@ -10,7 +10,9 @@ function TypingIndicator({ isTyping, userColor }) {
   return <p className="text-xs font-medium select-none" style={{ color: userColor }}>Editing</p>
 }
 
-export default function PresenceSidebar({
+import { memo } from 'react'
+
+export default memo(function PresenceSidebar({
   activeUsers = [], // from Liveblocks
   currentUser, // { name, color, isSelf }
   campaignMembers = [], // from Supabase
@@ -173,7 +175,7 @@ export default function PresenceSidebar({
       </div>
     </aside>
   )
-}
+})
 
 function timeAgo(dateString) {
   if (!dateString) return ''

@@ -1,5 +1,0 @@
-[functions.join-campaign]
-verify_jwt = true
-
-[functions.snapshot-note]
-verify_jwt = true

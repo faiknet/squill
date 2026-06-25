@@ -1,8 +1,25 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react'
 import LinkModal from './LinkModal'
 import ImageModal from './ImageModal'
 
 const BRAND_ICON_COLOR = '#265d5c'
+
+// Stable module-scope button — NOT defined inside render, so React never remounts DOM nodes
+const IconButton = memo(function IconButton({ onClick, isActive, label, icon, className = '' }) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onClick()
+      }}
+      className={`h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center ${isActive ? 'bg-slate-200 dark:bg-gray-600' : ''} ${className}`}
+      title={label}
+    >
+      <MaterialIcon icon={icon} size={18} />
+    </button>
+  )
+})
 
 // Material Icons component
 const MaterialIcon = ({ icon, size = 20 }) => (
@@ -156,18 +173,43 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
   )
 }
 
-export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, onExpandSidebar }) {
-  // Force re-render when editor updates
-  const [, forceUpdate] = useState({})
+export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, onExpandSidebar }) {
+  // Track only the active-mark state that buttons actually depend on.
+  // This prevents re-rendering on every cursor move when no marks changed.
+  const [activeMarks, setActiveMarks] = useState(null)
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
+
+  const getActiveMarks = useCallback((ed) => ({
+    bold: ed.isActive('bold'),
+    italic: ed.isActive('italic'),
+    underline: ed.isActive('underline'),
+    link: ed.isActive('link'),
+    bulletList: ed.isActive('bulletList'),
+    orderedList: ed.isActive('orderedList'),
+    alignLeft: ed.isActive({ textAlign: 'left' }),
+    alignCenter: ed.isActive({ textAlign: 'center' }),
+    alignRight: ed.isActive({ textAlign: 'right' }),
+    alignJustify: ed.isActive({ textAlign: 'justify' }),
+    fontSize: ed.getAttributes('textStyle').fontSize,
+    textColor: ed.getAttributes('textStyle').color,
+    highlightColor: ed.getAttributes('highlight').color,
+  }), [])
 
   useEffect(() => {
     if (!editor) return
 
     const handleUpdate = () => {
-      forceUpdate({})
+      const next = getActiveMarks(editor)
+      setActiveMarks(prev => {
+        // Shallow compare — only re-render if something actually changed
+        if (prev && Object.keys(next).every(k => prev[k] === next[k])) return prev
+        return next
+      })
     }
+
+    // Seed initial state
+    handleUpdate()
 
     editor.on('update', handleUpdate)
     editor.on('selectionUpdate', handleUpdate)
@@ -176,12 +218,30 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
       editor.off('update', handleUpdate)
       editor.off('selectionUpdate', handleUpdate)
     }
+  }, [editor, getActiveMarks])
+
+  // Link modal handlers
+  const handleLinkInsert = useCallback((url) => {
+    if (!editor) return
+    if (url === null) {
+      editor.chain().focus().unsetLink().run()
+    } else if (url) {
+      editor.chain().focus().setLink({ href: url }).run()
+    }
   }, [editor])
 
-  if (!editor) return null
+  // Image modal handlers
+  const handleImageInsert = useCallback((src) => {
+    if (!editor) return
+    if (src) {
+      editor.chain().focus().setImage({ src }).run()
+    }
+  }, [editor])
 
-  // Get current font size, handling edge cases
-  const fontSizeAttr = editor.getAttributes('textStyle').fontSize
+  if (!editor || !activeMarks) return null
+
+  // Derive font size from active marks
+  const fontSizeAttr = activeMarks.fontSize
   let fontSize = 16 // default
 
   if (fontSizeAttr) {
@@ -191,40 +251,6 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
     }
   }
 
-  // Link modal handlers
-  const handleLinkInsert = (url) => {
-    if (url === null) {
-      // Remove link
-      editor.chain().focus().unsetLink().run()
-    } else if (url) {
-      // Set or update link
-      editor.chain().focus().setLink({ href: url }).run()
-    }
-  }
-
-  // Image modal handlers
-  const handleImageInsert = (src) => {
-    if (src) {
-      editor.chain().focus().setImage({ src }).run()
-    }
-  }
-
-  const IconButton = ({ onClick, isActive, label, icon, className = '' }) => {
-    return (
-      <button
-        type="button"
-        onMouseDown={(e) => {
-          e.preventDefault()
-          onClick()
-        }}
-        className={`h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center ${isActive ? 'bg-slate-200 dark:bg-gray-600' : ''
-          } ${className}`}
-        title={label}
-      >
-        <MaterialIcon icon={icon} size={18} />
-      </button>
-    )
-  }
 
   return (
     <>
@@ -232,7 +258,7 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
         isOpen={isLinkModalOpen}
         onClose={() => setIsLinkModalOpen(false)}
         onInsert={handleLinkInsert}
-        currentUrl={editor.isActive('link') ? editor.getAttributes('link').href : ''}
+        currentUrl={activeMarks.link ? editor.getAttributes('link').href : ''}
       />
 
       <ImageModal
@@ -304,26 +330,26 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
         {/* Text Formatting */}
         <IconButton
           onClick={() => editor.chain().focus().toggleBold().run()}
-          isActive={editor.isActive('bold')}
+          isActive={activeMarks.bold}
           label="Bold (Ctrl+B)"
           icon="format_bold"
         />
         <IconButton
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          isActive={editor.isActive('italic')}
+          isActive={activeMarks.italic}
           label="Italic (Ctrl+I)"
           icon="format_italic"
         />
         <IconButton
           onClick={() => editor.chain().focus().toggleUnderline().run()}
-          isActive={editor.isActive('underline')}
+          isActive={activeMarks.underline}
           label="Underline (Ctrl+U)"
           icon="format_underlined"
         />
 
         {/* Text Color */}
         <ColorPicker
-          value={editor.getAttributes('textStyle').color}
+          value={activeMarks.textColor}
           onChange={(color) => color ? editor.chain().focus().setColor(color).run() : editor.chain().focus().unsetColor().run()}
           colors={COLOR_PALETTE}
           label="Text color"
@@ -332,7 +358,7 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
 
         {/* Highlight */}
         <ColorPicker
-          value={editor.getAttributes('highlight').color}
+          value={activeMarks.highlightColor}
           onChange={(color) => color ? editor.chain().focus().toggleHighlight({ color }).run() : editor.chain().focus().unsetHighlight().run()}
           colors={HIGHLIGHT_PALETTE}
           label="Highlight color"
@@ -344,7 +370,7 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
         {/* Link */}
         <IconButton
           onClick={() => setIsLinkModalOpen(true)}
-          isActive={editor.isActive('link')}
+          isActive={activeMarks.link}
           label="Insert link (Ctrl+K)"
           icon="add_link"
         />
@@ -361,25 +387,25 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
         {/* Alignment */}
         <IconButton
           onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          isActive={editor.isActive({ textAlign: 'left' })}
+          isActive={activeMarks.alignLeft}
           label="Align left (Ctrl+Shift+L)"
           icon="format_align_left"
         />
         <IconButton
           onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          isActive={editor.isActive({ textAlign: 'center' })}
+          isActive={activeMarks.alignCenter}
           label="Align center (Ctrl+Shift+E)"
           icon="format_align_center"
         />
         <IconButton
           onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          isActive={editor.isActive({ textAlign: 'right' })}
+          isActive={activeMarks.alignRight}
           label="Align right (Ctrl+Shift+R)"
           icon="format_align_right"
         />
         <IconButton
           onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-          isActive={editor.isActive({ textAlign: 'justify' })}
+          isActive={activeMarks.alignJustify}
           label="Justify"
           icon="format_align_justify"
         />
@@ -389,13 +415,13 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
         {/* Lists */}
         <IconButton
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          isActive={editor.isActive('bulletList')}
+          isActive={activeMarks.bulletList}
           label="Bullet list (Ctrl+Shift+8)"
           icon="format_list_bulleted"
         />
         <IconButton
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          isActive={editor.isActive('orderedList')}
+          isActive={activeMarks.orderedList}
           label="Numbered list (Ctrl+Shift+7)"
           icon="format_list_numbered"
         />
@@ -450,4 +476,4 @@ export default function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, 
       </div>
     </>
   )
-}
+})
