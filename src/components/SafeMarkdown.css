@@ -1,0 +1,92 @@
+/**
+ * SafeMarkdown CSS
+ * Styles for sanitized markdown rendering
+ */
+
+.safe-markdown-wrapper {
+  font-family: inherit;
+  line-height: 1.6;
+  color: inherit;
+}
+
+.safe-markdown-container {
+  width: 100%;
+  overflow-y: auto;
+}
+
+.safe-markdown-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Allow safe markdown styling */
+.safe-markdown-wrapper a {
+  color: var(--brand-color, #3b82f6);
+  text-decoration: none;
+}
+
+.safe-markdown-wrapper a:hover {
+  text-decoration: underline;
+}
+
+.safe-markdown-wrapper code {
+  font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 0.9em;
+  padding: 0.2em 0.4em;
+  background-color: var(--code-bg, #f3f4f6);
+  border-radius: 0.25rem;
+}
+
+.safe-markdown-wrapper pre code {
+  padding: 1em;
+  background-color: var(--pre-bg, #1e293b);
+  color: var(--code-pre-color, #e2e8f0);
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-size: 0.85em;
+}
+
+.safe-markdown-wrapper blockquote {
+  border-left: 4px solid var(--blockquote-border, #cbd5e1);
+  padding-left: 1em;
+  color: var(--blockquote-color, #64748b);
+  margin: 1em 0;
+}
+
+.safe-markdown-wrapper img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+/* Blockquote styling */
+.safe-markdown-wrapper blockquote p {
+  margin: 0.5em 0;
+}
+
+/* Table styling */
+.safe-markdown-wrapper table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.safe-markdown-wrapper th {
+  background-color: var(--table-header-bg, #f1f5f9);
+  padding: 0.75em;
+  text-align: left;
+  font-weight: 600;
+}
+
+.safe-markdown-wrapper td {
+  padding: 0.75em;
+  border-bottom: 1px solid var(--table-border, #e2e8f0);
+}
+
+.safe-markdown-wrapper tr:last-child td {
+  border-bottom: none;
+}
+
+.safe-markdown-wrapper tr:hover td {
+  background-color: var(--table-hover-bg, #f8fafc);
+}

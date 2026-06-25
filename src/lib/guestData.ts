@@ -73,8 +73,8 @@ function applyGuestCampaignStreak(campaign: GuestCampaignRecord, activityDate: s
   if (periodStart > lastPeriod) {
     return {
       ...campaign,
-      streak_count: 1,
-      streak_last_period_start: periodStart,
+      streak_count: 0,
+      streak_last_period_start: null,
       updated_at: new Date().toISOString(),
     }
   }

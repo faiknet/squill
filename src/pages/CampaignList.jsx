@@ -240,6 +240,9 @@ function CampaignList() {
     return new Date(updatedAt) > new Date(Date.now() - 12 * 60 * 60 * 1000)
   }
 
+  // For the campaigns list page, there's no single selected campaign, so this is always false
+  const isSelected = false
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -263,7 +266,7 @@ function CampaignList() {
       {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
-        border-r border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col
+        bg-white dark:bg-gray-800 flex flex-col
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-5 flex items-center justify-between">
@@ -290,7 +293,7 @@ function CampaignList() {
             <div className="w-full flex items-center gap-3">
               <button
                 onClick={() => {/* Already on campaigns page */ }}
-                className="flex-1 flex items-center gap-3 px-3 py-1.5 rounded-md transition-colors bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 border-l-2 border-brand-600"
+                className="flex-1 flex items-center gap-3 px-3 py-1.5 rounded-md transition-colors bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -314,7 +317,7 @@ function CampaignList() {
 
             {/* Campaigns Submenu */}
             {campaignsExpanded && (
-              <div className="mt-1 space-y-0.5 pl-3 border-l border-slate-200 dark:border-gray-700">
+              <div className="mt-1 space-y-0.5 pl-3">
                 {loading ? (
                   <div className="px-3 py-2 text-xs text-slate-500 dark:text-gray-400">Loading...</div>
                 ) : campaigns.length === 0 ? (
@@ -331,7 +334,7 @@ function CampaignList() {
                         }}
                         className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm truncate ${
                           isSelected
-                            ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium border-l-2 border-brand-600'
+                            ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium'
                             : 'hover:bg-slate-50 dark:hover:bg-gray-700/50 text-slate-700 dark:text-gray-300'
                         }`}
                         title={campaign.name}

@@ -67,7 +67,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0
-        border-r border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col
+        bg-white dark:bg-gray-800 flex flex-col
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-5 flex items-center justify-between">
@@ -96,7 +96,7 @@ export default function Layout() {
                 onClick={() => navigate('/campaigns')}
                 className={`flex-1 flex items-center gap-3 px-3 py-1.5 rounded-md transition-colors ${
                   isOnCampaignsPage
-                    ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 border-l-2 border-brand-600'
+                    ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400'
                     : 'hover:bg-slate-50 dark:hover:bg-gray-700/50 text-slate-700 dark:text-gray-300'
                 }`}
               >
@@ -139,7 +139,7 @@ export default function Layout() {
                       }}
                       className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm truncate ${
                         currentCampaignSlug === campaign.slug
-                          ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium border-l-2 border-brand-600'
+                          ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium'
                           : 'hover:bg-slate-50 dark:hover:bg-gray-700/50 text-slate-700 dark:text-gray-300'
                       }`}
                       title={campaign.name}

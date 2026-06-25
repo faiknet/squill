@@ -2,4 +2,4 @@
 verify_jwt = true
 
 [functions.snapshot-note]
-verify_jwt = false
+verify_jwt = true

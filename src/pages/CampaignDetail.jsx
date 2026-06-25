@@ -8,6 +8,7 @@ import { EditSessionModal, DeleteSessionModal } from '../components/sessions'
 import { colorFromString } from '../lib/liveblocks'
 import { createUrlSlug } from '../lib/utils'
 import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
+import StreakInfoModal from '../components/campaigns/StreakInfoModal'
 import RemovePlayerModal from '../components/campaigns/RemovePlayerModal'
 import TransferGMModal from '../components/campaigns/TransferGMModal'
 import {
@@ -71,6 +72,7 @@ function CampaignDetail() {
   const [memberContextMenuOpen, setMemberContextMenuOpen] = useState(false)
   const [isRemovePlayerModalOpen, setIsRemovePlayerModalOpen] = useState(false)
   const [isTransferGMModalOpen, setIsTransferGMModalOpen] = useState(false)
+  const [isStreakModalOpen, setIsStreakModalOpen] = useState(false)
   const copyConfirmationTimeoutRef = useRef(null)
   const menuRef = useRef(null)
 
@@ -545,14 +547,16 @@ function CampaignDetail() {
                 </span>
               )}
               {campaignStreakText && (
-                <span
-                  className="inline-flex items-center ml-2 gap-1 text-amber-700 dark:text-amber-300"
+                <button
+                  type="button"
+                  onClick={() => setIsStreakModalOpen(true)}
+                  className="inline-flex items-center ml-2 gap-1 text-amber-700 dark:text-amber-300 hover:opacity-80 transition-opacity cursor-pointer"
                   title={campaignStreakText}
                   aria-label={campaignStreakText}
                 >
                   <img src="/icons/streak.png" alt="" className="h-7 w-7 shrink-0" aria-hidden="true" />
                   <span className="text-base font-semibold leading-none">{campaignStreakCount}</span>
-                </span>
+                </button>
               )}
             </div>
 
@@ -930,6 +934,12 @@ function CampaignDetail() {
         }}
         onConfirm={() => handleTransferGMStatus(selectedMember.user_id)}
         playerName={selectedMember?.display_name || ''}
+      />
+
+      <StreakInfoModal
+        isOpen={isStreakModalOpen}
+        onClose={() => setIsStreakModalOpen(false)}
+        campaign={campaign}
       />
     </div>
   )
