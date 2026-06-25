@@ -62,7 +62,7 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
       </button>
 
       {showUserMenu && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xl rounded-md overflow-hidden z-50 min-w-[240px]">
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xl rounded-md overflow-hidden z-50 min-w-[240px] max-h-[70vh] overflow-y-auto custom-scrollbar">
           
           {setUserColor && (
             <div className="px-4 py-3 border-b border-slate-100 dark:border-gray-700">
@@ -72,7 +72,7 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
                   <button
                     key={option.value}
                     onClick={() => setUserColor(option.value)}
-                    className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
+                    className={`w-8 h-8 md:w-6 md:h-6 rounded-full border-2 transition-transform hover:scale-110 ${
                       userColor === option.value ? 'border-slate-900 ring-1 ring-slate-900/20 dark:border-white dark:ring-white/20' : 'border-transparent'
                     }`}
                     style={{ backgroundColor: option.value }}

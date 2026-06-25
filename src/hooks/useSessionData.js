@@ -252,7 +252,22 @@ export function useSessionData(sessionId, campaignId) {
       const { data: members, error: membersError } = await client.rpc('get_campaign_members', { p_campaign_id: campaignId })
       if (membersError) throw membersError
 
-      const memberIds = members?.map(m => m.user_id) || []
+      const { data: displayPrefs } = await client
+        .from('campaign_display_preferences')
+        .select('user_id, display_name')
+        .eq('campaign_id', campaignId)
+
+      const prefMap = new Map()
+      displayPrefs?.forEach(p => {
+        if (p.display_name) prefMap.set(p.user_id, p.display_name)
+      })
+
+      const membersWithNames = (members || []).map(m => ({
+        ...m,
+        display_name: prefMap.get(m.user_id) || m.display_name
+      }))
+
+      const memberIds = membersWithNames.map(m => m.user_id)
       if (memberIds.length > 0) {
         try {
           const colorRes = await client.rpc('get_user_colors', { user_ids: memberIds })
@@ -263,16 +278,16 @@ export function useSessionData(sessionId, campaignId) {
             colorMap.set(item.user_id, item.editor_color)
           })
           
-          return members.map(member => ({
+          return membersWithNames.map(member => ({
             ...member,
             color: colorMap.get(member.user_id)
           }))
         } catch (err) {
           console.debug('Error fetching colors:', err.message)
-          return members || []
+          return membersWithNames
         }
       }
-      return members || []
+      return membersWithNames
     },
     enabled: !!campaignId && !isGuest,
     staleTime: 5 * 60 * 1000,

@@ -109,49 +109,109 @@ export default memo(function PresenceSidebar({
     return memberStatusList.filter((member) => member.isOnline)
   }, [memberStatusList, showOfflineMembers])
 
-  return (
-    <aside className="w-full bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 flex flex-col h-full font-sans transition-colors duration-200">
-      {/* Members Section */}
-      <div className="p-5 flex-1 overflow-y-auto">
-        <h3 className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-4">
-          Member List
-        </h3>
-        <div className="space-y-3">
-          {visibleMemberStatusList.map((user) => (
-            <div key={user.id} className={`flex items-start gap-3 ${!user.isOnline ? 'opacity-50' : ''}`} style={{ contentVisibility: 'auto', containIntrinsicSize: '40px' }}>
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0 select-none"
-                style={{ backgroundColor: user.color }}
-              >
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${user.isOnline ? 'text-slate-900 dark:text-gray-200' : 'text-slate-500 dark:text-gray-500'}`}>
-                  {user.name} {user.isSelf && '(You)'}
-                </p>
-                {user.typing ? (
-                  <TypingIndicator isTyping={true} userColor={user.color} />
-                ) : (
-                  <p className="text-xs text-slate-500 dark:text-gray-400 select-none">
-                    {user.status}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
+  const [activityHeight, setActivityHeight] = useState(192) // default 192px (12rem)
+  const [isResizing, setIsResizing] = useState(false)
 
-          {visibleMemberStatusList.length === 0 && (
-            <p className="text-xs text-slate-500 dark:text-gray-600 italic">No members found.</p>
-          )}
+  const handleMouseDown = (e) => {
+    e.preventDefault()
+    setIsResizing(true)
+    const startY = e.clientY
+    const startHeight = activityHeight
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaY = startY - moveEvent.clientY
+      const newHeight = startHeight + deltaY
+      setActivityHeight(Math.max(80, Math.min(500, newHeight)))
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length !== 1) return
+    setIsResizing(true)
+    const startY = e.touches[0].clientY
+    const startHeight = activityHeight
+
+    const handleTouchMove = (moveEvent) => {
+      if (moveEvent.touches.length !== 1) return
+      const deltaY = startY - moveEvent.touches[0].clientY
+      const newHeight = startHeight + deltaY
+      setActivityHeight(Math.max(80, Math.min(500, newHeight)))
+    }
+
+    const handleTouchEnd = () => {
+      setIsResizing(false)
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('touchend', handleTouchEnd)
+    }
+
+    document.addEventListener('touchmove', handleTouchMove)
+    document.addEventListener('touchend', handleTouchEnd)
+  }
+
+  return (
+    <aside className="w-full bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 flex flex-col flex-1 min-h-0 font-sans transition-colors duration-200">
+      {/* Scrollable area: Members + Activity */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Members Section */}
+        <div className="p-5">
+          <h3 className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+            Member List
+          </h3>
+          <div className="space-y-3">
+            {visibleMemberStatusList.map((user) => (
+              <div key={user.id} className={`flex items-start gap-3 ${!user.isOnline ? 'opacity-50' : ''}`} style={{ contentVisibility: 'auto', containIntrinsicSize: '40px' }}>
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0 select-none"
+                  style={{ backgroundColor: user.color }}
+                >
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium truncate ${user.isOnline ? 'text-slate-900 dark:text-gray-200' : 'text-slate-500 dark:text-gray-500'}`}>
+                    {user.name} {user.isSelf && '(You)'}
+                  </p>
+                  {user.typing ? (
+                    <TypingIndicator isTyping={true} userColor={user.color} />
+                  ) : (
+                    <p className="text-xs text-slate-500 dark:text-gray-400 select-none">
+                      {user.status}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {visibleMemberStatusList.length === 0 && (
+              <p className="text-xs text-slate-500 dark:text-gray-600 italic">No members found.</p>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Recent Activity Section - Pinned to bottom */}
-      <div className="p-5 border-t border-slate-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+      {/* Recent Activity Section */}
+      <div 
+        className="p-5 border-t border-slate-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 relative flex flex-col shrink-0 select-none"
+        style={{ height: `${activityHeight}px`, minHeight: '80px', maxHeight: '500px' }}
+      >
+        {/* Resize Handle */}
+        <div
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          className="absolute top-0 left-0 right-0 h-1.5 cursor-row-resize bg-transparent hover:bg-brand-500/30 active:bg-brand-500/50 transition-colors z-20"
+        />
         <h3 className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-3">
           Recent Activity
         </h3>
-        <div className="space-y-3 max-h-48 overflow-y-auto">
+        <div className="space-y-3 flex-1 overflow-y-auto min-h-0">
           {sortedActivities.length > 0 ? (
             sortedActivities.slice(0, 5).map((activity, i) => (
               <div key={i} className="flex flex-col gap-0.5" style={{ contentVisibility: 'auto', containIntrinsicSize: '36px' }}>
@@ -169,7 +229,7 @@ export default memo(function PresenceSidebar({
         </div>
       </div>
 
-      {/* User Profile Footer */}
+      {/* User Profile Footer - always anchored to bottom */}
       <div className="p-4 border-t border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
         <UserProfileMenu userColor={userColor} setUserColor={setUserColor} />
       </div>

@@ -13,6 +13,7 @@ import {
   getGuestSessionBySlug,
 } from '../lib/guestData'
 import { getShowOfflineMembersPreference } from '../lib/sessionDisplayPreferences'
+import { useCampaignDisplayName } from '../lib/campaignDisplayPreferences'
 import '../styles/mentions.css'
 
 import LocalEditor from '../components/editor/LocalEditor'
@@ -114,6 +115,7 @@ const EditorLayout = memo(function EditorLayout({
   activities,
   navigate,
   campaignId,
+  campaignName,
   campaignSlug,
   sessionSlug,
   sessionId,
@@ -122,6 +124,7 @@ const EditorLayout = memo(function EditorLayout({
   showOfflineMembers,
   children
 }) {
+  const { displayName } = useCampaignDisplayName(campaignId)
   const [copied, setCopied] = useState(false)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -253,65 +256,94 @@ const EditorLayout = memo(function EditorLayout({
   const desktopSidebarWidth = isSidebarCollapsed ? 0 : sidebarWidth
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col font-sans overflow-hidden transition-colors duration-200">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col font-sans overflow-hidden transition-colors duration-200">
       {/* Header */}
-      <header className="h-16 px-4 md:px-6 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between z-10 shrink-0 gap-2 transition-colors duration-200">
-        <div className="flex items-center gap-2 md:gap-4 flex-1 md:flex-none md:w-1/4 min-w-0">
-          <Button
-            onClick={() => navigate(`/campaigns/${campaignSlug}`)}
-            variant="ghost"
-            className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
-          >
-            <span className="hidden md:inline">Back</span>
-            <span className="md:hidden">←</span>
-          </Button>
-          <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 md:mx-2 shrink-0"></div>
-          <h1 className="text-base md:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
-            {session?.name || 'Session'}
-          </h1>
+      <header className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex flex-col md:flex-row md:h-16 md:items-center md:justify-between px-4 md:px-6 shrink-0 transition-colors duration-200 z-10 gap-2 md:gap-0">
+        {/* Row 1: Back, Title, and Actions on mobile */}
+        <div className="flex items-center justify-between w-full md:w-auto h-14 md:h-auto gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              onClick={() => navigate(`/campaigns/${campaignSlug}`)}
+              variant="ghost"
+              className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
+            >
+              <span className="hidden md:inline">Back</span>
+              <span className="md:hidden">←</span>
+            </Button>
+            <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 md:mx-2 shrink-0"></div>
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span className="text-xs md:text-sm text-slate-400 dark:text-gray-500 truncate max-w-[80px] sm:max-w-[150px] md:max-w-[200px]">
+                {campaignName}
+              </span>
+              <span className="text-xs text-slate-300 dark:text-gray-600 shrink-0">/</span>
+              <h1 className="text-base md:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
+                {session?.name || 'Session'}
+              </h1>
+            </div>
+          </div>
+
+          {/* Action buttons (Share, Members) on mobile - visible on mobile, hidden on desktop */}
+          <div className="flex items-center gap-1.5 md:hidden">
+            <Button
+              variant="outline"
+              className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-800 h-10 text-xs px-2.5 min-w-[55px]"
+              onClick={handleShare}
+            >
+              {copied ? 'Copied!' : 'Share'}
+            </Button>
+            <button
+              onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+              className="p-2 text-slate-400 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800 rounded-md"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        {/* Navigation Tabs - Centered */}
-        <div className="flex-1 flex items-center justify-center">
-          <nav className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 border border-slate-200 dark:border-gray-700 shrink-0 rounded-md">
+        {/* Navigation Tabs - Centered/Second Row */}
+        <div className="w-full md:w-auto pb-3 md:pb-0 flex items-center justify-center">
+          <nav className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 border border-slate-200 dark:border-gray-700 shrink-0 rounded-md w-full md:w-auto grid grid-cols-3 md:flex md:flex-row gap-0.5">
             <button
-              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium bg-white dark:bg-gray-900 text-slate-900 dark:text-white border border-slate-200 dark:border-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs md:text-sm font-medium bg-white dark:bg-gray-900 text-slate-900 dark:text-white border border-slate-200 dark:border-gray-700 transition-colors rounded text-center"
             >
               <span className="hidden md:inline">Workspace</span>
               <span className="md:hidden">Edit</span>
             </button>
             <button
               onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug || session?.slug || sessionId}/journal`)}
-              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
             >
               Journal
             </button>
             <button
               onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug || session?.slug || sessionId}/preferences`)}
-              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
             >
               Preferences
             </button>
           </nav>
         </div>
 
-        <div className="flex items-center justify-end gap-2 md:gap-3 flex-1 md:flex-none md:w-1/4">
+        {/* Desktop actions section - hidden on mobile */}
+        <div className="hidden md:flex items-center justify-end gap-2 md:gap-3 md:w-1/4">
           <Button
             variant="outline"
-            className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-800 min-w-[60px] md:min-w-[80px] h-8 md:h-9 text-xs md:text-sm px-2 md:px-4"
+            className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-800 min-w-[60px] md:min-w-[80px] h-11 md:h-9 text-xs md:text-sm px-2 md:px-4"
             onClick={handleOpenExportModal}
           >
             Export
           </Button>
           <Button
             variant="outline"
-            className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-800 min-w-[60px] md:min-w-[80px] h-8 md:h-9 text-xs md:text-sm px-2 md:px-4"
+            className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-800 min-w-[60px] md:min-w-[80px] h-11 md:h-9 text-xs md:text-sm px-2 md:px-4"
             onClick={handleShare}
           >
             {copied ? 'Copied!' : 'Share'}
           </Button>
           <button
-            onClick={() => setShowMobileSidebar(true)}
+            onClick={() => setShowMobileSidebar(!showMobileSidebar)}
             className="lg:hidden p-2 text-slate-400 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800 rounded-md"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -329,7 +361,7 @@ const EditorLayout = memo(function EditorLayout({
 
         {/* Right Sidebar: Presence & Activity - Hidden on Mobile */}
         <div className={`
-          absolute inset-0 z-20 bg-white dark:bg-gray-900 lg:static lg:z-auto lg:w-[var(--sidebar-width)] lg:max-w-[var(--sidebar-max-width)] lg:min-w-0 border-l border-slate-200 dark:border-gray-700 transition-transform duration-200 relative lg:overflow-hidden
+          absolute inset-y-0 right-0 z-20 bg-white dark:bg-gray-900 w-full h-full lg:static lg:z-auto lg:w-[var(--sidebar-width)] lg:max-w-[var(--sidebar-max-width)] lg:min-w-0 border-l border-slate-200 dark:border-gray-700 transition-transform duration-200 lg:relative overflow-hidden flex flex-col
           ${isResizingSidebar ? 'lg:transition-none' : 'lg:transition-[width] lg:duration-300 lg:ease-in-out'}
           ${isSidebarCollapsed ? 'lg:border-l-0' : ''}
           ${showMobileSidebar ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
@@ -393,6 +425,7 @@ const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
   userLabel,
   navigate,
   campaignId,
+  campaignName,
   campaignSlug,
   sessionSlug,
   sessionId,
@@ -431,6 +464,7 @@ const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
       activities={activities}
       navigate={navigate}
       campaignId={campaignId}
+      campaignName={campaignName}
       campaignSlug={campaignSlug}
       sessionSlug={sessionSlug}
       sessionId={sessionId}
@@ -461,6 +495,7 @@ export default memo(function SessionEditor() {
   const { authState } = useAuth()
   const { isGuest, isLoading: authLoading } = authState
   const [campaignId, setCampaignId] = useState(null)
+  const [campaignName, setCampaignName] = useState('')
   const [sessionId, setSessionId] = useState(null)
   const [loadingIds, setLoadingIds] = useState(true)
 
@@ -478,6 +513,7 @@ export default memo(function SessionEditor() {
         return
       }
       setCampaignId(guestRoute.campaign.id)
+      setCampaignName(guestRoute.campaign.name)
       setSessionId(guestRoute.session.id)
       setLoadingIds(false)
       return
@@ -488,7 +524,7 @@ export default memo(function SessionEditor() {
         const client = requireSupabase()
         const { data: campaignData, error: campaignError } = await client
           .from('campaigns')
-          .select('id')
+          .select('id, name')
           .eq('slug', campaignSlug)
           .single()
 
@@ -510,6 +546,7 @@ export default memo(function SessionEditor() {
         }
 
         setCampaignId(campaignData.id)
+        setCampaignName(campaignData.name)
         setSessionId(sessionData.id)
       } catch (err) {
         console.error('Error resolving slugs:', err)
@@ -536,6 +573,8 @@ export default memo(function SessionEditor() {
     saving,
     saveNote,
   } = useSessionData(sessionId, campaignId)
+
+  const { displayName } = useCampaignDisplayName(campaignId)
 
   const [userColor, setUserColor] = useState(() => {
     if (typeof window === 'undefined') return ''
@@ -750,7 +789,7 @@ export default memo(function SessionEditor() {
   }
 
   const collabEnabled = Boolean(import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY) && !isGuest
-  const userLabel = getDisplayLabel(authState, 'Guest')
+  const userLabel = displayName || getDisplayLabel(authState, 'Guest')
   const effectiveUserColor = userColor || colorFromString(userLabel)
   const roomId = getSessionRoomId(campaignId, sessionId)
 
@@ -771,6 +810,7 @@ export default memo(function SessionEditor() {
           userLabel={userLabel}
           navigate={navigate}
           campaignId={campaignId}
+          campaignName={campaignName}
           campaignSlug={campaignSlug}
           sessionSlug={sessionSlug}
           sessionId={sessionId}
@@ -801,6 +841,7 @@ export default memo(function SessionEditor() {
       activities={activities}
       navigate={navigate}
       campaignId={campaignId}
+      campaignName={campaignName}
       campaignSlug={campaignSlug}
       sessionSlug={sessionSlug}
       sessionId={sessionId}

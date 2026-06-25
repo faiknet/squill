@@ -537,9 +537,9 @@ export default memo(function CampaignList() {
             </table>
 
             {/* Mobile Card View */}
-            <div className="lg:hidden divide-y divide-slate-100 dark:divide-gray-700">
+            <div className="lg:hidden space-y-4 px-4 py-2">
               {campaigns.length === 0 ? (
-                <div className="p-6 text-center text-slate-400">
+                <div className="p-6 text-center text-slate-400 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl">
                   <p className="mb-2">No campaigns found.</p>
                   <button onClick={() => setShowCreateModal(true)} className="text-brand-600 hover:underline">
                     Create one now
@@ -553,10 +553,10 @@ export default memo(function CampaignList() {
                       <div
                         key={campaign.id}
                         onClick={() => navigate(`/campaigns/${campaign.slug}`)}
-                        className={`p-4 transition-colors cursor-pointer ${
+                        className={`p-4 rounded-xl border transition-all cursor-pointer shadow-sm hover:shadow ${
                           isSelected
-                            ? 'bg-brand-50 dark:bg-brand-900/10'
-                            : 'hover:bg-slate-50 dark:hover:bg-gray-700'
+                            ? 'bg-brand-50/50 dark:bg-brand-900/15 border-brand-200 dark:border-brand-900 ring-2 ring-brand-500'
+                            : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-800/80'
                         }`}
                       >
                         <div className="flex items-start justify-between mb-2">

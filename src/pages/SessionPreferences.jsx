@@ -1,6 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button } from '../components/ui'
+import { Button, Input } from '../components/ui'
+import { requireSupabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useSupabaseAuth'
+import { useCampaignDisplayName } from '../lib/campaignDisplayPreferences'
 import {
   applyMentionColorPreferences,
   DEFAULT_ITEM_REFERENCE_MENTION_COLOR,
@@ -29,6 +32,47 @@ import {
 export default function SessionPreferences() {
   const { campaignSlug, sessionSlug } = useParams()
   const navigate = useNavigate()
+  
+  const { authState } = useAuth()
+  const { isGuest } = authState
+  const [campaignId, setCampaignId] = useState(null)
+  const [resolvedCampaignName, setResolvedCampaignName] = useState('')
+
+  useEffect(() => {
+    if (isGuest) {
+      setCampaignId('guest-campaign-id')
+      return
+    }
+
+    async function resolveCampaign() {
+      try {
+        const client = requireSupabase()
+        const { data, error } = await client
+          .from('campaigns')
+          .select('id, name')
+          .eq('slug', campaignSlug)
+          .single()
+
+        if (!error && data) {
+          setCampaignId(data.id)
+          setResolvedCampaignName(data.name)
+        }
+      } catch (err) {
+        console.error('Failed to resolve campaign ID:', err)
+      }
+    }
+    resolveCampaign()
+  }, [campaignSlug, isGuest])
+
+  const { displayName, isLoading: displayNameLoading, setDisplayName } = useCampaignDisplayName(campaignId)
+  const [inputValue, setInputValue] = useState('')
+  const [savedSuccess, setSavedSuccess] = useState(false)
+
+  useEffect(() => {
+    if (displayName !== undefined) {
+      setInputValue(displayName || '')
+    }
+  }, [displayName])
   const initialPreferences = useMemo(() => getMentionColorPreferences(), [])
   const [npcReferenceColor, setNpcReferenceColor] = useState(
     initialPreferences.npcReferenceColor || DEFAULT_NPC_REFERENCE_MENTION_COLOR
@@ -121,46 +165,51 @@ export default function SessionPreferences() {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 text-slate-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200 overflow-hidden">
-      <header className="h-16 px-4 md:px-6 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between gap-2 transition-colors duration-200 shrink-0">
-        <div className="flex items-center gap-2 md:gap-4 flex-1 md:flex-none md:w-1/4 min-w-0">
-          <Button
-            onClick={() => navigate(`/campaigns/${campaignSlug}`)}
-            variant="ghost"
-            className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
-          >
-            <span className="hidden md:inline">Back</span>
-            <span className="md:hidden">←</span>
-          </Button>
-          <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 md:mx-2 shrink-0"></div>
-          <h1 className="text-base md:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
-            Preferences
-          </h1>
+      <header className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex flex-col md:flex-row md:h-16 md:items-center md:justify-between px-4 md:px-6 shrink-0 transition-colors duration-200 z-10 gap-2 md:gap-0">
+        {/* Row 1: Back, Title */}
+        <div className="flex items-center justify-between w-full md:w-auto h-14 md:h-auto gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              onClick={() => navigate(`/campaigns/${campaignSlug}`)}
+              variant="ghost"
+              className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
+            >
+              <span className="hidden md:inline">Back</span>
+              <span className="md:hidden">←</span>
+            </Button>
+            <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 md:mx-2 shrink-0"></div>
+            <h1 className="text-base md:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
+              Preferences
+            </h1>
+          </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center">
-          <nav className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 border border-slate-200 dark:border-gray-700 shrink-0 rounded-md">
+        {/* Navigation Tabs - Centered/Second Row */}
+        <div className="w-full md:w-auto pb-3 md:pb-0 flex items-center justify-center">
+          <nav className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 border border-slate-200 dark:border-gray-700 shrink-0 rounded-md w-full md:w-auto grid grid-cols-3 md:flex md:flex-row gap-0.5">
             <button
               onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}`)}
-              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
             >
               <span className="hidden md:inline">Workspace</span>
               <span className="md:hidden">Edit</span>
             </button>
             <button
               onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}/journal`)}
-              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
             >
               Journal
             </button>
             <button
-              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium bg-white dark:bg-gray-900 text-slate-900 dark:text-white border border-slate-200 dark:border-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs md:text-sm font-medium bg-white dark:bg-gray-900 text-slate-900 dark:text-white border border-slate-200 dark:border-gray-700 transition-colors rounded text-center"
             >
               Preferences
             </button>
           </nav>
         </div>
 
-        <div className="flex-1 md:flex-none md:w-1/4"></div>
+        {/* Empty desktop placeholder */}
+        <div className="hidden md:block md:w-1/4"></div>
       </header>
 
       <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50 dark:bg-gray-950">
@@ -351,27 +400,77 @@ export default function SessionPreferences() {
               </div>
             </section>
 
-            {/* Show Offline Members Card (Sidebar Bento Card) */}
-            <section className="col-span-12 lg:col-span-4 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between h-fit">
-              <div>
-                <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Members</span>
-                <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Show Offline Members</h3>
-                <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">When disabled, campaign members marked Offline are hidden from the sidebar.</p>
-              </div>
-              <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100 dark:border-gray-700/50">
-                <span className="text-xs font-medium text-slate-500 dark:text-gray-400">Sidebar Visibility</span>
-                <label className="relative inline-flex items-center cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    aria-label="Show offline members in member list"
-                    checked={showOfflineMembers}
-                    onChange={(event) => handleShowOfflineMembersChange(event.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
-                </label>
-              </div>
-            </section>
+             {/* Sidebar Cards Container */}
+             <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+               {/* Campaign Display Name Card */}
+               <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between h-fit">
+                 <div>
+                   <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Identity</span>
+                   <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Campaign Display Name</h3>
+                   <p className="text-xs text-slate-500 dark:text-gray-400 mb-4">Set a custom display name for yourself in this campaign. This name will be visible to all members.</p>
+                   <Input
+                     type="text"
+                     placeholder={resolvedCampaignName ? `e.g. Dungeon Master` : "Enter display name..."}
+                     value={inputValue}
+                     onChange={(e) => setInputValue(e.target.value)}
+                     disabled={displayNameLoading}
+                     className="w-full text-sm h-10 mb-2 bg-slate-50 dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100"
+                   />
+                 </div>
+                 <div className="flex items-center justify-between gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-gray-700/50">
+                   <Button
+                     type="button"
+                     variant="outline"
+                     className="h-9 px-3 text-xs"
+                     onClick={() => {
+                       setInputValue('')
+                       setDisplayName(null)
+                     }}
+                     disabled={displayNameLoading}
+                   >
+                     Reset
+                   </Button>
+                   <div className="flex items-center gap-2">
+                     {savedSuccess && <span className="text-xs text-green-600 dark:text-green-400">Saved!</span>}
+                     <Button
+                       type="button"
+                       variant="primary"
+                       className="h-9 px-4 text-xs font-semibold min-h-[36px]"
+                       disabled={displayNameLoading}
+                       onClick={async () => {
+                         await setDisplayName(inputValue)
+                         setSavedSuccess(true)
+                         setTimeout(() => setSavedSuccess(false), 2000)
+                       }}
+                     >
+                       Save
+                     </Button>
+                   </div>
+                 </div>
+               </section>
+
+               {/* Show Offline Members Card (Sidebar Bento Card) */}
+               <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between h-fit">
+                 <div>
+                   <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Members</span>
+                   <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Show Offline Members</h3>
+                   <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">When disabled, campaign members marked Offline are hidden from the sidebar.</p>
+                 </div>
+                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100 dark:border-gray-700/50">
+                   <span className="text-xs font-medium text-slate-500 dark:text-gray-400">Sidebar Visibility</span>
+                   <label className="relative inline-flex items-center cursor-pointer select-none">
+                     <input
+                       type="checkbox"
+                       aria-label="Show offline members in member list"
+                       checked={showOfflineMembers}
+                       onChange={(event) => handleShowOfflineMembersChange(event.target.checked)}
+                       className="sr-only peer"
+                     />
+                     <div className="w-11 h-6 bg-slate-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
+                   </label>
+                 </div>
+               </section>
+             </div>
 
           </div>
         </div>

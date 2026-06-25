@@ -1,5 +1,5 @@
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { getDisplayLabel } from '../lib/utils'
 import { UserProfileMenu } from '../components/ui'

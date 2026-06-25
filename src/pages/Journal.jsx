@@ -9,6 +9,7 @@ import { formatDistanceToNowCustom } from '../lib/dateUtils'
 import {
   getGuestSessionBySlug,
 } from '../lib/guestData'
+import { useCampaignDisplayName } from '../lib/campaignDisplayPreferences'
 
 const TAG_SECTIONS = [
   { type: 'npc', title: 'NPCs', placeholder: 'Add NPC Name' },
@@ -23,6 +24,7 @@ export default function Journal() {
   const { authState } = useAuth()
   const { isGuest, isLoading: authLoading } = authState
   const [campaignId, setCampaignId] = useState(null)
+  const [campaignName, setCampaignName] = useState('')
   const [sessionId, setSessionId] = useState(null)
   const [loadingIds, setLoadingIds] = useState(true)
 
@@ -40,6 +42,7 @@ export default function Journal() {
         return
       }
       setCampaignId(guestRoute.campaign.id)
+      setCampaignName(guestRoute.campaign.name)
       setSessionId(guestRoute.session.id)
       setLoadingIds(false)
       return
@@ -50,7 +53,7 @@ export default function Journal() {
         const client = requireSupabase()
         const { data: campaignData, error: campaignError } = await client
           .from('campaigns')
-          .select('id')
+          .select('id, name')
           .eq('slug', campaignSlug)
           .single()
         
@@ -72,6 +75,7 @@ export default function Journal() {
         }
 
         setCampaignId(campaignData.id)
+        setCampaignName(campaignData.name)
         setSessionId(sessionData.id)
       } catch (err) {
         console.error('Error resolving slugs:', err)
@@ -93,6 +97,8 @@ export default function Journal() {
     removeTag,
     updateTag
   } = useSessionData(sessionId, campaignId)
+
+  const { displayName } = useCampaignDisplayName(campaignId)
 
   const [drafts, setDrafts] = useState({ npc: '', inventory: '', pet: '', location: '' })
   const [searchTerms, setSearchTerms] = useState({ npc: '', inventory: '', pet: '', location: '' })
@@ -241,47 +247,57 @@ export default function Journal() {
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 text-slate-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200 overflow-hidden">
       {/* Header */}
-      <header className="h-16 px-4 md:px-6 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between gap-2 transition-colors duration-200 shrink-0">
-        <div className="flex items-center gap-2 md:gap-4 flex-1 md:flex-none md:w-1/4 min-w-0">
-          <Button
-            onClick={() => navigate(`/campaigns/${campaignSlug}`)}
-            variant="ghost"
-            className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
-          >
-            <span className="hidden md:inline">Back</span>
-            <span className="md:hidden">←</span>
-          </Button>
-          <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 md:mx-2 shrink-0"></div>
-          <h1 className="text-base md:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
-            {session?.name || 'Session'}
-          </h1>
+      <header className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex flex-col md:flex-row md:h-16 md:items-center md:justify-between px-4 md:px-6 shrink-0 transition-colors duration-200 z-10 gap-2 md:gap-0">
+        {/* Row 1: Back, Title */}
+        <div className="flex items-center justify-between w-full md:w-auto h-14 md:h-auto gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              onClick={() => navigate(`/campaigns/${campaignSlug}`)}
+              variant="ghost"
+              className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
+            >
+              <span className="hidden md:inline">Back</span>
+              <span className="md:hidden">←</span>
+            </Button>
+            <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 md:mx-2 shrink-0"></div>
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span className="text-xs md:text-sm text-slate-400 dark:text-gray-500 truncate max-w-[80px] sm:max-w-[150px] md:max-w-[200px]">
+                {campaignName}
+              </span>
+              <span className="text-xs text-slate-300 dark:text-gray-600 shrink-0">/</span>
+              <h1 className="text-base md:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
+                {session?.name || 'Session'}
+              </h1>
+            </div>
+          </div>
         </div>
 
-        {/* Navigation Tabs - Centered */}
-        <div className="flex-1 flex items-center justify-center">
-          <nav className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 border border-slate-200 dark:border-gray-700 shrink-0 rounded-md">
+        {/* Navigation Tabs - Centered/Second Row */}
+        <div className="w-full md:w-auto pb-3 md:pb-0 flex items-center justify-center">
+          <nav className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 border border-slate-200 dark:border-gray-700 shrink-0 rounded-md w-full md:w-auto grid grid-cols-3 md:flex md:flex-row gap-0.5">
             <button
               onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}`)}
-              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
             >
               <span className="hidden md:inline">Workspace</span>
               <span className="md:hidden">Edit</span>
             </button>
             <button
-              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium bg-white dark:bg-gray-900 text-slate-900 dark:text-white border border-slate-200 dark:border-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs md:text-sm font-medium bg-white dark:bg-gray-900 text-slate-900 dark:text-white border border-slate-200 dark:border-gray-700 transition-colors rounded text-center"
             >
               Journal
             </button>
             <button
               onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}/preferences`)}
-              className="px-3 py-1 md:px-4 md:py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
             >
               Preferences
             </button>
           </nav>
         </div>
 
-        <div className="flex-1 md:flex-none md:w-1/4"></div>
+        {/* Empty desktop placeholder */}
+        <div className="hidden md:block md:w-1/4"></div>
       </header>
 
       {/* Error Message */}
@@ -317,7 +333,7 @@ export default function Journal() {
                   placeholder="Search..."
                   value={searchTerms[section.type]}
                   onChange={(e) => setSearchTerms(prev => ({ ...prev, [section.type]: e.target.value }))}
-                  className="bg-slate-50 dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 text-sm h-8"
+                  className="bg-slate-50 dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 text-sm h-11 md:h-8"
                 />
 
                 {/* Sort Button */}
@@ -364,7 +380,7 @@ export default function Journal() {
                       </div>
                       <button
                         onClick={() => removeTag(tag.id, tag)}
-                        className="text-slate-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1 ml-2 shrink-0"
+                        className="text-slate-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 lg:opacity-0 lg:group-hover:opacity-100 opacity-100 transition-opacity p-1 ml-2 shrink-0"
                         title="Remove"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

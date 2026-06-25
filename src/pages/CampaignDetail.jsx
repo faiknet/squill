@@ -175,18 +175,33 @@ function CampaignDetail() {
           throw membersError
         }
       } else {
+        const { data: displayPrefs } = await client
+          .from('campaign_display_preferences')
+          .select('user_id, display_name')
+          .eq('campaign_id', campaignData.id)
+
+        const prefMap = new Map()
+        displayPrefs?.forEach(p => {
+          if (p.display_name) prefMap.set(p.user_id, p.display_name)
+        })
+
+        const resolvedMembers = (membersData || []).map(m => ({
+          ...m,
+          display_name: prefMap.get(m.user_id) || m.display_name
+        }))
+
         // Fetch user colors for all members
-        const memberIds = membersData?.map(m => m.user_id) || []
+        const memberIds = resolvedMembers.map(m => m.user_id)
         if (memberIds.length > 0) {
           try {
             const { data: colorData, error: colorError } = await client.rpc('get_user_colors', {
               user_ids: memberIds
             })
-
+ 
             if (colorError) {
               console.warn('Could not fetch user colors:', colorError.message)
               // Sort members with GM first
-              const sorted = (membersData || []).sort((a, b) => {
+              const sorted = [...resolvedMembers].sort((a, b) => {
                 if (a.user_id === campaignData.created_by) return -1
                 if (b.user_id === campaignData.created_by) return 1
                 return 0
@@ -197,26 +212,26 @@ function CampaignDetail() {
               colorData?.forEach(item => {
                 colorMap.set(item.user_id, item.editor_color)
               })
-
+ 
               // Add color to members
-              const membersWithColor = membersData.map(member => ({
+              const membersWithColor = resolvedMembers.map(member => ({
                 ...member,
                 color: colorMap.get(member.user_id)
               }))
-
+ 
               // Sort members with GM first
               membersWithColor.sort((a, b) => {
                 if (a.user_id === campaignData.created_by) return -1
                 if (b.user_id === campaignData.created_by) return 1
                 return 0
               })
-
+ 
               setPartyMembers(membersWithColor)
             }
           } catch (err) {
             console.debug('Error fetching colors:', err.message)
             // Sort members with GM first
-            const sorted = (membersData || []).sort((a, b) => {
+            const sorted = [...resolvedMembers].sort((a, b) => {
               if (a.user_id === campaignData.created_by) return -1
               if (b.user_id === campaignData.created_by) return 1
               return 0
@@ -224,7 +239,7 @@ function CampaignDetail() {
             setPartyMembers(sorted)
           }
         } else {
-          setPartyMembers(membersData || [])
+          setPartyMembers(resolvedMembers)
         }
       }
     } catch (error) {
@@ -823,16 +838,16 @@ function CampaignDetail() {
                   ${session.archived ? 'border-slate-100 dark:border-gray-800 opacity-75' : 'border-slate-200 dark:border-gray-700'}
                 `}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-slate-900 dark:text-gray-100 text-lg">
-                        <button onClick={() => navigate(`/campaigns/${campaign.slug}/sessions/${session.slug}`)} className="hover:underline text-left">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-slate-900 dark:text-gray-100 text-lg truncate">
+                        <button onClick={() => navigate(`/campaigns/${campaign.slug}/sessions/${session.slug}`)} className="hover:underline text-left truncate">
                           {session.name}
                         </button>
                       </h3>
                       {session.archived && (
-                        <span className="inline-flex items-center rounded bg-slate-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-slate-800 dark:text-gray-400">
+                        <span className="inline-flex items-center rounded bg-slate-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-slate-800 dark:text-gray-400 shrink-0">
                           Archived
                         </span>
                       )}
@@ -841,7 +856,7 @@ function CampaignDetail() {
                       {session.session_date ? new Date(session.session_date + 'T00:00:00').toLocaleDateString() : 'No date set'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 self-end sm:self-auto lg:opacity-0 lg:group-hover:opacity-100 opacity-100 transition-opacity shrink-0">
                     <Button
                       onClick={() => openEditSessionModal(session)}
                       variant="ghost"

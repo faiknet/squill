@@ -13,10 +13,15 @@ const IconButton = memo(function IconButton({ onClick, isActive, label, icon, cl
         e.preventDefault()
         onClick()
       }}
-      className={`h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center ${isActive ? 'bg-slate-200 dark:bg-gray-600' : ''} ${className}`}
+      className={`h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-slate-200 dark:bg-gray-600' : ''} ${className}`}
       title={label}
     >
-      <MaterialIcon icon={icon} size={18} />
+      <span className="md:hidden flex items-center">
+        <MaterialIcon icon={icon} size={22} />
+      </span>
+      <span className="hidden md:flex items-center">
+        <MaterialIcon icon={icon} size={18} />
+      </span>
     </button>
   )
 })
@@ -92,7 +97,7 @@ const HIGHLIGHT_PALETTE = [
   ['#fff2cc', '#d9ead3', '#d0e0e3', '#ead1dc', '#fce5cd', '#cfe2f3', '#c9daf8'],
 ]
 
-function ColorPicker({ value, onChange, colors, label, icon, showUnderline = false }) {
+function ColorPicker({ value, onChange, colors, label, icon, showUnderline = false, align = 'left' }) {
   const [isOpen, setIsOpen] = useState(false)
   const [customColor, setCustomColor] = useState('#000000')
   const pickerRef = useRef(null)
@@ -119,11 +124,16 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
           e.preventDefault()
           setIsOpen(!isOpen)
         }}
-        className="h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex flex-col items-center justify-center gap-0.5 group"
+        className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex flex-col items-center justify-center gap-0.5 group flex-shrink-0"
         title={label}
       >
         <div className="text-slate-700 dark:text-gray-200 flex items-center gap-1">
-          <MaterialIcon icon={icon} size={18} />
+          <span className="md:hidden flex items-center">
+            <MaterialIcon icon={icon} size={22} />
+          </span>
+          <span className="hidden md:flex items-center">
+            <MaterialIcon icon={icon} size={18} />
+          </span>
           <svg className="w-2.5 h-2.5 opacity-60" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
@@ -135,7 +145,7 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 z-50 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-slate-200 dark:border-gray-700 p-3 min-w-[240px]">
+        <div className={`absolute top-full z-50 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-slate-200 dark:border-gray-700 p-3 min-w-[240px] ${align === 'right' ? 'right-0' : 'left-0'}`}>
           {/* Color grid */}
           <div className="space-y-1">
             {colors.map((row, rowIdx) => (
@@ -267,9 +277,9 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
         onInsert={handleImageInsert}
       />
 
-      <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex gap-1 items-center flex-wrap transition-colors duration-200 sticky top-0 z-10">
+      <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex flex-nowrap md:flex-wrap gap-1 items-center overflow-x-auto whitespace-nowrap scrollbar-none transition-colors duration-200 sticky top-0 z-10">
         {/* Font Size */}
-        <div className="flex items-center ">
+        <div className="flex items-center flex-shrink-0">
           <button
             type="button"
             onMouseDown={(e) => {
@@ -285,17 +295,17 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
 
               editor.chain().focus().setFontSize(`${newSize}px`).run()
             }}
-            className="h-7 w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-l text-slate-600 dark:text-gray-300"
+            className="h-11 w-8 md:h-7 md:w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-l text-slate-600 dark:text-gray-300"
             title="Decrease font size"
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 md:w-3 md:h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
             </svg>
           </button>
           <select
             value={fontSize}
             onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}px`).run()}
-            className="h-7 w-12 text-sm bg-transparent border border-slate-200 dark:border-gray-700 rounded-[8px]  text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
+            className="h-11 w-14 md:h-7 md:w-12 text-sm bg-transparent border border-slate-200 dark:border-gray-700 rounded-[8px]  text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
           >
             {FONT_SIZES.map(size => (
               <option key={size} value={size}>{size}</option>
@@ -316,16 +326,16 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
 
               editor.chain().focus().setFontSize(`${newSize}px`).run()
             }}
-            className="h-7 w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-r text-slate-600 dark:text-gray-300"
+            className="h-11 w-8 md:h-7 md:w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-r text-slate-600 dark:text-gray-300"
             title="Increase font size"
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 md:w-3 md:h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           </button>
         </div>
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Text Formatting */}
         <IconButton
@@ -363,9 +373,10 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           colors={HIGHLIGHT_PALETTE}
           label="Highlight color"
           icon="highlight"
+          align="right"
         />
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Link */}
         <IconButton
@@ -382,7 +393,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           icon="image"
         />
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Alignment */}
         <IconButton
@@ -410,7 +421,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           icon="format_align_justify"
         />
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Lists */}
         <IconButton
@@ -426,7 +437,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           icon="format_list_numbered"
         />
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700" />
+        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Clear Formatting */}
         <IconButton
@@ -458,14 +469,14 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
         />
 
         {isSidebarCollapsed && (
-          <div className="ml-auto">
+          <div className="ml-auto flex-shrink-0">
             <button
               type="button"
               onMouseDown={(e) => {
                 e.preventDefault()
                 onExpandSidebar?.()
               }}
-              className="h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+              className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
               style={{ color: BRAND_ICON_COLOR }}
               title="Expand member sidebar"
             >
