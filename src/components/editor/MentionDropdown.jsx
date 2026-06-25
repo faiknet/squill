@@ -196,7 +196,7 @@ const MentionDropdown = forwardRef(function MentionDropdown({
               <img
                 src={TYPE_ICONS[suggestion.entityType]}
                 alt=""
-                className="w-4 h-4 flex-shrink-0"
+                className="w-4 h-4 flex-shrink-0 mention-dropdown-icon"
               />
               <span
                 style={{

@@ -1,5 +1,5 @@
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { getDisplayLabel } from '../lib/utils'
 import { UserProfileMenu } from '../components/ui'
@@ -7,6 +7,8 @@ import Logo from '../components/ui/logo.webp'
 import { requireSupabase } from '../lib/supabase'
 import { getGuestCampaigns } from '../lib/guestData'
 import { MobileMenuProvider } from '../contexts/MobileMenuContext'
+import { LoadingSpinner } from '../components/ui'
+
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -160,7 +162,9 @@ export default function Layout() {
 
       <main className="flex-1 overflow-y-auto w-full flex flex-col">
         <div className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
-          <Outlet />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
     </div>

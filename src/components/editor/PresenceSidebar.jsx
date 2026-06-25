@@ -118,7 +118,7 @@ export default memo(function PresenceSidebar({
         </h3>
         <div className="space-y-3">
           {visibleMemberStatusList.map((user) => (
-            <div key={user.id} className={`flex items-start gap-3 ${!user.isOnline ? 'opacity-50' : ''}`}>
+            <div key={user.id} className={`flex items-start gap-3 ${!user.isOnline ? 'opacity-50' : ''}`} style={{ contentVisibility: 'auto', containIntrinsicSize: '40px' }}>
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0 select-none"
                 style={{ backgroundColor: user.color }}
@@ -154,7 +154,7 @@ export default memo(function PresenceSidebar({
         <div className="space-y-3 max-h-48 overflow-y-auto">
           {sortedActivities.length > 0 ? (
             sortedActivities.slice(0, 5).map((activity, i) => (
-              <div key={i} className="flex flex-col gap-0.5">
+              <div key={i} className="flex flex-col gap-0.5" style={{ contentVisibility: 'auto', containIntrinsicSize: '36px' }}>
                 <span className="text-xs text-slate-600 dark:text-gray-300">
                   <span className="font-semibold text-slate-900 dark:text-gray-100">{activity.user}</span> {activity.action}
                 </span>

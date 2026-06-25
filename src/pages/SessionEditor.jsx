@@ -296,14 +296,6 @@ const EditorLayout = memo(function EditorLayout({
         </div>
 
         <div className="flex items-center justify-end gap-2 md:gap-3 flex-1 md:flex-none md:w-1/4">
-          {saving && (
-            <span className="text-xs text-slate-500 dark:text-gray-500 hidden xl:inline-block whitespace-nowrap">
-              Saving...
-            </span>
-          )}
-          {!saving && (
-            <SavedIndicator />
-          )}
           <Button
             variant="outline"
             className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-800 min-w-[60px] md:min-w-[80px] h-8 md:h-9 text-xs md:text-sm px-2 md:px-4"

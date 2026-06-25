@@ -6,11 +6,13 @@ import { LiveblocksProvider } from '@liveblocks/react'
 
 import App from './App'
 import { applyMentionColorPreferences } from './lib/mentionColorPreferences'
+import { applyEnableReferenceIconsPreference } from './lib/sessionDisplayPreferences'
 import './index.css'
 
 const queryClient = new QueryClient()
 const liveblocksPublicKey = import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY
 applyMentionColorPreferences()
+applyEnableReferenceIconsPreference()
 
 const rootElement = document.getElementById('root')
 if (rootElement) {

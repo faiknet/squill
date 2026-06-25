@@ -109,3 +109,16 @@ html[data-location-reference-mention-custom-color="true"] span[data-mention-type
 html[data-session-reference-mention-custom-color="true"] span[data-mention-type="session"] {
   color: var(--session-reference-mention-color);
 }
+
+/* Reference icons toggle */
+html[data-reference-icons="false"] span[data-mention-type="entity"][data-mention-entity-type] {
+  padding-left: 0;
+}
+
+html[data-reference-icons="false"] span[data-mention-type="entity"][data-mention-entity-type]::before {
+  display: none;
+}
+
+html[data-reference-icons="false"] .mention-dropdown-icon {
+  visibility: hidden;
+}

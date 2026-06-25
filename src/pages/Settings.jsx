@@ -156,252 +156,253 @@ export default function Settings() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 pb-12">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-gray-100">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Manage your account settings and preferences.</p>
-      </div>
-
-      {/* Public Profile Section */}
-      <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">Public Profile</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">This information will be displayed to other users.</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-950 p-4 md:p-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-6 pb-12">
+        
+        {/* Header Summary Tile */}
+        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.03)]">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-gray-100">Global Settings</h1>
+          <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">Manage your profile, authentication credentials, security, and client preferences.</p>
         </div>
 
-        <div className="p-6 space-y-6">
+        {/* Bento Adaptive Grid */}
+        <div className="grid grid-cols-12 gap-6">
 
-
-          <form onSubmit={saveProfile} className="space-y-6">
+          {/* Public Profile Bento Tile */}
+          <section className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between min-h-[300px]">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Display Name</label>
-              <Input
-                value={displayName}
-                onChange={(event) => {
-                  if (isGuest) {
-                    profileForm.setFail('Unavailable in Guest Mode')
-                    return
-                  }
-                  setDisplayName(event.target.value)
-                }}
-                placeholder="Enter your display name"
-                disabled={profileSaving}
-                className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
-              />
-            </div>
+              <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Identity</span>
+              <h3 className="font-semibold text-lg text-slate-900 dark:text-gray-100 mb-1">Public Profile</h3>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">This profile information is visible to other players in your campaigns.</p>
+              
+              <form onSubmit={saveProfile} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-2">Display Name</label>
+                  <Input
+                    value={displayName}
+                    onChange={(event) => {
+                      if (isGuest) {
+                        profileForm.setFail('Unavailable in Guest Mode')
+                        return
+                      }
+                      setDisplayName(event.target.value)
+                    }}
+                    placeholder="Enter your display name"
+                    disabled={profileSaving}
+                    className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+                  />
+                </div>
 
-            {profileForm.error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-sm">
-                {profileForm.error}
-              </div>
-            )}
-
-            {profileForm.message && (
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-sm">
-                {profileForm.message}
-              </div>
-            )}
-
-            <div className="flex justify-end pt-2">
-              <Button
-                type="submit"
-                disabled={profileSaving}
-                className="bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-700 shadow-sm"
-              >
-                {profileSaving ? 'Saving...' : 'Save Profile'}
-              </Button>
-            </div>
-          </form>
-        </div>
-      </section>
-
-      {/* Account Section */}
-      <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">Account Settings</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Manage your email address.</p>
-        </div>
-
-        <div className="p-6">
-          <form onSubmit={updateEmail} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Email Address</label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(event) => {
-                  if (isGuest) {
-                    accountForm.setFail('Unavailable in Guest Mode')
-                    return
-                  }
-                  setEmail(event.target.value)
-                }}
-                placeholder="you@example.com"
-                disabled={emailLoading}
-                className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
-              />
-            </div>
-
-            {accountForm.error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-sm">
-                {accountForm.error}
-              </div>
-            )}
-
-            {accountForm.message && (
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-sm">
-                {accountForm.message}
-              </div>
-            )}
-
-            <div className="flex justify-end pt-2">
-              <Button
-                type="submit"
-                disabled={emailLoading || (!isGuest && email === authState.user?.email)}
-                className="bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-700 shadow-sm"
-              >
-                {emailLoading ? 'Updating...' : 'Update Email'}
-              </Button>
-            </div>
-          </form>
-        </div>
-      </section>
-
-      {/* Security Section */}
-      <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">Security</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Update your password.</p>
-        </div>
-
-        <div className="p-6">
-          <form onSubmit={updatePassword} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">New Password</label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(event) => {
-                    if (isGuest) {
-                      securityForm.setFail('Unavailable in Guest Mode')
-                      return
-                    }
-                    setPassword(event.target.value)
-                  }}
-                  placeholder="New password"
-                  disabled={securityLoading}
-                  className={`bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500 ${passwordDoesNotMeetRequirements ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
-                />
-                {passwordDoesNotMeetRequirements && (
-                  <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                    Password does not meet requirements.
-                  </p>
+                {profileForm.error && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-xs">
+                    {profileForm.error}
+                  </div>
                 )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Confirm Password</label>
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(event) => {
-                    if (isGuest) {
-                      securityForm.setFail('Unavailable in Guest Mode')
-                      return
-                    }
-                    setConfirmPassword(event.target.value)
-                  }}
-                  placeholder="Confirm new password"
-                  disabled={securityLoading}
-                  className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
-                />
+
+                {profileForm.message && (
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-xs">
+                    {profileForm.message}
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-gray-700/50">
+                  <Button
+                    type="submit"
+                    disabled={profileSaving}
+                    className="bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-700 shadow-sm text-xs h-9 px-4"
+                  >
+                    {profileSaving ? 'Saving...' : 'Save Profile'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          {/* Account Settings Bento Tile */}
+          <section className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between min-h-[300px]">
+            <div>
+              <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Account</span>
+              <h3 className="font-semibold text-lg text-slate-900 dark:text-gray-100 mb-1">Account Credentials</h3>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">Manage your core account authentication email address.</p>
+              
+              <form onSubmit={updateEmail} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(event) => {
+                      if (isGuest) {
+                        accountForm.setFail('Unavailable in Guest Mode')
+                        return
+                      }
+                      setEmail(event.target.value)
+                    }}
+                    placeholder="you@example.com"
+                    disabled={emailLoading}
+                    className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+                  />
+                </div>
+
+                {accountForm.error && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-xs">
+                    {accountForm.error}
+                  </div>
+                )}
+
+                {accountForm.message && (
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-xs">
+                    {accountForm.message}
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-gray-700/50">
+                  <Button
+                    type="submit"
+                    disabled={emailLoading || (!isGuest && email === authState.user?.email)}
+                    className="bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-700 shadow-sm text-xs h-9 px-4"
+                  >
+                    {emailLoading ? 'Updating...' : 'Update Email'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          {/* Security Bento Tile */}
+          <section className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between min-h-[300px]">
+            <div>
+              <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Security</span>
+              <h3 className="font-semibold text-lg text-slate-900 dark:text-gray-100 mb-1">Access Authentication</h3>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">Ensure your account remains safe by updating your password credentials.</p>
+              
+              <form onSubmit={updatePassword} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-2">New Password</label>
+                    <Input
+                      type="password"
+                      value={password}
+                      onChange={(event) => {
+                        if (isGuest) {
+                          securityForm.setFail('Unavailable in Guest Mode')
+                          return
+                        }
+                        setPassword(event.target.value)
+                      }}
+                      placeholder="New password"
+                      disabled={securityLoading}
+                      className={`bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500 ${passwordDoesNotMeetRequirements ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
+                    />
+                    {passwordDoesNotMeetRequirements && (
+                      <p className="mt-2 text-[10px] text-red-600 dark:text-red-400">
+                        Password must be &ge;8 chars with a number and capital.
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-2">Confirm Password</label>
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(event) => {
+                        if (isGuest) {
+                          securityForm.setFail('Unavailable in Guest Mode')
+                          return
+                        }
+                        setConfirmPassword(event.target.value)
+                      }}
+                      placeholder="Confirm new password"
+                      disabled={securityLoading}
+                      className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+                    />
+                  </div>
+                </div>
+
+                {securityForm.error && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-xs">
+                    {securityForm.error}
+                  </div>
+                )}
+
+                {securityForm.message && (
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-xs">
+                    {securityForm.message}
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-gray-700/50">
+                  <Button
+                    type="submit"
+                    disabled={securityLoading || !password}
+                    className="bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-700 shadow-sm text-xs h-9 px-4"
+                  >
+                    {securityLoading ? 'Updating...' : 'Update Password'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          {/* Appearance Bento Tile */}
+          <section className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between min-h-[300px]">
+            <div>
+              <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Appearance</span>
+              <h3 className="font-semibold text-lg text-slate-900 dark:text-gray-100 mb-1">Theme Preferences</h3>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">Choose how you'd like the client interface themes to appear.</p>
+              
+              <div className="space-y-3">
+                <label className="flex items-center p-3 rounded-lg border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/40 transition-colors">
+                  <input
+                    type="radio"
+                    name="theme"
+                    value="system"
+                    checked={theme === 'system'}
+                    onChange={(e) => setTheme(e.target.value)}
+                    className="w-4 h-4 cursor-pointer text-brand-600 focus:ring-brand-500 border-slate-300 dark:border-gray-600 dark:bg-gray-900"
+                  />
+                  <span className="ml-3 text-xs font-semibold text-slate-900 dark:text-gray-100">
+                    System Default
+                  </span>
+                  <span className="ml-2 text-[10px] text-slate-400 dark:text-gray-500">
+                    (syncs to your browser/OS setting)
+                  </span>
+                </label>
+
+                <label className="flex items-center p-3 rounded-lg border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/40 transition-colors">
+                  <input
+                    type="radio"
+                    name="theme"
+                    value="light"
+                    checked={theme === 'light'}
+                    onChange={(e) => setTheme(e.target.value)}
+                    className="w-4 h-4 cursor-pointer text-brand-600 focus:ring-brand-500 border-slate-300 dark:border-gray-600 dark:bg-gray-900"
+                  />
+                  <span className="ml-3 text-xs font-semibold text-slate-900 dark:text-gray-100">
+                    Light Theme
+                  </span>
+                </label>
+
+                <label className="flex items-center p-3 rounded-lg border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/40 transition-colors">
+                  <input
+                    type="radio"
+                    name="theme"
+                    value="dark"
+                    checked={theme === 'dark'}
+                    onChange={(e) => setTheme(e.target.value)}
+                    className="w-4 h-4 cursor-pointer text-brand-600 focus:ring-brand-500 border-slate-300 dark:border-gray-600 dark:bg-gray-900"
+                  />
+                  <span className="ml-3 text-xs font-semibold text-slate-900 dark:text-gray-100">
+                    Dark Theme
+                  </span>
+                </label>
               </div>
             </div>
-            <p className="mt-1 text-xs text-slate-500/80 dark:text-gray-400/80">
-              Password should be at least 8 characters including a number and an upper case letter.
-            </p>
+          </section>
 
-            {securityForm.error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-sm">
-                {securityForm.error}
-              </div>
-            )}
-
-            {securityForm.message && (
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-sm">
-                {securityForm.message}
-              </div>
-            )}
-
-            <div className="flex justify-end pt-2">
-              <Button
-                type="submit"
-                disabled={securityLoading || !password}
-                className="bg-brand-600 text-white hover:bg-brand-700 dark:hover:bg-brand-700 shadow-sm"
-              >
-                {securityLoading ? 'Updating...' : 'Update Password'}
-              </Button>
-            </div>
-          </form>
         </div>
-      </section>
-
-      {/* Appearance Section */}
-      <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">Appearance</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Choose how you'd like the interface to appear.</p>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div className="space-y-3">
-            <label className="flex items-center p-3 rounded-md border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/50 transition-colors">
-              <input
-                type="radio"
-                name="theme"
-                value="system"
-                checked={theme === 'system'}
-                onChange={(e) => setTheme(e.target.value)}
-                className="w-4 h-4 cursor-pointer accent-blue-600"
-              />
-              <span className="ml-3 text-sm font-medium text-slate-900 dark:text-gray-100">
-                System Default
-              </span>
-              <span className="ml-2 text-xs text-slate-500 dark:text-gray-400">
-                (matches your system settings)
-              </span>
-            </label>
-
-            <label className="flex items-center p-3 rounded-md border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/50 transition-colors">
-              <input
-                type="radio"
-                name="theme"
-                value="light"
-                checked={theme === 'light'}
-                onChange={(e) => setTheme(e.target.value)}
-                className="w-4 h-4 cursor-pointer accent-blue-600"
-              />
-              <span className="ml-3 text-sm font-medium text-slate-900 dark:text-gray-100">
-                Light Mode
-              </span>
-            </label>
-
-            <label className="flex items-center p-3 rounded-md border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/50 transition-colors">
-              <input
-                type="radio"
-                name="theme"
-                value="dark"
-                checked={theme === 'dark'}
-                onChange={(e) => setTheme(e.target.value)}
-                className="w-4 h-4 cursor-pointer accent-blue-600"
-              />
-              <span className="ml-3 text-sm font-medium text-slate-900 dark:text-gray-100">
-                Dark Mode
-              </span>
-            </label>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
   )
 }
+

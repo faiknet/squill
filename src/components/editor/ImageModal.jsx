@@ -1,5 +1,66 @@
 import { useState, useRef } from 'react'
 
+// Helper to optimize Supabase Storage URLs by leveraging on-the-fly transformations
+function optimizeImageUrl(url) {
+  if (!url) return url
+  // Match Supabase public storage url
+  const supabasePattern = /^(https:\/\/[\w-]+\.supabase\.co)\/storage\/v1\/object\/public\/([^\s\?]+)/
+  const match = url.match(supabasePattern)
+  if (match) {
+    const baseUrl = match[1]
+    const path = match[2]
+    // Check if query params already exist
+    const hasParams = url.includes('?')
+    if (!hasParams) {
+      // Swaps "object" with "render/image" endpoint and adds resizing params
+      return `${baseUrl}/storage/v1/render/image/public/${path}?width=800&quality=80`
+    }
+  }
+  return url
+}
+
+// Client-side image compression to downscale large image uploads and reduce base64 size
+function compressImage(file, maxWidth = 1000, maxHeight = 1000, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target.result
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width)
+            width = maxWidth
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height)
+            height = maxHeight
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        // Compress and convert to JPEG
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
+        resolve(compressedDataUrl)
+      }
+      img.onerror = (err) => reject(err)
+    }
+    reader.onerror = (err) => reject(err)
+  })
+}
+
 export default function ImageModal({ isOpen, onClose, onInsert }) {
   const [imageUrl, setImageUrl] = useState('')
   const [isUploading, setIsUploading] = useState(false)
@@ -11,7 +72,7 @@ export default function ImageModal({ isOpen, onClose, onInsert }) {
   const handleUrlSubmit = (e) => {
     e.preventDefault()
     if (imageUrl.trim()) {
-      onInsert(imageUrl.trim())
+      onInsert(optimizeImageUrl(imageUrl.trim()))
       setImageUrl('')
       onClose()
     }
@@ -27,31 +88,17 @@ export default function ImageModal({ isOpen, onClose, onInsert }) {
       return
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be smaller than 5MB')
-      return
-    }
-
     setIsUploading(true)
 
     try {
-      // Convert image to base64 data URL
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const dataUrl = event.target.result
-        onInsert(dataUrl)
-        setIsUploading(false)
-        onClose()
-      }
-      reader.onerror = () => {
-        alert('Failed to read image file')
-        setIsUploading(false)
-      }
-      reader.readAsDataURL(file)
+      // Compress the image before inserting it
+      const compressedDataUrl = await compressImage(file)
+      onInsert(compressedDataUrl)
+      setIsUploading(false)
+      onClose()
     } catch (error) {
-      console.error('Error uploading image:', error)
-      alert('Failed to upload image')
+      console.error('Error compressing/uploading image:', error)
+      alert('Failed to process image')
       setIsUploading(false)
     }
   }
@@ -144,13 +191,13 @@ export default function ImageModal({ isOpen, onClose, onInsert }) {
                 disabled={isUploading}
               />
               <p className="text-xs text-slate-500 dark:text-gray-400 mt-2">
-                Maximum file size: 5MB
+                Large images will be optimized/resized automatically to ensure fast synchronization.
               </p>
             </div>
             
             {isUploading && (
               <div className="text-center py-4 text-slate-600 dark:text-gray-400">
-                Uploading image...
+                Optimizing image...
               </div>
             )}
             

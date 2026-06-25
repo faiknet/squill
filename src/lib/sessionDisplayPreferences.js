@@ -12,3 +12,24 @@ export function setShowOfflineMembersPreference(value) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(SHOW_OFFLINE_MEMBERS_STORAGE_KEY, String(Boolean(value)))
 }
+
+const ENABLE_REFERENCE_ICONS_STORAGE_KEY = 'squill:preferences:reference-icons'
+export const DEFAULT_ENABLE_REFERENCE_ICONS = true
+
+export function getEnableReferenceIconsPreference() {
+  if (typeof window === 'undefined') return DEFAULT_ENABLE_REFERENCE_ICONS
+  const raw = window.localStorage.getItem(ENABLE_REFERENCE_ICONS_STORAGE_KEY)
+  if (raw === null) return DEFAULT_ENABLE_REFERENCE_ICONS
+  return raw === 'true'
+}
+
+export function setEnableReferenceIconsPreference(value) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(ENABLE_REFERENCE_ICONS_STORAGE_KEY, String(Boolean(value)))
+}
+
+export function applyEnableReferenceIconsPreference() {
+  if (typeof window === 'undefined') return
+  const enabled = getEnableReferenceIconsPreference()
+  document.documentElement.dataset.referenceIcons = String(enabled)
+}

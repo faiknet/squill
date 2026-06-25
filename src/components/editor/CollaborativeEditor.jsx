@@ -44,6 +44,7 @@ export default function CollaborativeEditor({
   const localColor = useMemo(() => userColor || colorFromString(userLabel), [userColor, userLabel])
   
   const typingTimeoutRef = useRef(null)
+  const isTypingRef = useRef(false)
   const [mentionState, setMentionState] = useState({ active: false, query: '', position: null })
   const mentionStateRef = useRef(mentionState)
   const [selectedJournalEntry, setSelectedJournalEntry] = useState(null)
@@ -110,10 +111,14 @@ export default function CollaborativeEditor({
 
   const handleTyping = (isTyping) => {
     if (isTyping) {
-      room.updatePresence({ typing: true })
+      if (!isTypingRef.current) {
+        isTypingRef.current = true
+        room.updatePresence({ typing: true })
+      }
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
       typingTimeoutRef.current = setTimeout(() => handleTyping(false), 1500)
     } else {
+      isTypingRef.current = false
       room.updatePresence({ typing: false })
       typingTimeoutRef.current = null
     }
