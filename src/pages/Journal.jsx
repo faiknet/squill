@@ -3,13 +3,13 @@ import { useState, useMemo, useEffect } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useSessionData } from '../hooks/useSessionData'
-import { Button, Input, Card } from '../components/ui'
+import { Input } from '../components/ui'
 import NewJournalEntryModal from '../components/journal/NewJournalEntryModal'
 import { formatDistanceToNowCustom } from '../lib/dateUtils'
 import {
   getGuestSessionBySlug,
 } from '../lib/guestData'
-import { useCampaignDisplayName } from '../lib/campaignDisplayPreferences'
+
 
 const TAG_SECTIONS = [
   { type: 'npc', title: 'NPCs', placeholder: 'Add NPC Name' },
@@ -98,7 +98,6 @@ export default function Journal() {
     updateTag
   } = useSessionData(sessionId, campaignId)
 
-  const { displayName } = useCampaignDisplayName(campaignId)
 
   const [drafts, setDrafts] = useState({ npc: '', inventory: '', pet: '', location: '' })
   const [searchTerms, setSearchTerms] = useState({ npc: '', inventory: '', pet: '', location: '' })
@@ -228,78 +227,12 @@ export default function Journal() {
     }
   }
 
-  if (loadingIds) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
-        <p className="text-slate-500 dark:text-gray-400">Loading...</p>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
-        <p className="text-slate-500 dark:text-gray-400">Loading journal...</p>
-      </div>
-    )
+  if (loadingIds || loading) {
+    return null
   }
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 text-slate-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200 overflow-hidden">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex flex-col md:flex-row md:h-16 md:items-center md:justify-between px-4 md:px-6 shrink-0 transition-colors duration-200 z-10 gap-2 md:gap-0">
-        {/* Row 1: Back, Title */}
-        <div className="flex items-center justify-between w-full md:w-auto h-14 md:h-auto gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button
-              onClick={() => navigate(`/campaigns/${campaignSlug}`)}
-              variant="ghost"
-              className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
-            >
-              <span className="hidden md:inline">Back</span>
-              <span className="md:hidden">←</span>
-            </Button>
-            <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 md:mx-2 shrink-0"></div>
-            <div className="flex items-baseline gap-1.5 min-w-0">
-              <span className="text-xs md:text-sm text-slate-400 dark:text-gray-500 truncate max-w-[80px] sm:max-w-[150px] md:max-w-[200px]">
-                {campaignName}
-              </span>
-              <span className="text-xs text-slate-300 dark:text-gray-600 shrink-0">/</span>
-              <h1 className="text-base md:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
-                {session?.name || 'Session'}
-              </h1>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation Tabs - Centered/Second Row */}
-        <div className="w-full md:w-auto pb-3 md:pb-0 flex items-center justify-center">
-          <nav className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 border border-slate-200 dark:border-gray-700 shrink-0 rounded-md w-full md:w-auto grid grid-cols-3 md:flex md:flex-row gap-0.5">
-            <button
-              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}`)}
-              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
-            >
-              <span className="hidden md:inline">Workspace</span>
-              <span className="md:hidden">Edit</span>
-            </button>
-            <button
-              className="px-3 py-1.5 text-xs md:text-sm font-medium bg-white dark:bg-gray-900 text-slate-900 dark:text-white border border-slate-200 dark:border-gray-700 transition-colors rounded text-center"
-            >
-              Journal
-            </button>
-            <button
-              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}/preferences`)}
-              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
-            >
-              Preferences
-            </button>
-          </nav>
-        </div>
-
-        {/* Empty desktop placeholder */}
-        <div className="hidden md:block md:w-1/4"></div>
-      </header>
-
+    <div className="flex-1 bg-gray-50 dark:bg-gray-900 text-slate-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200 overflow-hidden">
       {/* Error Message */}
       {error && (
         <div className="mx-6 my-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-md shrink-0">

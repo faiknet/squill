@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useSupabaseAuth'
 import { getDisplayLabel } from '../../lib/utils'
+import ColorPickerModal from './ColorPickerModal'
 
 const USER_COLOR_OPTIONS = [
   { value: '#ef4444', label: 'Red' },
@@ -20,6 +21,7 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
   const navigate = useNavigate()
   const { authState, signOut } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isColorModalOpen, setIsColorModalOpen] = useState(false)
   const menuRef = useRef(null)
   
   const profileLabel = getDisplayLabel(authState)
@@ -42,7 +44,7 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setShowUserMenu(!showUserMenu)}
-        className={`w-full flex items-center gap-2.5 p-1.5 hover:bg-slate-50 dark:hover:bg-gray-800/50 rounded-md cursor-pointer transition-colors ${collapsed ? 'justify-center' : ''}`}
+        className={`w-full flex items-center gap-2.5 p-1.5 hover:bg-slate-50 dark:hover:bg-gray-700/50 rounded-md cursor-pointer transition-colors ${collapsed ? 'justify-center' : ''}`}
       >
         <div className="size-8 rounded-full bg-slate-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-gray-300 shrink-0"
              style={userColor ? { backgroundColor: userColor, color: '#fff' } : {}}
@@ -65,22 +67,23 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
         <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xl rounded-md overflow-hidden z-50 min-w-[240px] max-h-[70vh] overflow-y-auto custom-scrollbar">
           
           {setUserColor && (
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-gray-700">
-              <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Colour</p>
-              <div className="grid grid-cols-5 gap-2">
-                {USER_COLOR_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setUserColor(option.value)}
-                    className={`w-8 h-8 md:w-6 md:h-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                      userColor === option.value ? 'border-slate-900 ring-1 ring-slate-900/20 dark:border-white dark:ring-white/20' : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: option.value }}
-                    title={option.label}
-                  />
-                ))}
+            <>
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Current colour:</span>
+                <button
+                  onClick={() => setIsColorModalOpen(true)}
+                  className="w-6 h-6 rounded-full border-2 border-slate-200 dark:border-gray-600 transition-transform hover:scale-110 shadow-sm cursor-pointer"
+                  style={{ backgroundColor: userColor || '#ef4444' }}
+                  title="Change colour"
+                />
               </div>
-            </div>
+              <ColorPickerModal
+                isOpen={isColorModalOpen}
+                onClose={() => setIsColorModalOpen(false)}
+                currentColor={userColor}
+                onSelectColor={setUserColor}
+              />
+            </>
           )}
 
           <button

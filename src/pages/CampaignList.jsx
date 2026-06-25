@@ -361,7 +361,7 @@ export default memo(function CampaignList() {
         <div className="p-4 border-t border-slate-100 dark:border-gray-700 relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="w-full flex items-center gap-2.5 p-1.5 hover:bg-slate-50 dark:hover:bg-gray-800 rounded-md cursor-pointer transition-colors"
+            className="w-full flex items-center gap-2.5 p-1.5 hover:bg-slate-50 dark:hover:bg-gray-700 rounded-md cursor-pointer transition-colors"
           >
             <div className="size-8 rounded-full bg-slate-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-gray-300">
               {profileLabel.charAt(0).toUpperCase()}
@@ -556,7 +556,7 @@ export default memo(function CampaignList() {
                         className={`p-4 rounded-xl border transition-all cursor-pointer shadow-sm hover:shadow ${
                           isSelected
                             ? 'bg-brand-50/50 dark:bg-brand-900/15 border-brand-200 dark:border-brand-900 ring-2 ring-brand-500'
-                            : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-800/80'
+                            : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700/80'
                         }`}
                       >
                         <div className="flex items-start justify-between mb-2">

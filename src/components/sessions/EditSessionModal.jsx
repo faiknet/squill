@@ -63,7 +63,7 @@ export default function EditSessionModal({ isOpen, onClose, onSave, session }) {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Session 1: The Beginning"
                 required
-                className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 w-full"
+                className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 w-full"
               />
             </div>
             <div>
@@ -74,7 +74,7 @@ export default function EditSessionModal({ isOpen, onClose, onSave, session }) {
                 type="date"
                 value={sessionDate}
                 onChange={(e) => setSessionDate(e.target.value)}
-                className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 w-full"
+                className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 w-full"
               />
             </div>
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-gray-700/50 mt-6">

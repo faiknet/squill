@@ -231,7 +231,7 @@ export default memo(function PresenceSidebar({
 
       {/* User Profile Footer - always anchored to bottom */}
       <div className="p-4 border-t border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
-        <UserProfileMenu userColor={userColor} setUserColor={setUserColor} />
+        <UserProfileMenu userColor={userColor} />
       </div>
     </aside>
   )

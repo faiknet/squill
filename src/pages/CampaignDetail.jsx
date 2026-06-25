@@ -11,6 +11,8 @@ import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
 import StreakInfoModal from '../components/campaigns/StreakInfoModal'
 import RemovePlayerModal from '../components/campaigns/RemovePlayerModal'
 import TransferGMModal from '../components/campaigns/TransferGMModal'
+import LeaveCampaignModal from '../components/campaigns/LeaveCampaignModal'
+import GMLeaveWarningModal from '../components/campaigns/GMLeaveWarningModal'
 import {
   validateUpdateCampaign,
   validateCreateSession,
@@ -73,6 +75,8 @@ function CampaignDetail() {
   const [isRemovePlayerModalOpen, setIsRemovePlayerModalOpen] = useState(false)
   const [isTransferGMModalOpen, setIsTransferGMModalOpen] = useState(false)
   const [isStreakModalOpen, setIsStreakModalOpen] = useState(false)
+  const [isLeaveCampaignModalOpen, setIsLeaveCampaignModalOpen] = useState(false)
+  const [isGMLeaveWarningModalOpen, setIsGMLeaveWarningModalOpen] = useState(false)
   const copyConfirmationTimeoutRef = useRef(null)
   const menuRef = useRef(null)
 
@@ -528,6 +532,21 @@ function CampaignDetail() {
     }
   }
 
+  const handleLeaveCampaign = async () => {
+    try {
+      const client = requireSupabase()
+      const { error } = await client
+        .from('campaign_members')
+        .delete()
+        .eq('campaign_id', campaign.id)
+        .eq('user_id', currentUserId)
+      if (error) throw error
+      navigate('/campaigns')
+    } catch (error) {
+      setErrorMessage(error.message || 'Failed to leave campaign')
+    }
+  }
+
   const visibleSessions = sessions.filter((session) => (showArchived ? true : !session.archived))
   const isGM = Boolean(campaign && currentUserId && campaign.created_by === currentUserId)
   const campaignStreakText = formatCampaignStreak(campaign)
@@ -611,6 +630,19 @@ function CampaignDetail() {
                   </Button>
                 </>
               )}
+              <Button
+                variant="danger"
+                className="bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 border-red-200 dark:border-red-900/50"
+                onClick={() => {
+                  if (isGM) {
+                    setIsGMLeaveWarningModalOpen(true)
+                  } else {
+                    setIsLeaveCampaignModalOpen(true)
+                  }
+                }}
+              >
+                Leave
+              </Button>
             </div>
           </div>
 
@@ -709,7 +741,7 @@ function CampaignDetail() {
                   value={campaignName}
                   onChange={(e) => setCampaignName(e.target.value)}
                   required
-                  className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+                  className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
                 />
               </div>
               <div>
@@ -718,7 +750,7 @@ function CampaignDetail() {
                   value={campaignDescription}
                   onChange={(e) => setCampaignDescription(e.target.value)}
                   rows={3}
-                  className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder-slate-400 dark:placeholder-gray-600"
+                  className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder-slate-400 dark:placeholder-gray-600"
                 />
               </div>
               <div>
@@ -726,7 +758,7 @@ function CampaignDetail() {
                 <select
                   value={campaignStreakCadence}
                   onChange={(e) => setCampaignStreakCadence(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 >
                   <option value="weekly">Weekly</option>
                   <option value="biweekly">Biweekly</option>
@@ -788,7 +820,7 @@ function CampaignDetail() {
                   onChange={(e) => setSessionName(e.target.value)}
                   placeholder="e.g., Session 1: The Beginning"
                   required
-                  className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700"
+                  className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700"
                 />
               </div>
               <div>
@@ -797,7 +829,7 @@ function CampaignDetail() {
                   type="date"
                   value={sessionDate}
                   onChange={(e) => setSessionDate(e.target.value)}
-                  className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700"
+                  className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -958,6 +990,18 @@ function CampaignDetail() {
         isOpen={isStreakModalOpen}
         onClose={() => setIsStreakModalOpen(false)}
         campaign={campaign}
+      />
+
+      <LeaveCampaignModal
+        isOpen={isLeaveCampaignModalOpen}
+        onClose={() => setIsLeaveCampaignModalOpen(false)}
+        onConfirm={handleLeaveCampaign}
+        campaignName={campaign?.name || ''}
+      />
+
+      <GMLeaveWarningModal
+        isOpen={isGMLeaveWarningModalOpen}
+        onClose={() => setIsGMLeaveWarningModalOpen(false)}
       />
     </div>
   )

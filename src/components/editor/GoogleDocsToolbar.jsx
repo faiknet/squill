@@ -100,7 +100,16 @@ const HIGHLIGHT_PALETTE = [
 function ColorPicker({ value, onChange, colors, label, icon, showUnderline = false, align = 'left' }) {
   const [isOpen, setIsOpen] = useState(false)
   const [customColor, setCustomColor] = useState('#000000')
+  const [isMobile, setIsMobile] = useState(false)
   const pickerRef = useRef(null)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 767px)')
+    setIsMobile(mediaQuery.matches)
+    const handler = (e) => setIsMobile(e.matches)
+    mediaQuery.addEventListener('change', handler)
+    return () => mediaQuery.removeEventListener('change', handler)
+  }, [])
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -109,10 +118,11 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
       }
     }
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      const eventType = isMobile ? 'touchstart' : 'mousedown'
+      document.addEventListener(eventType, handleClickOutside)
+      return () => document.removeEventListener(eventType, handleClickOutside)
     }
-  }, [isOpen])
+  }, [isOpen, isMobile])
 
   const currentColor = value || (colors === COLOR_PALETTE ? '#000000' : 'transparent')
 
@@ -121,6 +131,10 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
       <button
         type="button"
         onMouseDown={(e) => {
+          e.preventDefault()
+          setIsOpen(!isOpen)
+        }}
+        onTouchStart={(e) => {
           e.preventDefault()
           setIsOpen(!isOpen)
         }}
@@ -144,7 +158,8 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
         />
       </button>
 
-      {isOpen && (
+      {/* Desktop dropdown */}
+      {isOpen && !isMobile && (
         <div className={`absolute top-full z-50 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-slate-200 dark:border-gray-700 p-3 min-w-[240px] ${align === 'right' ? 'right-0' : 'left-0'}`}>
           {/* Color grid */}
           <div className="space-y-1">
@@ -176,7 +191,70 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
               </div>
             ))}
           </div>
+        </div>
+      )}
 
+      {/* Mobile Modal */}
+      {isOpen && isMobile && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
+          onTouchStart={() => setIsOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-slate-200 dark:border-gray-700 p-5 w-full max-w-[340px] flex flex-col gap-4" 
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-slate-800 dark:text-gray-100 flex items-center gap-2">
+                <span className="flex items-center">
+                  <MaterialIcon icon={icon} size={20} />
+                </span>
+                {label}
+              </h3>
+              <button 
+                type="button" 
+                onTouchStart={() => setIsOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Color grid */}
+            <div className="py-1 flex flex-col gap-2 items-center justify-center">
+              <div className="space-y-1">
+                {colors.map((row, rowIdx) => (
+                  <div key={rowIdx} className="flex gap-1 justify-center">
+                    {row.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onTouchStart={(e) => {
+                          e.preventDefault()
+                          onChange(color === 'transparent' ? null : color)
+                          setIsOpen(false)
+                        }}
+                        className="w-6 h-6 rounded border border-slate-200 dark:border-gray-600 hover:scale-110 transition-transform relative flex-shrink-0"
+                        style={{ backgroundColor: color }}
+                        title={color}
+                      >
+                        {color === 'transparent' && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-4 h-0.5 bg-red-500 rotate-45" />
+                          </div>
+                        )}
+                        {currentColor === color && (
+                          <div className="absolute inset-0 border-2 border-blue-500 rounded" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -194,6 +272,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
     bold: ed.isActive('bold'),
     italic: ed.isActive('italic'),
     underline: ed.isActive('underline'),
+    strike: ed.isActive('strike'),
     link: ed.isActive('link'),
     bulletList: ed.isActive('bulletList'),
     orderedList: ed.isActive('orderedList'),
@@ -277,7 +356,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
         onInsert={handleImageInsert}
       />
 
-      <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex flex-nowrap md:flex-wrap gap-1 items-center overflow-x-auto whitespace-nowrap scrollbar-none transition-colors duration-200 sticky top-0 z-10">
+      <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex flex-nowrap md:flex-wrap gap-1 items-center overflow-x-auto md:overflow-x-visible whitespace-nowrap scrollbar-none transition-colors duration-200 sticky top-0 z-10">
         {/* Font Size */}
         <div className="flex items-center flex-shrink-0">
           <button
@@ -305,7 +384,8 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           <select
             value={fontSize}
             onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}px`).run()}
-            className="h-11 w-14 md:h-7 md:w-12 text-sm bg-transparent border border-slate-200 dark:border-gray-700 rounded-[8px]  text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
+            className="h-11 w-14 md:h-7 md:w-12 text-sm bg-transparent border border-slate-200 dark:border-gray-700 rounded-[8px] text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
+            style={{ textAlign: 'center', textAlignLast: 'center' }}
           >
             {FONT_SIZES.map(size => (
               <option key={size} value={size}>{size}</option>
@@ -355,6 +435,12 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           isActive={activeMarks.underline}
           label="Underline (Ctrl+U)"
           icon="format_underlined"
+        />
+        <IconButton
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+          isActive={activeMarks.strike}
+          label="Strikethrough (Ctrl+Shift+X)"
+          icon="format_strikethrough"
         />
 
         {/* Text Color */}

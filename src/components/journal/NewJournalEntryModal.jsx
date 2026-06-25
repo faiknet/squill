@@ -61,7 +61,7 @@ export default function NewJournalEntryModal({ isOpen, onClose, onSave, sectionT
                 placeholder={`Enter ${sectionTitle} name`}
                 autoFocus
                 disabled={loading}
-                className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700"
+                className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700"
               />
             </div>
 

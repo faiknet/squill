@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../components/ui'
 import SessionEditor from '../pages/SessionEditor'
 import Journal from '../pages/Journal'
 import SessionPreferences from '../pages/SessionPreferences'
+import SessionTabsLayout from '../components/sessions/SessionTabsLayout'
 
 // Lazy loaded pages
 const CampaignList = lazy(() => import('../pages/CampaignList'))
@@ -63,30 +64,20 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
+        {/* Session workspace — nested under persistent layout for smooth tab transitions */}
         <Route
           path="/campaigns/:campaignSlug/sessions/:sessionSlug"
           element={
             <ProtectedRoute>
-              <SessionEditor />
+              <SessionTabsLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/campaigns/:campaignSlug/sessions/:sessionSlug/journal"
-          element={
-            <ProtectedRoute>
-              <Journal />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/campaigns/:campaignSlug/sessions/:sessionSlug/preferences"
-          element={
-            <ProtectedRoute>
-              <SessionPreferences />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route index element={<SessionEditor />} />
+          <Route path="journal" element={<Journal />} />
+          <Route path="preferences" element={<SessionPreferences />} />
+        </Route>
         <Route
           path="/dashboard"
           element={<Navigate to="/campaigns" replace />}

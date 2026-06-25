@@ -36,7 +36,7 @@ export default function DeleteCampaignModal({ isOpen, onClose, onDelete, campaig
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
                 placeholder={campaignName}
-                className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-red-500 focus:border-red-500"
+                className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-red-500 focus:border-red-500"
               />
             </div>
             <div className="flex justify-end gap-3 pt-2">

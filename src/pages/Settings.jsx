@@ -156,7 +156,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-gray-950 p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900 p-4 md:p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-6 pb-12">
         
         {/* Header Summary Tile */}
@@ -189,7 +189,7 @@ export default function Settings() {
                     }}
                     placeholder="Enter your display name"
                     disabled={profileSaving}
-                    className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+                    className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
 
@@ -240,7 +240,7 @@ export default function Settings() {
                     }}
                     placeholder="you@example.com"
                     disabled={emailLoading}
-                    className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+                    className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
 
@@ -292,7 +292,7 @@ export default function Settings() {
                       }}
                       placeholder="New password"
                       disabled={securityLoading}
-                      className={`bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500 ${passwordDoesNotMeetRequirements ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
+                      className={`bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500 ${passwordDoesNotMeetRequirements ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
                     />
                     {passwordDoesNotMeetRequirements && (
                       <p className="mt-2 text-[10px] text-red-600 dark:text-red-400">
@@ -314,7 +314,7 @@ export default function Settings() {
                       }}
                       placeholder="Confirm new password"
                       disabled={securityLoading}
-                      className="bg-white dark:bg-gray-950 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+                      className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
                     />
                   </div>
                 </div>
@@ -352,7 +352,7 @@ export default function Settings() {
               <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">Choose how you'd like the client interface themes to appear.</p>
               
               <div className="space-y-3">
-                <label className="flex items-center p-3 rounded-lg border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/40 transition-colors">
+                <label className="flex items-center p-3 rounded-lg border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-colors">
                   <input
                     type="radio"
                     name="theme"
@@ -369,7 +369,7 @@ export default function Settings() {
                   </span>
                 </label>
 
-                <label className="flex items-center p-3 rounded-lg border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/40 transition-colors">
+                <label className="flex items-center p-3 rounded-lg border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-colors">
                   <input
                     type="radio"
                     name="theme"
@@ -383,7 +383,7 @@ export default function Settings() {
                   </span>
                 </label>
 
-                <label className="flex items-center p-3 rounded-lg border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/40 transition-colors">
+                <label className="flex items-center p-3 rounded-lg border border-slate-200 dark:border-gray-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-colors">
                   <input
                     type="radio"
                     name="theme"

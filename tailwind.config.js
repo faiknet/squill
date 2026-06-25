@@ -12,7 +12,7 @@ export default {
       },
       colors: {
         primary: '#307473', // Updated primary to teal
-        // Unified neutral gray palette based on user preference: #131314 (dark) and #1e1f20 (light)
+        // Unified neutral gray palette: single dark tone #131314
         gray: {
           50: '#f9f9f9',
           100: '#ececec',
@@ -21,9 +21,9 @@ export default {
           400: '#b4b4b4',
           500: '#9b9b9b',
           600: '#676767',
-          700: '#2d2e30', // New subtle border color for dark mode (between 800 and 600)
-          800: '#1e1f20', // User requested lighter dark background
-          900: '#131314', // User requested darker dark background
+          700: '#2d2e30',
+          800: '#131314',
+          900: '#131314',
           950: '#0b0b0c',
         },
         // Alias slate/zinc to this same gray to ensure consistency
@@ -36,7 +36,7 @@ export default {
           500: '#9b9b9b',
           600: '#676767',
           700: '#2d2e30',
-          800: '#1e1f20',
+          800: '#131314',
           900: '#131314',
           950: '#0b0b0c',
         },
@@ -49,7 +49,7 @@ export default {
           500: '#9b9b9b',
           600: '#676767',
           700: '#2d2e30',
-          800: '#1e1f20',
+          800: '#131314',
           900: '#131314',
           950: '#0b0b0c',
         },

@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Button, Input } from '../components/ui'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import { useParams } from 'react-router-dom'
+import { Button, Input, ColorPickerModal } from '../components/ui'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useCampaignDisplayName } from '../lib/campaignDisplayPreferences'
@@ -29,10 +29,44 @@ import {
   applyEnableReferenceIconsPreference,
 } from '../lib/sessionDisplayPreferences'
 
+function ReferenceColorPicker({ value, onChange, label }) {
+  const inputRef = useRef(null)
+  return (
+    <div className="relative flex items-center shrink-0 mt-0.5">
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="w-8 h-8 rounded-full border-2 border-slate-200 dark:border-gray-700 transition-transform hover:scale-110 shadow-sm cursor-pointer"
+        style={{ backgroundColor: value }}
+        title={`Change ${label} colour`}
+      />
+      <input
+        ref={inputRef}
+        type="color"
+        value={value}
+        onChange={onChange}
+        className="sr-only"
+      />
+    </div>
+  )
+}
+
+const USER_COLOR_OPTIONS = [
+  { value: '#ef4444', label: 'Red' },
+  { value: '#f97316', label: 'Orange' },
+  { value: '#f59e0b', label: 'Yellow' },
+  { value: '#84cc16', label: 'Green' },
+  { value: '#10b981', label: 'Teal' },
+  { value: '#06b6d4', label: 'Cyan' },
+  { value: '#3b82f6', label: 'Blue' },
+  { value: '#8b5cf6', label: 'Purple' },
+  { value: '#ec4899', label: 'Pink' },
+  { value: '#f43f5e', label: 'Rose' },
+]
+
 export default function SessionPreferences() {
   const { campaignSlug, sessionSlug } = useParams()
-  const navigate = useNavigate()
-  
+
   const { authState } = useAuth()
   const { isGuest } = authState
   const [campaignId, setCampaignId] = useState(null)
@@ -91,6 +125,36 @@ export default function SessionPreferences() {
   )
   const [showOfflineMembers, setShowOfflineMembers] = useState(() => getShowOfflineMembersPreference())
   const [enableReferenceIcons, setEnableReferenceIcons] = useState(() => getEnableReferenceIconsPreference())
+  const [isColorModalOpen, setIsColorModalOpen] = useState(false)
+  const [userColor, setUserColor] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return window.localStorage.getItem('squill:session-editor:user-color') || ''
+  })
+
+  const handleUserColorChange = async (color) => {
+    setUserColor(color)
+    if (color) {
+      window.localStorage.setItem('squill:session-editor:user-color', color)
+      if (!isGuest && authState.user?.id) {
+        try {
+          const client = requireSupabase()
+          await client.rpc('set_user_color_preference', { color_hex: color })
+        } catch (err) {
+          console.warn('Error saving color preference:', err)
+        }
+      }
+    } else {
+      window.localStorage.removeItem('squill:session-editor:user-color')
+      if (!isGuest && authState.user?.id) {
+        try {
+          const client = requireSupabase()
+          await client.rpc('set_user_color_preference', { color_hex: null })
+        } catch (err) {
+          console.warn('Error saving color preference:', err)
+        }
+      }
+    }
+  }
 
   const updateNpcReferenceColor = (color) => {
     setNpcReferenceColor(color)
@@ -164,55 +228,8 @@ export default function SessionPreferences() {
   }
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 text-slate-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200 overflow-hidden">
-      <header className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex flex-col md:flex-row md:h-16 md:items-center md:justify-between px-4 md:px-6 shrink-0 transition-colors duration-200 z-10 gap-2 md:gap-0">
-        {/* Row 1: Back, Title */}
-        <div className="flex items-center justify-between w-full md:w-auto h-14 md:h-auto gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button
-              onClick={() => navigate(`/campaigns/${campaignSlug}`)}
-              variant="ghost"
-              className="text-sm text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white pl-0 shrink-0 hover:bg-transparent dark:hover:bg-transparent"
-            >
-              <span className="hidden md:inline">Back</span>
-              <span className="md:hidden">←</span>
-            </Button>
-            <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 md:mx-2 shrink-0"></div>
-            <h1 className="text-base md:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
-              Preferences
-            </h1>
-          </div>
-        </div>
-
-        {/* Navigation Tabs - Centered/Second Row */}
-        <div className="w-full md:w-auto pb-3 md:pb-0 flex items-center justify-center">
-          <nav className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 border border-slate-200 dark:border-gray-700 shrink-0 rounded-md w-full md:w-auto grid grid-cols-3 md:flex md:flex-row gap-0.5">
-            <button
-              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}`)}
-              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
-            >
-              <span className="hidden md:inline">Workspace</span>
-              <span className="md:hidden">Edit</span>
-            </button>
-            <button
-              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}/journal`)}
-              className="px-3 py-1.5 text-xs md:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-700 transition-colors rounded text-center"
-            >
-              Journal
-            </button>
-            <button
-              className="px-3 py-1.5 text-xs md:text-sm font-medium bg-white dark:bg-gray-900 text-slate-900 dark:text-white border border-slate-200 dark:border-gray-700 transition-colors rounded text-center"
-            >
-              Preferences
-            </button>
-          </nav>
-        </div>
-
-        {/* Empty desktop placeholder */}
-        <div className="hidden md:block md:w-1/4"></div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50 dark:bg-gray-950">
+    <div className="flex-1 bg-gray-50 dark:bg-gray-900 text-slate-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200 overflow-hidden">
+      <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header Summary Tile */}
           <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -231,8 +248,9 @@ export default function SessionPreferences() {
                 resetSessionReferenceColor()
                 handleShowOfflineMembersChange(true)
                 handleEnableReferenceIconsChange(true)
+                handleUserColorChange('')
               }}
-              className="px-4 py-2 border border-slate-200 dark:border-gray-800 hover:bg-slate-50 dark:hover:bg-gray-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-gray-300 transition-colors self-start md:self-auto"
+              className="px-4 py-2 border border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-gray-300 transition-colors self-start md:self-auto"
             >
               Reset All to Default
             </button>
@@ -245,146 +263,129 @@ export default function SessionPreferences() {
             <section className="col-span-12 lg:col-span-8 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between">
               <div>
                 <div className="mb-6">
-                  <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Style Preferences</span>
                   <h3 className="font-semibold text-lg text-slate-900 dark:text-gray-100 mb-1">Entity References</h3>
                   <p className="text-xs text-slate-500 dark:text-gray-400">Customize the highlighting colors of @ references in your session notes.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* NPC Reference */}
-                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[140px]">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">NPC Reference</p>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to NPC entities.</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200/50 dark:border-gray-800">
-                      <input
-                        type="color"
-                        aria-label="NPC reference color"
+                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[110px]">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">NPC Reference</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to NPC entities.</p>
+                        <button
+                          type="button"
+                          onClick={resetNpcReferenceColor}
+                          className="text-[10px] text-slate-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-400 underline cursor-pointer mt-1"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <ReferenceColorPicker
                         value={npcReferenceColor}
                         onChange={(event) => updateNpcReferenceColor(event.target.value)}
-                        className="h-8 w-12 cursor-pointer rounded border border-slate-300 dark:border-gray-600 bg-transparent p-0.5"
+                        label="NPC reference"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={resetNpcReferenceColor}
-                      >
-                        Reset
-                      </Button>
                     </div>
                   </div>
 
                   {/* Inventory Reference */}
-                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[140px]">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Inventory Reference</p>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to gear and items.</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200/50 dark:border-gray-800">
-                      <input
-                        type="color"
-                        aria-label="Inventory reference color"
+                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[110px]">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Inventory Reference</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to gear and items.</p>
+                        <button
+                          type="button"
+                          onClick={resetItemReferenceColor}
+                          className="text-[10px] text-slate-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-400 underline cursor-pointer mt-1"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <ReferenceColorPicker
                         value={itemReferenceColor}
                         onChange={(event) => updateItemReferenceColor(event.target.value)}
-                        className="h-8 w-12 cursor-pointer rounded border border-slate-300 dark:border-gray-600 bg-transparent p-0.5"
+                        label="Inventory reference"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={resetItemReferenceColor}
-                      >
-                        Reset
-                      </Button>
                     </div>
                   </div>
 
                   {/* Pet Reference */}
-                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[140px]">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Pet Reference</p>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to companion animals.</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200/50 dark:border-gray-800">
-                      <input
-                        type="color"
-                        aria-label="Pet reference color"
+                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[110px]">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Pet Reference</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to companion animals.</p>
+                        <button
+                          type="button"
+                          onClick={resetPetReferenceColor}
+                          className="text-[10px] text-slate-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-400 underline cursor-pointer mt-1"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <ReferenceColorPicker
                         value={petReferenceColor}
                         onChange={(event) => updatePetReferenceColor(event.target.value)}
-                        className="h-8 w-12 cursor-pointer rounded border border-slate-300 dark:border-gray-600 bg-transparent p-0.5"
+                        label="Pet reference"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={resetPetReferenceColor}
-                      >
-                        Reset
-                      </Button>
                     </div>
                   </div>
 
                   {/* Location Reference */}
-                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[140px]">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Location Reference</p>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to regions/cities.</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200/50 dark:border-gray-800">
-                      <input
-                        type="color"
-                        aria-label="Location reference color"
+                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[110px]">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Location Reference</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to regions/cities.</p>
+                        <button
+                          type="button"
+                          onClick={resetLocationReferenceColor}
+                          className="text-[10px] text-slate-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-400 underline cursor-pointer mt-1"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <ReferenceColorPicker
                         value={locationReferenceColor}
                         onChange={(event) => updateLocationReferenceColor(event.target.value)}
-                        className="h-8 w-12 cursor-pointer rounded border border-slate-300 dark:border-gray-600 bg-transparent p-0.5"
+                        label="Location reference"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={resetLocationReferenceColor}
-                      >
-                        Reset
-                      </Button>
                     </div>
                   </div>
 
                   {/* Session Reference */}
-                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[140px]">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Session Reference</p>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to linked sessions.</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200/50 dark:border-gray-800">
-                      <input
-                        type="color"
-                        aria-label="Session reference color"
+                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[110px]">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Session Reference</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to linked sessions.</p>
+                        <button
+                          type="button"
+                          onClick={resetSessionReferenceColor}
+                          className="text-[10px] text-slate-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-400 underline cursor-pointer mt-1"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <ReferenceColorPicker
                         value={sessionReferenceColor}
                         onChange={(event) => updateSessionReferenceColor(event.target.value)}
-                        className="h-8 w-12 cursor-pointer rounded border border-slate-300 dark:border-gray-600 bg-transparent p-0.5"
+                        label="Session reference"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={resetSessionReferenceColor}
-                      >
-                        Reset
-                      </Button>
                     </div>
                   </div>
 
                   {/* Enable Reference Icons Toggle */}
-                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[140px]">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Enable Reference Icons</p>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">When disabled, entity reference icons are hidden in the editor and mention dropdown.</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200/50 dark:border-gray-800">
-                      <span className="text-xs font-medium text-slate-500 dark:text-gray-400">Entity Icons</span>
-                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <div className="bg-slate-50 dark:bg-gray-900/50 p-4 border border-slate-100 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[110px]">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Enable Reference Icons</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">When disabled, entity reference icons are hidden in the editor and mention dropdown.</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
                         <input
                           type="checkbox"
                           aria-label="Enable reference icons in editor"
@@ -400,77 +401,105 @@ export default function SessionPreferences() {
               </div>
             </section>
 
-             {/* Sidebar Cards Container */}
-             <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
-               {/* Campaign Display Name Card */}
-               <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between h-fit">
-                 <div>
-                   <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Identity</span>
-                   <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Campaign Display Name</h3>
-                   <p className="text-xs text-slate-500 dark:text-gray-400 mb-4">Set a custom display name for yourself in this campaign. This name will be visible to all members.</p>
-                   <Input
-                     type="text"
-                     placeholder={resolvedCampaignName ? `e.g. Dungeon Master` : "Enter display name..."}
-                     value={inputValue}
-                     onChange={(e) => setInputValue(e.target.value)}
-                     disabled={displayNameLoading}
-                     className="w-full text-sm h-10 mb-2 bg-slate-50 dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100"
-                   />
-                 </div>
-                 <div className="flex items-center justify-between gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-gray-700/50">
-                   <Button
-                     type="button"
-                     variant="outline"
-                     className="h-9 px-3 text-xs"
-                     onClick={() => {
-                       setInputValue('')
-                       setDisplayName(null)
-                     }}
-                     disabled={displayNameLoading}
-                   >
-                     Reset
-                   </Button>
-                   <div className="flex items-center gap-2">
-                     {savedSuccess && <span className="text-xs text-green-600 dark:text-green-400">Saved!</span>}
-                     <Button
-                       type="button"
-                       variant="primary"
-                       className="h-9 px-4 text-xs font-semibold min-h-[36px]"
-                       disabled={displayNameLoading}
-                       onClick={async () => {
-                         await setDisplayName(inputValue)
-                         setSavedSuccess(true)
-                         setTimeout(() => setSavedSuccess(false), 2000)
-                       }}
-                     >
-                       Save
-                     </Button>
-                   </div>
-                 </div>
-               </section>
+            {/* Sidebar Cards Container */}
+            <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+              {/* Campaign Display Name Card */}
+              <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between h-fit">
+                <div>
+                  <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Campaign Display Name</h3>
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-1">Set a custom display name for yourself in this campaign. This name will be visible to all members.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputValue('')
+                      setDisplayName(null)
+                    }}
+                    disabled={displayNameLoading}
+                    className="text-[10px] text-slate-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-400 underline cursor-pointer mt-1 mb-4 block text-left"
+                  >
+                    Reset
+                  </button>
+                  <Input
+                    type="text"
+                    placeholder={resolvedCampaignName ? `e.g. Dungeon Master` : "Enter display name..."}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    disabled={displayNameLoading}
+                    className="w-full text-sm h-10 mb-2 bg-slate-50 dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100"
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-gray-700/50">
+                  <div className="flex items-center gap-2">
+                    {savedSuccess && <span className="text-xs text-green-600 dark:text-green-400">Saved!</span>}
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="h-9 px-4 text-xs font-semibold min-h-[36px]"
+                      disabled={displayNameLoading}
+                      onClick={async () => {
+                        await setDisplayName(inputValue)
+                        setSavedSuccess(true)
+                        setTimeout(() => setSavedSuccess(false), 2000)
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </section>
 
-               {/* Show Offline Members Card (Sidebar Bento Card) */}
-               <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between h-fit">
-                 <div>
-                   <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1.5 block">Members</span>
-                   <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Show Offline Members</h3>
-                   <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">When disabled, campaign members marked Offline are hidden from the sidebar.</p>
-                 </div>
-                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100 dark:border-gray-700/50">
-                   <span className="text-xs font-medium text-slate-500 dark:text-gray-400">Sidebar Visibility</span>
-                   <label className="relative inline-flex items-center cursor-pointer select-none">
-                     <input
-                       type="checkbox"
-                       aria-label="Show offline members in member list"
-                       checked={showOfflineMembers}
-                       onChange={(event) => handleShowOfflineMembersChange(event.target.checked)}
-                       className="sr-only peer"
-                     />
-                     <div className="w-11 h-6 bg-slate-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
-                   </label>
-                 </div>
-               </section>
-             </div>
+              {/* User Color Card */}
+              <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between h-fit">
+                <div>
+                  <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">User Color</h3>
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-1">Set your active cursor and highlight color in the collaborative editor.</p>
+                  <button
+                    type="button"
+                    onClick={() => handleUserColorChange('')}
+                    className="text-[10px] text-slate-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-400 underline cursor-pointer mt-1 mb-4 block text-left"
+                  >
+                    Reset
+                  </button>
+
+                  <div className="flex items-center gap-3 py-1">
+                    <span className="text-sm font-medium text-slate-700 dark:text-gray-300">Current colour:</span>
+                    <button
+                      onClick={() => setIsColorModalOpen(true)}
+                      className="w-8 h-8 rounded-full border-2 border-slate-200 dark:border-gray-600 transition-transform hover:scale-110 shadow-sm cursor-pointer"
+                      style={{ backgroundColor: userColor || '#ef4444' }}
+                      title="Change colour"
+                    />
+                  </div>
+                  <ColorPickerModal
+                    isOpen={isColorModalOpen}
+                    onClose={() => setIsColorModalOpen(false)}
+                    currentColor={userColor}
+                    onSelectColor={handleUserColorChange}
+                  />
+                </div>
+              </section>
+
+              {/* Show Offline Members Card (Sidebar Bento Card) */}
+              <section className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between h-fit">
+                <div>
+                  <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Show Offline Members</h3>
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">When disabled, campaign members marked Offline are hidden from the sidebar.</p>
+                </div>
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100 dark:border-gray-700/50">
+                  <span className="text-xs font-medium text-slate-500 dark:text-gray-400">Sidebar Visibility</span>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      aria-label="Show offline members in member list"
+                      checked={showOfflineMembers}
+                      onChange={(event) => handleShowOfflineMembersChange(event.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
+                  </label>
+                </div>
+              </section>
+            </div>
 
           </div>
         </div>
