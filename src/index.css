@@ -44,6 +44,14 @@
   }
 }
 
+.ProseMirror {
+  color: #111827;
+}
+
+.dark .ProseMirror {
+  color: #f3f4f6;
+}
+
 .ProseMirror h1 {
   font-size: 1.75rem;
   line-height: 2rem;
@@ -230,3 +238,46 @@
   background-color: rgba(120, 80, 40, 0.5) !important;
   color: white !important;
 }
+
+/* Custom navigation tab hover effect with faded edges */
+.hover-fade-edges:hover {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.15) 0%, rgba(48, 116, 115, 0) 75%) !important;
+}
+
+.dark .hover-fade-edges:hover {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.3) 0%, rgba(48, 116, 115, 0) 75%) !important;
+}
+
+/* Toolbar button hovers and active match the tab selector hover style */
+[data-toolbar] button:hover {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.15) 0%, rgba(48, 116, 115, 0) 75%) !important;
+}
+
+.dark [data-toolbar] button:hover {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.3) 0%, rgba(48, 116, 115, 0) 75%) !important;
+}
+
+.toolbar-active {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.15) 0%, rgba(48, 116, 115, 0) 75%);
+}
+
+.dark .toolbar-active {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.3) 0%, rgba(48, 116, 115, 0) 75%);
+}
+
+/* Mention dropdown hovers and selected */
+.mention-dropdown button:hover {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.03) 0%, rgba(48, 116, 115, 0) 75%) !important;
+}
+
+.dark .mention-dropdown button:hover {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.06) 0%, rgba(48, 116, 115, 0) 75%) !important;
+}
+
+.mention-dropdown .mention-selected {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.03) 0%, rgba(48, 116, 115, 0) 75%);
+}
+
+.dark .mention-dropdown .mention-selected {
+  background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.06) 0%, rgba(48, 116, 115, 0) 75%);
+}

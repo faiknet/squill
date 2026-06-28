@@ -158,7 +158,7 @@ export default memo(function PresenceSidebar({
   }
 
   return (
-    <aside className="w-full bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 flex flex-col flex-1 min-h-0 font-sans transition-colors duration-200">
+    <aside className="w-full bg-white dark:bg-gray-900 border-slate-100 dark:border-gray-700 flex flex-col flex-1 min-h-0 font-sans transition-colors duration-200">
       {/* Scrollable area: Members + Activity */}
       <div className="flex-1 overflow-y-auto">
         {/* Members Section */}
@@ -199,7 +199,7 @@ export default memo(function PresenceSidebar({
 
       {/* Recent Activity Section */}
       <div 
-        className="p-5 border-t border-slate-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 relative flex flex-col shrink-0 select-none"
+        className="p-5 bg-white dark:bg-gray-800/50 relative flex flex-col shrink-0 select-none"
         style={{ height: `${activityHeight}px`, minHeight: '80px', maxHeight: '500px' }}
       >
         {/* Resize Handle */}
@@ -230,7 +230,7 @@ export default memo(function PresenceSidebar({
       </div>
 
       {/* User Profile Footer - always anchored to bottom */}
-      <div className="p-4 border-t border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
+      <div className="p-4 bg-white dark:bg-gray-900 transition-colors duration-200">
         <UserProfileMenu userColor={userColor} />
       </div>
     </aside>

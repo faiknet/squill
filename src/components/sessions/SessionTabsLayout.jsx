@@ -96,14 +96,14 @@ export default function SessionTabsLayout() {
 
   // Tab class helpers — these apply transition-all so font-size/weight/bg animate
   const activeTabClass =
-    'px-3 py-1.5 text-sm lg:text-base font-bold bg-white dark:bg-gray-900 text-slate-900 dark:text-white rounded text-center transition-all duration-200 ease-in-out'
+    'px-3 py-1.5 text-sm lg:text-base font-bold dark:bg-gray-900 text-slate-900 dark:text-white rounded text-center transition-all duration-200 ease-in-out'
   const inactiveTabClass =
-    'px-3 py-1.5 text-xs lg:text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 rounded text-center transition-all duration-200 ease-in-out'
+    'px-3 py-1.5 text-xs lg:text-sm font-medium text-slate-400 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover-fade-edges rounded text-center transition-all duration-200 ease-in-out'
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col font-sans overflow-hidden transition-colors duration-200">
+    <div className="h-screen bg-white dark:bg-gray-900 flex flex-col font-sans overflow-hidden transition-colors duration-200">
       {/* Persistent Header — never unmounts on tab switch */}
-      <header className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 flex flex-col lg:flex-row lg:h-16 lg:items-center lg:justify-between px-4 lg:px-6 shrink-0 transition-colors duration-200 z-10 gap-2 lg:gap-0">
+      <header className="bg-white dark:bg-gray-900 flex flex-col lg:flex-row lg:h-16 lg:items-center lg:justify-between px-4 lg:px-6 shrink-0 transition-colors duration-200 z-10 gap-2 lg:gap-0">
         {/* Row 1: Back button + Breadcrumb */}
         <div className="flex items-center justify-between w-full lg:w-auto h-14 lg:h-auto gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -115,7 +115,7 @@ export default function SessionTabsLayout() {
               <span className="hidden lg:inline">Back</span>
               <span className="lg:hidden">←</span>
             </Button>
-            <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1 lg:mx-2 shrink-0" />
+            <div className="h-6 w-px bg-slate-100 dark:bg-gray-700 mx-1 lg:mx-2 shrink-0" />
             <div className="flex items-baseline gap-1.5 min-w-0">
               <span className="text-xs lg:text-sm text-slate-400 dark:text-gray-500 truncate max-w-[80px] sm:max-w-[150px] lg:max-w-[200px]">
                 {effectiveCampaignName}
@@ -131,7 +131,7 @@ export default function SessionTabsLayout() {
         {/* Row 2: Nav Tabs — centered, persistent, animated */}
         <div className="w-full lg:w-auto pb-3 lg:pb-0 flex items-center justify-center">
           <nav
-            className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 shrink-0 rounded-md w-full lg:w-auto grid grid-cols-3 lg:flex lg:flex-row gap-0.5"
+            className="flex items-center dark:bg-gray-800 p-1 shrink-0 rounded-md w-full lg:w-auto grid grid-cols-3 lg:flex lg:flex-row gap-0.5"
             aria-label="Session navigation"
           >
             <button

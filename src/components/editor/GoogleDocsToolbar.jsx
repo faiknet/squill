@@ -13,7 +13,7 @@ const IconButton = memo(function IconButton({ onClick, isActive, label, icon, cl
         e.preventDefault()
         onClick()
       }}
-      className={`h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-slate-200 dark:bg-gray-600' : ''} ${className}`}
+      className={`h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center flex-shrink-0 ${isActive ? 'toolbar-active' : ''} ${className}`}
       title={label}
     >
       <span className="md:hidden flex items-center">
@@ -261,10 +261,22 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
   )
 }
 
-export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, onExpandSidebar }) {
+export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, onExpandSidebar, saving, copied, onShare, onOpenExport, onToggleMobileSidebar, showMobileSidebar }) {
   // Track only the active-mark state that buttons actually depend on.
   // This prevents re-rendering on every cursor move when no marks changed.
   const [activeMarks, setActiveMarks] = useState(null)
+  const [showSaved, setShowSaved] = useState(false)
+  const prevSavingRef = useRef(saving)
+
+  useEffect(() => {
+    const wasSaving = prevSavingRef.current
+    prevSavingRef.current = saving
+    if (wasSaving && !saving) {
+      setShowSaved(true)
+      const timer = setTimeout(() => setShowSaved(false), 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [saving])
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
 
@@ -356,7 +368,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
         onInsert={handleImageInsert}
       />
 
-      <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex flex-nowrap md:flex-wrap gap-1 items-center overflow-x-auto md:overflow-x-visible whitespace-nowrap scrollbar-none transition-colors duration-200 sticky top-0 z-10">
+      <div data-toolbar className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-100 dark:border-gray-700 flex flex-nowrap md:flex-wrap gap-1 items-center overflow-x-auto md:overflow-x-visible whitespace-nowrap scrollbar-none transition-colors duration-200 sticky top-0 z-10">
         {/* Font Size */}
         <div className="flex items-center flex-shrink-0">
           <button
@@ -384,7 +396,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           <select
             value={fontSize}
             onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}px`).run()}
-            className="h-11 w-14 md:h-7 md:w-12 text-sm bg-transparent border border-slate-200 dark:border-gray-700 rounded-[8px] text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
+            className="h-11 w-14 md:h-7 md:w-12 text-sm bg-transparent border border-slate-100 dark:border-gray-700 rounded-[8px] text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
             style={{ textAlign: 'center', textAlignLast: 'center' }}
           >
             {FONT_SIZES.map(size => (
@@ -415,7 +427,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           </button>
         </div>
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
+        <div className="w-px h-5 bg-slate-100 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Text Formatting */}
         <IconButton
@@ -462,7 +474,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           align="right"
         />
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
+        <div className="w-px h-5 bg-slate-100 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Link */}
         <IconButton
@@ -479,7 +491,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           icon="image"
         />
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
+        <div className="w-px h-5 bg-slate-100 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Alignment */}
         <IconButton
@@ -507,7 +519,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           icon="format_align_justify"
         />
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
+        <div className="w-px h-5 bg-slate-100 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Lists */}
         <IconButton
@@ -523,7 +535,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           icon="format_list_numbered"
         />
 
-        <div className="w-px h-5 bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
+        <div className="w-px h-5 bg-slate-100 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Clear Formatting */}
         <IconButton
@@ -554,22 +566,47 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           icon="format_clear"
         />
 
-        {isSidebarCollapsed && (
-          <div className="ml-auto flex-shrink-0">
+        {/* Right-aligned: Save status, Export, Share, sidebar controls */}
+        <div className="ml-auto flex items-center gap-1 flex-shrink-0">
+          <span className="hidden xl:inline text-xs text-slate-400 dark:text-gray-500 whitespace-nowrap">
+            {saving ? 'Saving…' : showSaved ? 'All changes saved' : ''}
+          </span>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); onOpenExport?.() }}
+            className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors text-xs text-slate-700 dark:text-gray-300 flex items-center justify-center"
+          >
+            Export
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); onShare?.() }}
+            className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors text-xs text-slate-700 dark:text-gray-300 flex items-center justify-center"
+          >
+            {copied ? 'Copied!' : 'Share'}
+          </button>
+          <button
+            type="button"
+            onClick={onToggleMobileSidebar}
+            className="lg:hidden h-11 md:h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center text-slate-500 dark:text-gray-400"
+            aria-label="Toggle members sidebar"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </button>
+          {isSidebarCollapsed && (
             <button
               type="button"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                onExpandSidebar?.()
-              }}
+              onMouseDown={(e) => { e.preventDefault(); onExpandSidebar?.() }}
               className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
               style={{ color: BRAND_ICON_COLOR }}
               title="Expand member sidebar"
             >
               <img src="/icons/expandcontent.svg" alt="" className="h-[18px] w-[18px]" />
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </>
   )

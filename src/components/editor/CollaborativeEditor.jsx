@@ -19,7 +19,6 @@ import { colorFromString } from '../../lib/liveblocks'
 import { MentionMark } from '../../lib/mentionMark'
 import { FontSize } from '../../lib/fontSizeExtension'
 import { IndentExtension } from '../../lib/indentExtension'
-import EditorToolbar from './GoogleDocsToolbar'
 import MentionDropdown from './MentionDropdown'
 import JournalEntryMentionModal from './JournalEntryMentionModal'
 import SessionMentionModal from './SessionMentionModal'
@@ -34,8 +33,7 @@ export default function CollaborativeEditor({
   journalEntities = [],
   sessionNotes = [],
   currentUserId,
-  isSidebarCollapsed = false,
-  onExpandSidebar,
+  onEditorReady,
 }) {
   const room = useRoom()
   const others = useOthers()
@@ -206,6 +204,9 @@ export default function CollaborativeEditor({
       }),
       IndentExtension,
     ],
+    onCreate: ({ editor: ed }) => {
+      onEditorReady?.(ed)
+    },
     editorProps: {
       attributes: {
         class: 'w-full min-h-full bg-white dark:bg-gray-800 text-slate-900 dark:text-gray-100 text-base focus:outline-none px-12 md:px-24 lg:px-32 xl:px-48 py-8 md:py-12 prose prose-slate dark:prose-invert max-w-none transition-colors duration-200',
@@ -356,14 +357,14 @@ export default function CollaborativeEditor({
 
   // Legacy DOM listener removed in favor of TipTap handleClick
   
+  // Notify parent when editor instance changes (e.g. re-created after ydoc change)
+  useEffect(() => {
+    if (editor) onEditorReady?.(editor)
+  }, [editor, onEditorReady])
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800 relative">
       <style>{userStyles}</style>
-      <EditorToolbar
-        editor={editor}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onExpandSidebar={onExpandSidebar}
-      />
       <div className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0 overflow-y-auto">
           <EditorContent editor={editor} className="h-full" />

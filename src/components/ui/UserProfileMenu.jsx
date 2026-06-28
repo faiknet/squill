@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useSupabaseAuth'
 import { getDisplayLabel } from '../../lib/utils'
 import ColorPickerModal from './ColorPickerModal'
+import AchievementsModal from '../achievements/AchievementsModal'
 
 const USER_COLOR_OPTIONS = [
   { value: '#ef4444', label: 'Red' },
@@ -22,6 +23,7 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
   const { authState, signOut } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isColorModalOpen, setIsColorModalOpen] = useState(false)
+  const [isAchievementsModalOpen, setIsAchievementsModalOpen] = useState(false)
   const menuRef = useRef(null)
   
   const profileLabel = getDisplayLabel(authState)
@@ -44,7 +46,7 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setShowUserMenu(!showUserMenu)}
-        className={`w-full flex items-center gap-2.5 p-1.5 hover:bg-slate-50 dark:hover:bg-gray-700/50 rounded-md cursor-pointer transition-colors ${collapsed ? 'justify-center' : ''}`}
+        className={`w-full flex items-center gap-2.5 p-1.5 hover:bg-brand-50 dark:hover:bg-brand-800/40 rounded-md cursor-pointer transition-colors ${collapsed ? 'justify-center' : ''}`}
       >
         <div className="size-8 rounded-full bg-slate-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-gray-300 shrink-0"
              style={userColor ? { backgroundColor: userColor, color: '#fff' } : {}}
@@ -87,14 +89,24 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
           )}
 
           <button
+            onClick={() => { setShowUserMenu(false); setIsAchievementsModalOpen(true) }}
+            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-gray-200 hover:bg-brand-50 dark:hover:bg-brand-800/40 flex items-center gap-2 hidden"
+          >
+            Achievements
+          </button>
+          <AchievementsModal
+            isOpen={isAchievementsModalOpen}
+            onClose={() => setIsAchievementsModalOpen(false)}
+          />
+          <button
             onClick={() => { setShowUserMenu(false); navigate('/settings') }}
-            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-2"
+            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-gray-200 hover:bg-brand-50 dark:hover:bg-brand-800/40 flex items-center gap-2"
           >
             Settings
           </button>
           <button
             onClick={() => { setShowUserMenu(false); signOut().then(() => navigate('/auth')) }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-2 border-t border-slate-100 dark:border-gray-700 text-red-600 dark:text-red-400"
+            className="w-full px-4 py-2 text-left text-sm hover:bg-brand-50 dark:hover:bg-brand-800/40 flex items-center gap-2 border-t border-slate-100 dark:border-gray-700 text-red-600 dark:text-red-400"
           >
             Sign Out
           </button>

@@ -102,6 +102,7 @@ export default function Journal() {
   const [drafts, setDrafts] = useState({ npc: '', inventory: '', pet: '', location: '' })
   const [searchTerms, setSearchTerms] = useState({ npc: '', inventory: '', pet: '', location: '' })
   const [sortBy, setSortBy] = useState({ npc: 'order', inventory: 'order', pet: 'order', location: 'order' })
+  const [collapsedSections, setCollapsedSections] = useState({ npc: true, inventory: true, pet: true, location: true })
   const [draggedItem, setDraggedItem] = useState(null)
   const [draggedOverType, setDraggedOverType] = useState(null)
   const [isNewEntryModalOpen, setIsNewEntryModalOpen] = useState(false)
@@ -217,6 +218,10 @@ export default function Journal() {
     }))
   }
 
+  const toggleSection = (type) => {
+    setCollapsedSections(prev => ({ ...prev, [type]: !prev[type] }))
+  }
+
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'recently'
     try {
@@ -232,7 +237,7 @@ export default function Journal() {
   }
 
   return (
-    <div className="flex-1 bg-gray-50 dark:bg-gray-900 text-slate-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200 overflow-hidden">
+    <div className="flex-1 bg-white dark:bg-gray-900 text-slate-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200 overflow-hidden">
       {/* Error Message */}
       {error && (
         <div className="mx-6 my-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-md shrink-0">
@@ -246,43 +251,61 @@ export default function Journal() {
           {TAG_SECTIONS.map((section) => (
             <div
               key={section.type}
-              className="flex flex-col bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 last:border-r-0 transition-colors duration-200"
+              className="flex flex-col bg-white dark:bg-gray-800 border-r border-slate-100 dark:border-gray-700 last:border-r-0 transition-colors duration-200"
               onDragOver={(e) => handleDragOver(e, section.type)}
             >
               {/* Section Header */}
-              <div className="p-4 border-b border-slate-200 dark:border-gray-700 flex flex-col gap-3 shrink-0">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-slate-900 dark:text-gray-100 uppercase tracking-wider">
-                    {section.title}
-                  </h2>
-                  <span className="bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
-                    {groupedTags[section.type]?.length || 0}
-                  </span>
-                </div>
-
-                {/* Search Bar */}
-                <Input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchTerms[section.type]}
-                  onChange={(e) => setSearchTerms(prev => ({ ...prev, [section.type]: e.target.value }))}
-                  className="bg-slate-50 dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 text-sm h-11 md:h-8"
-                />
-
-                {/* Sort Button */}
+              <div className="p-4 border-b border-slate-100 dark:border-gray-700 flex flex-col gap-3 shrink-0">
                 <button
-                  onClick={() => toggleSort(section.type)}
-                  className="flex items-center gap-2 text-xs text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 transition-colors"
+                  onClick={() => toggleSection(section.type)}
+                  className="w-full flex items-center justify-between text-left focus:outline-none md:pointer-events-none cursor-pointer md:cursor-default"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-                  </svg>
-                  Sort by: {sortBy[section.type] === 'order' ? 'Order' : sortBy[section.type] === 'name' ? 'Name' : 'Date Added'}
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-gray-100 uppercase tracking-wider">
+                      {section.title}
+                    </h2>
+                    <span className="bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
+                      {groupedTags[section.type]?.length || 0}
+                    </span>
+                  </div>
+                  <span className="md:hidden p-1 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                    <svg
+                      className={`w-4 h-4 transition-transform ${collapsedSections[section.type] ? '' : 'rotate-180'}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </span>
                 </button>
+
+                {/* Collapsible search and sort */}
+                <div className={`flex flex-col gap-3 ${collapsedSections[section.type] ? 'hidden md:flex' : ''}`}>
+                  {/* Search Bar */}
+                  <Input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTerms[section.type]}
+                    onChange={(e) => setSearchTerms(prev => ({ ...prev, [section.type]: e.target.value }))}
+                    className="bg-slate-50/50 dark:bg-gray-900 border-slate-100 dark:border-gray-700 text-slate-900 dark:text-gray-100 text-sm h-11 md:h-8"
+                  />
+
+                  {/* Sort Button */}
+                  <button
+                    onClick={() => toggleSort(section.type)}
+                    className="flex items-center gap-2 text-xs text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                    </svg>
+                    Sort by: {sortBy[section.type] === 'order' ? 'Order' : sortBy[section.type] === 'name' ? 'Name' : 'Date Added'}
+                  </button>
+                </div>
               </div>
 
               {/* Scrollable Entity List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              <div className={`flex-1 overflow-y-auto p-4 space-y-2 ${collapsedSections[section.type] ? 'hidden md:block' : ''}`}>
                 {/* New Entry Button at Top */}
                 <button
                   onClick={() => handleNewEntryClick(section)}
@@ -300,7 +323,7 @@ export default function Journal() {
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => handleDrop(e, tag, section.type)}
-                      className={`group flex items-start justify-between p-3 bg-slate-50 dark:bg-gray-900/50 border border-slate-200 dark:border-gray-700 rounded-md hover:border-brand-400 dark:hover:border-gray-600 transition-all ${sortBy[section.type] === 'order' ? 'cursor-move' : ''
+                      className={`group flex items-start justify-between p-3 bg-white dark:bg-gray-900/50 border border-slate-100 dark:border-gray-700 rounded-md hover:border-brand-400 dark:hover:border-gray-600 transition-all ${sortBy[section.type] === 'order' ? 'cursor-move' : ''
                         } ${draggedItem?.tag.id === tag.id ? 'opacity-50' : ''}`}
                     >
                       <div className="flex-1 min-w-0">

@@ -182,14 +182,14 @@ const MentionDropdown = forwardRef(function MentionDropdown({
 
   return (
     <div 
-      className="bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg shadow-xl max-w-xs max-h-48 overflow-y-auto"
+      className="mention-dropdown bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded-lg shadow-xl max-w-xs max-h-48 overflow-y-auto"
       style={style}
     >
       {suggestions.map((suggestion, index) => (
         <button
           key={`${suggestion.type}-${suggestion.id}`}
           onClick={() => handleSelect(suggestion)}
-          className={`w-full px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors text-slate-900 dark:text-gray-100 ${index === 0 ? 'bg-slate-50 dark:bg-gray-700/50' : ''}`}
+          className={`w-full px-3 py-2 text-left flex items-center gap-2 transition-colors text-slate-900 dark:text-gray-100 ${index === 0 ? 'mention-selected' : ''}`}
         >
           {suggestion.type === 'entity' && (
             <>

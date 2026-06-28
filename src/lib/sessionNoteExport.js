@@ -8,7 +8,7 @@ const RTF_MIME_TYPE = 'application/rtf'
 const TEXT_MIME_TYPE = 'text/plain;charset=utf-8'
 const EXPORT_REFERENCE_BLACK_COLOR = '#000000'
 const NOTE_EXPORT_RENDER_CLASS =
-  'w-full min-h-full bg-white text-slate-900 text-base focus:outline-none px-12 md:px-24 lg:px-32 xl:px-48 py-8 md:py-12 prose prose-slate max-w-none transition-colors duration-200'
+  'w-full min-h-full bg-white text-black text-base focus:outline-none px-12 md:px-24 lg:px-32 xl:px-48 py-8 md:py-12 prose prose-slate max-w-none transition-colors duration-200'
 const MENTION_ENTITY_ICON_MAP = {
   npc: '/icons/NPCs.png',
   item: '/icons/Inventory.png',
@@ -83,7 +83,7 @@ function wrapHtmlDocument(title, bodyHtml) {
   <meta charset="utf-8" />
   <title>${title}</title>
 </head>
-<body>${bodyHtml}</body>
+<body style="color:#000">${bodyHtml}</body>
 </html>`
 }
 
@@ -94,6 +94,7 @@ function createRenderContainer(noteHtml, { forceBlackReferenceColors = false } =
   root.style.left = '0'
   root.style.width = '8.5in'
   root.style.background = '#ffffff'
+  root.style.color = '#000000'
   root.style.opacity = '0'
   root.style.pointerEvents = 'none'
   root.style.zIndex = '-1'
@@ -107,6 +108,7 @@ function createRenderContainer(noteHtml, { forceBlackReferenceColors = false } =
 
   const content = document.createElement('div')
   content.className = NOTE_EXPORT_RENDER_CLASS
+  content.style.color = '#000000'
   content.innerHTML = noteHtml || '<p></p>'
   root.appendChild(content)
   document.body.appendChild(root)

@@ -18,6 +18,7 @@ import '../styles/mentions.css'
 
 import LocalEditor from '../components/editor/LocalEditor'
 import CollaborativeEditor from '../components/editor/CollaborativeEditor'
+import EditorToolbar from '../components/editor/GoogleDocsToolbar'
 import PresenceSidebar from '../components/editor/PresenceSidebar'
 
 const SESSION_EDITOR_COLOR_STORAGE_KEY = 'squill:session-editor:user-color'
@@ -80,25 +81,6 @@ function restoreReferenceColorOverrides(rootElement, snapshot) {
   })
 }
 
-// SavedIndicator component
-function SavedIndicator() {
-  const [show, setShow] = useState(true)
-
-  useEffect(() => {
-    setShow(true)
-    const timer = setTimeout(() => setShow(false), 1500)
-    return () => clearTimeout(timer)
-  }, [])
-
-  if (!show) return null
-
-  return (
-    <span className="text-xs text-slate-500 dark:text-gray-500 hidden xl:inline-block whitespace-nowrap">
-      All changes saved
-    </span>
-  )
-}
-
 // --- Helper Components for Layout ---
 
 import { memo } from 'react'
@@ -128,6 +110,7 @@ const EditorLayout = memo(function EditorLayout({
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_MAX_WIDTH_PX)
   const [isResizingSidebar, setIsResizingSidebar] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [editorInstance, setEditorInstance] = useState(null)
   const sidebarRef = useRef(null)
   // RAF handle for throttling resize — prevents 60+ React state updates per second
   const resizeRafRef = useRef(null)
@@ -246,53 +229,36 @@ const EditorLayout = memo(function EditorLayout({
   }
 
   const editorChild = isValidElement(children)
-    ? cloneElement(children, { isSidebarCollapsed, onExpandSidebar: reopenSidebar })
+    ? cloneElement(children, {
+        onEditorReady: setEditorInstance,
+      })
     : children
   const desktopSidebarWidth = isSidebarCollapsed ? 0 : sidebarWidth
 
   return (
-    <div className="flex-1 bg-gray-50 dark:bg-gray-900 flex flex-col font-sans overflow-hidden transition-colors duration-200">
-      {/* Editor action bar — Export, Share, Save indicator */}
-      <div className="bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 px-4 lg:px-6 py-2 flex items-center justify-end gap-2 shrink-0">
-        {saving ? (
-          <span className="text-xs text-slate-400 dark:text-gray-500 hidden xl:inline-block whitespace-nowrap">Saving…</span>
-        ) : (
-          <SavedIndicator key={saving} />
-        )}
-        <Button
-          variant="outline"
-          className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700 h-8 text-xs px-3"
-          onClick={handleOpenExportModal}
-        >
-          Export
-        </Button>
-        <Button
-          variant="outline"
-          className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700 h-8 text-xs px-3"
-          onClick={handleShare}
-        >
-          {copied ? 'Copied!' : 'Share'}
-        </Button>
-        <button
-          onClick={() => setShowMobileSidebar(!showMobileSidebar)}
-          className="lg:hidden p-1.5 text-slate-400 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-700 rounded-md"
-          aria-label="Toggle members sidebar"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-        </button>
-      </div>
-
+    <div className="flex-1 bg-white dark:bg-gray-900 flex flex-col font-sans overflow-hidden transition-colors duration-200">
+      {/* Full-width toolbar row */}
+      <EditorToolbar
+        editor={editorInstance}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onExpandSidebar={reopenSidebar}
+        saving={saving}
+        copied={copied}
+        onShare={handleShare}
+        onOpenExport={handleOpenExportModal}
+        onToggleMobileSidebar={() => setShowMobileSidebar(s => !s)}
+        showMobileSidebar={showMobileSidebar}
+      />
+      {/* Editor + Sidebar row below the toolbar */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Editor Area */}
-        <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 relative min-w-0 transition-colors duration-200 border-r border-slate-200 dark:border-gray-700">
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 relative min-w-0 transition-colors duration-200 border-r border-slate-100 dark:border-gray-700">
           {editorChild}
         </div>
 
         {/* Right Sidebar: Presence & Activity - Hidden on Mobile */}
         <div className={`
-          absolute inset-y-0 right-0 z-20 bg-white dark:bg-gray-900 w-full h-full lg:static lg:z-auto lg:w-[var(--sidebar-width)] lg:max-w-[var(--sidebar-max-width)] lg:min-w-0 border-l border-slate-200 dark:border-gray-700 transition-transform duration-200 lg:relative overflow-hidden flex flex-col
+          absolute inset-y-0 right-0 z-20 bg-white dark:bg-gray-900 w-full h-full lg:static lg:z-auto lg:w-[var(--sidebar-width)] lg:max-w-[var(--sidebar-max-width)] lg:min-w-0 border-l border-slate-100 dark:border-gray-700 transition-transform duration-200 lg:relative overflow-hidden flex flex-col
           ${isResizingSidebar ? 'lg:transition-none' : 'lg:transition-[width] lg:duration-300 lg:ease-in-out'}
           ${isSidebarCollapsed ? 'lg:border-l-0' : ''}
           ${showMobileSidebar ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
@@ -309,7 +275,7 @@ const EditorLayout = memo(function EditorLayout({
             onMouseDown={startSidebarResize}
             className={`hidden absolute left-0 top-0 h-full w-2 -translate-x-1/2 cursor-col-resize z-20 group ${isSidebarCollapsed ? 'lg:hidden' : 'lg:block'}`}
           >
-            <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-slate-200 dark:bg-gray-700 group-hover:bg-slate-400 dark:group-hover:bg-gray-500" />
+            <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-slate-100 dark:bg-gray-700 group-hover:bg-slate-300 dark:group-hover:bg-gray-500" />
           </button>
           {/* Mobile Close Header */}
           <div className="lg:hidden p-4  flex items-center justify-between bg-white dark:bg-gray-900">

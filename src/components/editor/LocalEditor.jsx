@@ -16,7 +16,6 @@ import { colorFromString } from '../../lib/liveblocks'
 import { MentionMark } from '../../lib/mentionMark'
 import { FontSize } from '../../lib/fontSizeExtension'
 import { IndentExtension } from '../../lib/indentExtension'
-import EditorToolbar from './GoogleDocsToolbar'
 import MentionDropdown from './MentionDropdown'
 import JournalEntryMentionModal from './JournalEntryMentionModal'
 import SessionMentionModal from './SessionMentionModal'
@@ -32,8 +31,7 @@ export default function LocalEditor({
   currentUserId,
   userLabel = 'Guest',
   userColor,
-  isSidebarCollapsed = false,
-  onExpandSidebar,
+  onEditorReady,
 }) {
   const [mentionState, setMentionState] = useState({ active: false, query: '', position: null })
   const mentionStateRef = useRef(mentionState)
@@ -270,7 +268,15 @@ export default function LocalEditor({
         setMentionState({ active: false, query: '', position: null })
       }
     },
+    onCreate: ({ editor: ed }) => {
+      onEditorReady?.(ed)
+    },
   }, [])
+
+  // Notify parent when editor instance changes
+  useEffect(() => {
+    if (editor) onEditorReady?.(editor)
+  }, [editor, onEditorReady])
 
   useEffect(() => {
     if (!editor) return
@@ -296,11 +302,6 @@ export default function LocalEditor({
           Offline Guest Mode - Changes will be lost when you close this tab or sign out.
         </div>
       )}
-      <EditorToolbar
-        editor={editor}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onExpandSidebar={onExpandSidebar}
-      />
       <div className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0 overflow-y-auto">
           <EditorContent editor={editor} className="h-full" />
