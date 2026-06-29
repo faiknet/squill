@@ -6,16 +6,23 @@ export const IndentExtension = Extension.create({
   addKeyboardShortcuts() {
     return {
       Tab: () => {
-        // Insert 4 spaces for indentation
+        // Inside a list: nest the item deeper
+        if (this.editor.isActive('listItem')) {
+          return this.editor.commands.sinkListItem('listItem')
+        }
+        // Otherwise: insert 4 spaces for indentation
         return this.editor.commands.insertContent('    ')
       },
       'Shift-Tab': () => {
-        // Remove up to 4 spaces before cursor (outdent)
+        // Inside a list: unnest the item
+        if (this.editor.isActive('listItem')) {
+          return this.editor.commands.liftListItem('listItem')
+        }
+        // Otherwise: remove up to 4 leading spaces
         const { state } = this.editor
         const { from } = state.selection
         const textBefore = state.doc.textBetween(Math.max(0, from - 4), from)
         
-        // Count how many spaces to remove (up to 4)
         let spacesToRemove = 0
         for (let i = textBefore.length - 1; i >= 0; i--) {
           if (textBefore[i] === ' ') {

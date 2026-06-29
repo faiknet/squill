@@ -73,6 +73,14 @@ const GOOGLE_FONTS = [
 
 const FONT_SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '32', '36', '48', '72']
 
+const HEADING_OPTIONS = [
+  { label: 'Paragraph', value: 0, command: 'setParagraph' },
+  { label: 'Heading 1', value: 1, command: 'toggleHeading', attrs: { level: 1 } },
+  { label: 'Heading 2', value: 2, command: 'toggleHeading', attrs: { level: 2 } },
+  { label: 'Heading 3', value: 3, command: 'toggleHeading', attrs: { level: 3 } },
+  { label: 'Heading 4', value: 4, command: 'toggleHeading', attrs: { level: 4 } },
+]
+
 // Google Docs color palette
 const COLOR_PALETTE = [
   // Row 1: Blacks and grays
@@ -296,6 +304,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
     fontSize: ed.getAttributes('textStyle').fontSize,
     textColor: ed.getAttributes('textStyle').color,
     highlightColor: ed.getAttributes('highlight').color,
+    headingLevel: ed.isActive('heading') ? ed.getAttributes('heading').level : 0,
   }), [])
 
   useEffect(() => {
@@ -342,11 +351,14 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
 
   if (!editor || !activeMarks) return null
 
-  // Derive font size from active marks
+  // Derive font size from active marks or heading level
+  const headingSizes = { 1: 28, 2: 24, 3: 20, 4: 18 }
   const fontSizeAttr = activeMarks.fontSize
   let fontSize = 16 // default
 
-  if (fontSizeAttr) {
+  if (activeMarks.headingLevel > 0) {
+    fontSize = headingSizes[activeMarks.headingLevel] || 16
+  } else if (fontSizeAttr) {
     const parsed = parseInt(fontSizeAttr)
     if (!isNaN(parsed) && parsed >= 8 && parsed <= 72) {
       fontSize = parsed
@@ -427,6 +439,29 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
             </svg>
           </button>
         </div>
+
+        {/* Heading Selector */}
+        <select
+          value={activeMarks.headingLevel}
+          onChange={(e) => {
+            const val = parseInt(e.target.value)
+            if (val === 0) {
+              editor.chain().focus().setParagraph().run()
+            } else {
+              editor.chain().focus().toggleHeading({ level: val }).run()
+            }
+          }}
+          className="h-11 md:h-7 bg-transparent border border-slate-100 dark:border-gray-700 rounded-[8px] text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none px-3"
+        >
+          {HEADING_OPTIONS.map(opt => {
+            const headingSizes = { 0: '0.875rem', 1: '1.4rem', 2: '1.2rem', 3: '1rem', 4: '0.925rem' }
+            return (
+              <option key={opt.value} value={opt.value} style={{ fontSize: headingSizes[opt.value] }}>
+                {opt.label}
+              </option>
+            )
+          })}
+        </select>
 
         <div className="w-px h-5 bg-slate-100 dark:bg-gray-700 flex-shrink-0" />
 
@@ -535,7 +570,11 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           label="Numbered list (Ctrl+Shift+7)"
           icon="format_list_numbered"
         />
-
+        <IconButton
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          label="Horizontal rule (---)"
+          icon="horizontal_rule"
+        />
         <div className="w-px h-5 bg-slate-100 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Clear Formatting */}

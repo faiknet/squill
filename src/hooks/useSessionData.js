@@ -408,30 +408,6 @@ export function useSessionData(sessionId, campaignId) {
       await queryClient.cancelQueries({ queryKey: ['session-notes', sessionId] })
       const previousNote = queryClient.getQueryData(['session-notes', sessionId])
       queryClient.setQueryData(['session-notes', sessionId], content)
-
-      // Optimistic Log — throttled to once every 2 hours
-      const user = authState.user
-      if (user) {
-        const now = Date.now()
-        const existing = queryClient.getQueryData(['activity-logs', campaignId]) || []
-        const lastEdit = existing.find(
-          l => l.action_type === 'edit_document' && l.session_id === sessionId && l.user_id === user.id
-        )
-        const lastTime = lastEdit ? new Date(lastEdit.created_at).getTime() : 0
-        if (now - lastTime >= 2 * 60 * 60 * 1000) {
-          queryClient.setQueryData(['activity-logs', campaignId], (old = []) => {
-            const optimisticLog = {
-              id: `temp-edit-${Date.now()}`,
-              session_id: sessionId,
-              user_id: user.id,
-              action_type: 'edit_document',
-              details: { session_name: sessionQuery.data?.name || 'Session' },
-              created_at: new Date().toISOString()
-            }
-            return [optimisticLog, ...old]
-          })
-        }
-      }
       return { previousNote }
     },
     onError: (err, content, context) => {

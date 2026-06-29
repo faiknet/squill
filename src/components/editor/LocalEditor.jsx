@@ -129,7 +129,7 @@ export default function LocalEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
       Underline,
       Link.configure({
         openOnClick: false,

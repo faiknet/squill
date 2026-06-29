@@ -186,7 +186,7 @@ export default function CollaborativeEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ history: false }), // YJS handles history
+      StarterKit.configure({ history: false, heading: { levels: [1, 2, 3, 4] } }), // YJS handles history
       Underline,
       Link.configure({
         openOnClick: false,
