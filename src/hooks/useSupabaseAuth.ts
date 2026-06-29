@@ -220,7 +220,13 @@ function useSupabaseAuth() {
         password: validated.password,
       })
       if (error) return { success: false, error }
-      
+
+      // Supabase returns success for existing emails (anti-enumeration).
+      // identities being empty means the user already existed.
+      if (data?.user?.identities?.length === 0) {
+        return { success: false, error: 'An account with this email already exists.' }
+      }
+
       // Create profile with display name if provided
       if (validated.displayName && data.user?.id) {
         try {

@@ -261,7 +261,7 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
   )
 }
 
-export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, onExpandSidebar, saving, copied, onShare, onOpenExport, onToggleMobileSidebar, showMobileSidebar }) {
+export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = false, onExpandSidebar, saving, copied, onShare, onOpenExport }) {
   // Track only the active-mark state that buttons actually depend on.
   // This prevents re-rendering on every cursor move when no marks changed.
   const [activeMarks, setActiveMarks] = useState(null)
@@ -585,16 +585,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           >
             {copied ? 'Copied!' : 'Share'}
           </button>
-          <button
-            type="button"
-            onClick={onToggleMobileSidebar}
-            className="lg:hidden h-11 md:h-7 px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center text-slate-500 dark:text-gray-400"
-            aria-label="Toggle members sidebar"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          </button>
+
           {isSidebarCollapsed && (
             <button
               type="button"
@@ -603,7 +594,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
               style={{ color: BRAND_ICON_COLOR }}
               title="Expand member sidebar"
             >
-              <img src="/icons/expandcontent.svg" alt="" className="h-[18px] w-[18px]" />
+              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
             </button>
           )}
         </div>

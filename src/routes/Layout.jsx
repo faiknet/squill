@@ -42,12 +42,32 @@ export default function Layout() {
       }
 
       const client = requireSupabase()
-      const { data, error } = await client
-        .from('campaigns')
-        .select('id, slug, name')
-        .order('updated_at', { ascending: false })
-      if (error) throw error
-      setCampaigns(data || [])
+      const [campaignsResult, pinsResult] = await Promise.all([
+        client
+          .from('campaigns')
+          .select('id, slug, name, updated_at, created_at'),
+        client
+          .from('campaign_pins')
+          .select('campaign_id')
+      ])
+
+      if (campaignsResult.error) throw campaignsResult.error
+      if (pinsResult.error) throw pinsResult.error
+
+      const pinnedIds = new Set((pinsResult.data || []).map(p => p.campaign_id))
+
+      const processed = (campaignsResult.data || []).map(c => ({
+        ...c,
+        pinned: pinnedIds.has(c.id),
+      }))
+
+      // Sort: pinned first, then recently updated
+      processed.sort((a, b) => {
+        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
+        return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+      })
+
+      setCampaigns(processed)
     } catch (err) {
       console.error('Failed to load campaigns:', err)
     } finally {
@@ -126,7 +146,7 @@ export default function Layout() {
 
             {/* Campaigns Submenu */}
             {campaignsExpanded && (
-              <div className="mt-1 space-y-0.5 pl-3 border-l border-slate-200 dark:border-gray-700">
+              <div className="mt-1 space-y-0.5 pl-3">
                 {loadingCampaigns ? (
                   <div className="px-3 py-2 text-xs text-slate-500 dark:text-gray-400">Loading...</div>
                 ) : campaigns.length === 0 ? (
