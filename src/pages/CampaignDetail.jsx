@@ -35,11 +35,48 @@ const STREAK_PERIOD_LABELS = {
   monthly: 'month',
 }
 
+function getCadenceDays(cadence) {
+  if (cadence === 'biweekly') return 14
+  if (cadence === 'monthly') return 28
+  return 7
+}
+
+function getPeriodStart(dateStr, cadence) {
+  const date = new Date(`${dateStr}T00:00:00.000Z`)
+  const anchor = new Date('1970-01-05T00:00:00.000Z')
+  const dayMs = 24 * 60 * 60 * 1000
+  const periodDays = getCadenceDays(cadence)
+  const offsetDays = Math.floor((date.getTime() - anchor.getTime()) / dayMs)
+  const periodOffset = Math.floor(offsetDays / periodDays) * periodDays
+  return new Date(anchor.getTime() + periodOffset * dayMs)
+}
+
+function getNextPeriodStart(periodStartDate, cadence) {
+  const next = new Date(periodStartDate.getTime())
+  next.setUTCDate(next.getUTCDate() + getCadenceDays(cadence))
+  return next
+}
+
+function getActiveStreakCount(campaign) {
+  if (!campaign || !campaign.streak_count) return 0
+  const cadence = campaign.streak_cadence || 'weekly'
+  const lastPeriod = campaign.streak_last_period_start
+  if (!lastPeriod) return 0
+
+  const today = new Date().toISOString().split('T')[0]
+  const currentPeriodStart = getPeriodStart(today, cadence)
+  const lastPeriodStart = getPeriodStart(lastPeriod, cadence)
+  const isExpired = getNextPeriodStart(lastPeriodStart, cadence).getTime() < currentPeriodStart.getTime()
+  
+  return isExpired ? 0 : campaign.streak_count
+}
+
 function formatCampaignStreak(campaign) {
-  if (!campaign || campaign.streak_count <= 0) return ''
+  const streakCount = getActiveStreakCount(campaign)
+  if (streakCount <= 0) return ''
   const cadence = campaign.streak_cadence || 'weekly'
   const periodLabel = STREAK_PERIOD_LABELS[cadence] || STREAK_PERIOD_LABELS.weekly
-  return `${campaign.streak_count} ${periodLabel} streak`
+  return `${streakCount} ${periodLabel} streak`
 }
 
 function CampaignDetail() {
@@ -127,6 +164,7 @@ function CampaignDetail() {
         created_by: currentUserId,
         streak_count: guestCampaign.streak_count ?? 0,
         streak_cadence: guestCampaign.streak_cadence ?? 'weekly',
+        streak_last_period_start: guestCampaign.streak_last_period_start ?? null,
       })
       setCampaignName(guestCampaign.name)
       setCampaignDescription(guestCampaign.description)
@@ -141,7 +179,7 @@ function CampaignDetail() {
       const client = requireSupabase()
       const { data: campaignData, error: campaignError } = await client
         .from('campaigns')
-        .select('id, slug, name, description, invite_code, created_by, streak_count, streak_cadence')
+        .select('id, slug, name, description, invite_code, created_by, streak_count, streak_cadence, streak_last_period_start')
         .eq('slug', campaignSlug)
         .single()
 
@@ -550,7 +588,7 @@ function CampaignDetail() {
   const visibleSessions = sessions.filter((session) => (showArchived ? true : !session.archived))
   const isGM = Boolean(campaign && currentUserId && campaign.created_by === currentUserId)
   const campaignStreakText = formatCampaignStreak(campaign)
-  const campaignStreakCount = campaign?.streak_count ?? 0
+  const campaignStreakCount = getActiveStreakCount(campaign)
 
   if (loading) {
     return (

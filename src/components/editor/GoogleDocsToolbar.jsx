@@ -54,6 +54,7 @@ const MaterialIcon = ({ icon, size = 20 }) => (
 // Popular Google Fonts
 const GOOGLE_FONTS = [
   { name: 'Default', value: '', family: 'system-ui' },
+  { name: 'Gravity', value: 'Gravity', family: 'Gravity, sans-serif' },
   { name: 'Inter', value: 'Inter', family: 'Inter, sans-serif' },
   { name: 'Roboto', value: 'Roboto', family: 'Roboto, sans-serif' },
   { name: 'Open Sans', value: 'Open Sans', family: '"Open Sans", sans-serif' },

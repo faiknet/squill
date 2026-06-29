@@ -55,15 +55,9 @@ begin
       select c.streak_count + 1 from public.campaigns c where c.id = p_campaign_id
     );
 
-  -- Gap > 1 period → expired, reset to 0 with null last_period
+  -- Gap > 1 period → expired, start new streak at 1
   elsif v_new_period_start > v_last_period_start then
-    perform set_config('app.allow_streak_write', '1', true);
-    update public.campaigns c
-    set
-      streak_count = 0,
-      streak_last_period_start = null
-    where c.id = p_campaign_id;
-    return;
+    v_new_streak_count := 1;
 
   -- Past activity (activity_date before last_period) → no-op
   else
@@ -92,15 +86,35 @@ set search_path = public
 as $$
 declare
   v_campaign_id uuid;
+  v_session_date date;
+  v_cadence text;
+  v_period_days integer;
 begin
-  select campaign_id into v_campaign_id
-  from public.sessions
-  where id = new.session_id;
+  select s.campaign_id, coalesce(s.session_date, (s.created_at at time zone 'utc')::date)
+    into v_campaign_id, v_session_date
+  from public.sessions s
+  where s.id = new.session_id;
 
   if v_campaign_id is not null then
-    perform public.apply_campaign_streak_for_date(
-      v_campaign_id, current_date
-    );
+    select c.streak_cadence into v_cadence
+    from public.campaigns c
+    where c.id = v_campaign_id;
+
+    v_period_days := case
+      when v_cadence = 'biweekly' then 14
+      when v_cadence = 'monthly' then 28
+      else 7
+    end;
+
+    if current_date - v_session_date <= v_period_days then
+      perform public.apply_campaign_streak_for_date(
+        v_campaign_id, v_session_date
+      );
+    else
+      perform public.apply_campaign_streak_for_date(
+        v_campaign_id, current_date
+      );
+    end if;
   end if;
 
   return new;
@@ -123,10 +137,35 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_session_date date;
+  v_cadence text;
+  v_period_days integer;
 begin
-  perform public.apply_campaign_streak_for_date(
-    new.campaign_id, current_date
-  );
+  select coalesce(s.session_date, (s.created_at at time zone 'utc')::date)
+    into v_session_date
+  from public.sessions s
+  where s.id = new.session_id;
+
+  select c.streak_cadence into v_cadence
+  from public.campaigns c
+  where c.id = new.campaign_id;
+
+  v_period_days := case
+    when v_cadence = 'biweekly' then 14
+    when v_cadence = 'monthly' then 28
+    else 7
+  end;
+
+  if current_date - v_session_date <= v_period_days then
+    perform public.apply_campaign_streak_for_date(
+      new.campaign_id, v_session_date
+    );
+  else
+    perform public.apply_campaign_streak_for_date(
+      new.campaign_id, current_date
+    );
+  end if;
   return new;
 end;
 $$;

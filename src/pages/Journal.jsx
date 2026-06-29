@@ -251,11 +251,11 @@ export default function Journal() {
           {TAG_SECTIONS.map((section) => (
             <div
               key={section.type}
-              className="flex flex-col bg-white dark:bg-gray-800 border-r border-slate-100 dark:border-gray-700 last:border-r-0 transition-colors duration-200"
+              className="flex flex-col bg-white dark:bg-gray-800 transition-colors duration-200"
               onDragOver={(e) => handleDragOver(e, section.type)}
             >
               {/* Section Header */}
-              <div className="p-4 border-b border-slate-100 dark:border-gray-700 flex flex-col gap-3 shrink-0">
+              <div className="p-4 flex flex-col gap-3 shrink-0">
                 <button
                   onClick={() => toggleSection(section.type)}
                   className="w-full flex items-center justify-between text-left focus:outline-none md:pointer-events-none cursor-pointer md:cursor-default"

@@ -6,7 +6,7 @@ import { Button } from '../ui'
 import {
   getGuestSessionBySlug,
 } from '../../lib/guestData'
-import { useCampaignDisplayName } from '../../lib/campaignDisplayPreferences'
+
 
 /**
  * SessionTabsLayout
@@ -90,9 +90,7 @@ export default function SessionTabsLayout() {
     resolveNames()
   }, [campaignSlug, sessionSlug, navigate, isGuest, authLoading, authState.user?.id])
 
-  // Use campaign display name (alias) if set
-  const { displayName } = useCampaignDisplayName(campaignId)
-  const effectiveCampaignName = displayName || campaignName
+  const effectiveCampaignName = campaignName
 
   // Tab class helpers — these apply transition-all so font-size/weight/bg animate
   const activeTabClass =

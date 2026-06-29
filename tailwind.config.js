@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Gravity', 'sans-serif'],
       },
       colors: {
         primary: '#307473', // Updated primary to teal
