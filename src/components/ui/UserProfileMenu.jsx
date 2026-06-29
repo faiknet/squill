@@ -2,21 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useSupabaseAuth'
 import { getDisplayLabel } from '../../lib/utils'
-import ColorPickerModal from './ColorPickerModal'
+import ColorPickerModal, { USER_COLOR_OPTIONS } from './ColorPickerModal'
 import AchievementsModal from '../achievements/AchievementsModal'
 
-const USER_COLOR_OPTIONS = [
-  { value: '#ef4444', label: 'Red' },
-  { value: '#f97316', label: 'Orange' },
-  { value: '#f59e0b', label: 'Yellow' },
-  { value: '#84cc16', label: 'Green' },
-  { value: '#10b981', label: 'Teal' },
-  { value: '#06b6d4', label: 'Cyan' },
-  { value: '#3b82f6', label: 'Blue' },
-  { value: '#8b5cf6', label: 'Purple' },
-  { value: '#ec4899', label: 'Pink' },
-  { value: '#f43f5e', label: 'Rose' },
-]
 
 export default function UserProfileMenu({ collapsed = false, userColor, setUserColor }) {
   const navigate = useNavigate()

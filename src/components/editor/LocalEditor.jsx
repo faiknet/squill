@@ -1,24 +1,13 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useParams } from 'react-router-dom'
-import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
-import Link from '@tiptap/extension-link'
-import ResizableImage from 'tiptap-extension-resize-image'
-import FontFamily from '@tiptap/extension-font-family'
-import TextStyle from '@tiptap/extension-text-style'
-import { Color } from '@tiptap/extension-color'
-import Highlight from '@tiptap/extension-highlight'
-import TextAlign from '@tiptap/extension-text-align'
 import { getMarkRange } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { colorFromString } from '../../lib/liveblocks'
-import { MentionMark } from '../../lib/mentionMark'
-import { FontSize } from '../../lib/fontSizeExtension'
-import { IndentExtension } from '../../lib/indentExtension'
+import { getEditorExtensions } from './editorConfig'
+import { useMentionHandling, getMentionAttrsFromEventTarget } from './useMentionHandling'
 import MentionDropdown from './MentionDropdown'
-import JournalEntryMentionModal from './JournalEntryMentionModal'
-import SessionMentionModal from './SessionMentionModal'
+import MentionActionModal from './MentionActionModal'
 
 export default function LocalEditor({
   noteContent,
@@ -33,119 +22,41 @@ export default function LocalEditor({
   userColor,
   onEditorReady,
 }) {
-  const [mentionState, setMentionState] = useState({ active: false, query: '', position: null })
-  const mentionStateRef = useRef(mentionState)
   const mentionDropdownRef = useRef(null)
-  const [selectedJournalEntry, setSelectedJournalEntry] = useState(null)
-  const [selectedJournalEntryAnchor, setSelectedJournalEntryAnchor] = useState(null)
-  const [selectedSessionMention, setSelectedSessionMention] = useState(null)
-  const [selectedSessionMentionAnchor, setSelectedSessionMentionAnchor] = useState(null)
   const { campaignSlug } = useParams()
-  // Debounce timer ref for setNoteContent — prevents serializing HTML on every keystroke
   const noteContentDebounceRef = useRef(null)
-  // Track whether the editor has been initially seeded with content
   const isFirstLoadRef = useRef(true)
 
-  useEffect(() => {
-    mentionStateRef.current = mentionState
-  }, [mentionState])
-
-  const openJournalEntryModal = (mentionAttrs, anchorRect = null) => {
-    const entity = journalEntities.find((item) => String(item.id) === String(mentionAttrs.mentionId))
-    if (entity) {
-      setSelectedJournalEntry(entity)
-      setSelectedJournalEntryAnchor(anchorRect)
-      return
-    }
-
-    setSelectedJournalEntry({
-      id: mentionAttrs.mentionId,
-      label: mentionAttrs.mentionLabel,
-      tag_type: mentionAttrs.mentionEntityType,
-      created_at: null,
-    })
-    setSelectedJournalEntryAnchor(anchorRect)
-  }
-
-  const closeJournalEntryModal = () => {
-    setSelectedJournalEntry(null)
-    setSelectedJournalEntryAnchor(null)
-  }
-
-  const openSessionMentionModal = (mentionAttrs, anchorRect = null) => {
-    const session = sessionNotes.find((item) => String(item.id) === String(mentionAttrs.mentionId))
-    if (session) {
-      setSelectedSessionMention(session)
-      setSelectedSessionMentionAnchor(anchorRect)
-      return
-    }
-
-    setSelectedSessionMention({
-      id: mentionAttrs.mentionId,
-      name: mentionAttrs.mentionLabel,
-      label: mentionAttrs.mentionLabel,
-      slug: null,
-      session_date: null,
-      created_at: null,
-    })
-    setSelectedSessionMentionAnchor(anchorRect)
-  }
-
-  const closeSessionMentionModal = () => {
-    setSelectedSessionMention(null)
-    setSelectedSessionMentionAnchor(null)
-  }
-
-  const getMentionAttrsFromEventTarget = (eventTarget) => {
-    const sourceElement = eventTarget?.nodeType === Node.TEXT_NODE
-      ? eventTarget.parentElement
-      : eventTarget
-    const mentionElement = sourceElement?.closest?.('[data-mention-id]')
-    if (!mentionElement) return null
-
-    return {
-      mentionType: mentionElement.getAttribute('data-mention-type') || '',
-      mentionEntityType: mentionElement.getAttribute('data-mention-entity-type') || '',
-      mentionId: mentionElement.getAttribute('data-mention-id') || '',
-      mentionLabel: mentionElement.getAttribute('data-mention-label') || mentionElement.textContent || '',
-      anchorRect: mentionElement.getBoundingClientRect(),
-    }
-  }
+  const {
+    mentionState,
+    setMentionState,
+    mentionStateRef,
+    selectedJournalEntry,
+    selectedJournalEntryAnchor,
+    selectedSessionMention,
+    selectedSessionMentionAnchor,
+    openJournalEntryModal,
+    closeJournalEntryModal,
+    openSessionMentionModal,
+    closeSessionMentionModal,
+  } = useMentionHandling({ journalEntities, sessionNotes })
 
   const userColorMap = useMemo(() => {
     const styleMap = new Map()
-
     campaignMembers.forEach(member => {
       const color = member.color || colorFromString(member.display_name)
       styleMap.set(member.user_id, color)
     })
-
     if (currentUserId) {
       styleMap.set(currentUserId, userColor || colorFromString(userLabel))
     }
-
     return styleMap
   }, [campaignMembers, currentUserId, userColor, userLabel])
 
+  const extensions = useMemo(() => getEditorExtensions({ collaborative: false }), [])
+
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
-      Underline,
-      Link.configure({
-        openOnClick: false,
-      }),
-      ResizableImage,
-      MentionMark,
-      FontFamily,
-      TextStyle,
-      FontSize,
-      Color,
-      Highlight.configure({ multicolor: true }),
-      TextAlign.configure({
-        types: ['heading', 'paragraph'],
-      }),
-      IndentExtension,
-    ],
+    extensions,
     content: noteContent,
     editorProps: {
       attributes: {
@@ -154,8 +65,8 @@ export default function LocalEditor({
       handleClick: (view, pos, event) => {
         const { schema, doc, tr } = view.state
         const resolvedPos = doc.resolve(pos)
-
         const clickedMentionAttrs = getMentionAttrsFromEventTarget(event.target)
+        
         if (
           clickedMentionAttrs &&
           (
@@ -175,7 +86,6 @@ export default function LocalEditor({
         }
 
         const range = getMarkRange(resolvedPos, schema.marks.mention)
-
         if (!range) return false
 
         const mentionMark = resolvedPos.marks().find((mark) => mark.type.name === 'mention')
@@ -211,7 +121,6 @@ export default function LocalEditor({
       },
       handleDOMEvents: {
         click: (view, event) => {
-          // Handle link clicks - only open on Ctrl/Cmd+click
           if (event.target.tagName === 'A' && event.target.href) {
             if (event.ctrlKey || event.metaKey) {
               window.open(event.target.href, '_blank')
@@ -222,12 +131,8 @@ export default function LocalEditor({
           return false
         },
         keydown: (view, event) => {
-          if (selectedJournalEntry) {
-            closeJournalEntryModal()
-          }
-          if (selectedSessionMention) {
-            closeSessionMentionModal()
-          }
+          if (selectedJournalEntry) closeJournalEntryModal()
+          if (selectedSessionMention) closeSessionMentionModal()
 
           if (mentionStateRef.current.active) {
             if (event.key === 'Escape') {
@@ -247,8 +152,6 @@ export default function LocalEditor({
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
-      // Debounce HTML serialization: only call setNoteContent after 100ms of inactivity
-      // so rapid keystrokes don't serialize on every single character
       clearTimeout(noteContentDebounceRef.current)
       noteContentDebounceRef.current = setTimeout(() => {
         setNoteContent(currentEditor.getHTML())
@@ -259,11 +162,7 @@ export default function LocalEditor({
       const match = text.match(/@([\w]*)$/)
 
       if (match) {
-        setMentionState({
-          active: true,
-          query: match[1],
-          position: from,
-        })
+        setMentionState({ active: true, query: match[1], position: from })
       } else {
         setMentionState({ active: false, query: '', position: null })
       }
@@ -273,16 +172,12 @@ export default function LocalEditor({
     },
   }, [])
 
-  // Notify parent when editor instance changes
   useEffect(() => {
     if (editor) onEditorReady?.(editor)
   }, [editor, onEditorReady])
 
   useEffect(() => {
     if (!editor) return
-    // Only sync external content changes on first load (initial mount).
-    // After that, the editor is the source of truth — the onUpdate debounce
-    // propagates changes outward, not inward.
     if (isFirstLoadRef.current) {
       isFirstLoadRef.current = false
       const current = editor.getHTML()
@@ -319,13 +214,15 @@ export default function LocalEditor({
             onSelect={() => setMentionState({ active: false, query: '', position: null })}
           />
         )}
-        <JournalEntryMentionModal
-          entry={selectedJournalEntry}
+        <MentionActionModal
+          type="entity"
+          data={selectedJournalEntry}
           anchorRect={selectedJournalEntryAnchor}
           onClose={closeJournalEntryModal}
         />
-        <SessionMentionModal
-          session={selectedSessionMention}
+        <MentionActionModal
+          type="session"
+          data={selectedSessionMention}
           anchorRect={selectedSessionMentionAnchor}
           campaignSlug={campaignSlug}
           onClose={closeSessionMentionModal}

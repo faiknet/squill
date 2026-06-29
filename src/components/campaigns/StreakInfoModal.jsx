@@ -1,4 +1,4 @@
-import { Card } from "../ui";
+import { Modal } from "../ui";
 
 const CADENCE_INFO = {
   weekly: {
@@ -59,7 +59,6 @@ function getStreakStatus(campaign) {
   const today = new Date().toISOString().split("T")[0];
   const currentPeriodStart = getPeriodStart(today, cadence);
   const currentPeriodEnd = getNextPeriodStart(currentPeriodStart, cadence);
-  // Subtract 1 day for inclusive end
   const currentPeriodEndInclusive = new Date(
     currentPeriodEnd.getTime() - 24 * 60 * 60 * 1000,
   );
@@ -91,8 +90,6 @@ function getStreakStatus(campaign) {
   const renewedThisPeriod =
     lastPeriodDate.getTime() === currentPeriodStart.getTime();
 
-  // If renewed this period, deadline is end of NEXT period
-  // If not yet renewed, deadline is end of THIS period
   const deadlineEnd = renewedThisPeriod
     ? nextPeriodEndInclusive
     : currentPeriodEndInclusive;
@@ -122,102 +119,86 @@ export default function StreakInfoModal({ isOpen, onClose, campaign }) {
   const streakCount = status.streakCount;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <Card className="w-full max-w-md bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-sm">
-        {/* Header */}
-        <div className="border-b border-slate-200 dark:border-gray-700 p-6">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100 tracking-tight">
-              Activity Streak
-            </h2>
+    <Modal isOpen={isOpen} onClose={onClose} title="Activity Streak" size="md">
+      <div className="space-y-5">
+        {/* Current Streak */}
+        <div className="flex items-center justify-center gap-3 py-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
+          <img
+            src="/icons/streak.png"
+            alt=""
+            className="h-10 w-10 shrink-0"
+            aria-hidden="true"
+            loading="lazy"
+          />
+          <div>
+            <p className="text-2xl font-bold text-amber-700 dark:text-amber-300 leading-none">
+              {streakCount > 0 ? streakCount : "—"}
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
+              {streakCount > 0
+                ? `${cadenceInfo.period} streak`
+                : "No active streak"}
+            </p>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="p-6 space-y-5">
-          {/* Current Streak */}
-          <div className="flex items-center justify-center gap-3 py-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
-            <img
-              src="/icons/streak.png"
-              alt=""
-              className="h-10 w-10 shrink-0"
-              aria-hidden="true"
-              loading="lazy"
-            />
-            <div>
-              <p className="text-2xl font-bold text-amber-700 dark:text-amber-300 leading-none">
-                {streakCount > 0 ? streakCount : "—"}
-              </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                {streakCount > 0
-                  ? `${cadenceInfo.period} streak`
-                  : "No active streak"}
-              </p>
-            </div>
+        {streakCount > 0 && campaign.streak_last_period_start && (
+          <p className="text-center text-xs text-slate-500 dark:text-gray-400">
+            Streak started on{" "}
+            {(() => {
+              const periodDays = getCadenceDays(cadence);
+              const lastPeriodDate = getPeriodStart(
+                campaign.streak_last_period_start,
+                cadence
+              );
+              const startedDate = new Date(
+                lastPeriodDate.getTime() -
+                  (streakCount - 1) * periodDays * 24 * 60 * 60 * 1000,
+              );
+              return formatDate(startedDate);
+            })()}
+          </p>
+        )}
+
+
+        {/* How it works */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-gray-100">
+            How Streaks Work
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-gray-400">
+            {cadenceInfo.description}
+          </p>
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
+              Streak Actions
+            </p>
+            <ul className="space-y-1.5">
+              <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-gray-400">
+                <span className="text-brand-500 mt-0.5 shrink-0">•</span>
+                Creating a new session
+              </li>
+              <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-gray-400">
+                <span className="text-brand-500 mt-0.5 shrink-0">•</span>
+                Making changes to a session
+              </li>
+              <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-gray-400">
+                <span className="text-brand-500 mt-0.5 shrink-0">•</span>
+                Adding a journal entry
+              </li>
+            </ul>
           </div>
-
-          {streakCount > 0 && campaign.streak_last_period_start && (
-            <p className="text-center text-xs text-slate-500 dark:text-gray-400">
-              Streak started on{" "}
-              {(() => {
-                const periodDays = getCadenceDays(cadence);
-                const lastPeriodDate = new Date(
-                  `${campaign.streak_last_period_start}T00:00:00.000Z`,
-                );
-                const startedDate = new Date(
-                  lastPeriodDate.getTime() -
-                    (streakCount - 1) * periodDays * 24 * 60 * 60 * 1000,
-                );
-                return formatDate(startedDate);
-              })()}
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 p-3">
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              <span className="font-semibold">Tip:</span> Any party member's
+              action counts toward the streak. If no one takes a streak action
+              within the next {cadenceInfo.period} after the current one, the
+              streak resets to zero.
             </p>
-          )}
-
-          {/* How it works */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-gray-100">
-              How Streaks Work
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-gray-400">
-              {cadenceInfo.description}
-            </p>
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                Streak Actions
-              </p>
-              <ul className="space-y-1.5">
-                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-gray-400">
-                  <span className="text-brand-500 mt-0.5 shrink-0">•</span>
-                  Creating a new session
-                </li>
-                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-gray-400">
-                  <span className="text-brand-500 mt-0.5 shrink-0">•</span>
-                  Making changes to a session
-                </li>
-                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-gray-400">
-                  <span className="text-brand-500 mt-0.5 shrink-0">•</span>
-                  Adding a journal entry
-                </li>
-              </ul>
-            </div>
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 p-3">
-              <p className="text-xs text-blue-700 dark:text-blue-300">
-                <span className="font-semibold">Tip:</span> Any party member's
-                action counts toward the streak. If no one takes a streak action
-                within the next {cadenceInfo.period} after the current one, the
-                streak resets to zero.
-              </p>
-            </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-slate-200 dark:border-gray-700 p-4 flex justify-end">
+        <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-gray-700">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-md hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
@@ -225,7 +206,7 @@ export default function StreakInfoModal({ isOpen, onClose, campaign }) {
             Close
           </button>
         </div>
-      </Card>
-    </div>
+      </div>
+    </Modal>
   );
 }
