@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useSupabaseAuth'
 import { useSessionData } from '../hooks/useSessionData'
 import { requireSupabase } from '../lib/supabase'
 import { colorFromString, getSessionRoomId } from '../lib/liveblocks'
-import { Button } from '../components/ui'
+import { Button, LoadingSpinner } from '../components/ui'
 import ExportSessionNotesModal from '../components/sessions/ExportSessionNotesModal'
 import { exportSessionNotes } from '../lib/sessionNoteExport'
 import { getDisplayLabel } from '../lib/utils'
@@ -100,6 +100,8 @@ const EditorLayout = memo(function EditorLayout({
   campaignMembers,
   inviteCode,
   showOfflineMembers,
+  mutationError,
+  clearMutationError,
   children
 }) {
   const [copied, setCopied] = useState(false)
@@ -235,8 +237,36 @@ const EditorLayout = memo(function EditorLayout({
     : children
   const desktopSidebarWidth = isSidebarCollapsed ? 0 : sidebarWidth
 
+  const [dismissedError, setDismissedError] = useState(false)
+
+  useEffect(() => {
+    if (mutationError) {
+      setDismissedError(false)
+      const timer = setTimeout(() => {
+        setDismissedError(true)
+        clearMutationError()
+      }, 8000)
+      return () => clearTimeout(timer)
+    }
+  }, [mutationError, clearMutationError])
+
   return (
     <div className="flex-1 bg-white dark:bg-gray-900 flex flex-col font-sans overflow-hidden transition-colors duration-200">
+      {mutationError && !dismissedError && (
+        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-900/50 flex items-center justify-between" role="alert">
+          <p className="text-sm text-red-700 dark:text-red-400">{mutationError}</p>
+          <button
+            type="button"
+            onClick={() => { setDismissedError(true); clearMutationError() }}
+            className="ml-4 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 shrink-0"
+            aria-label="Dismiss error"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
       {/* Full-width toolbar row */}
       <EditorToolbar
         editor={editorInstance}
@@ -336,7 +366,9 @@ const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
   showOfflineMembers,
   tags,
   sessionNotes,
-  currentUserId
+  currentUserId,
+  mutationError,
+  clearMutationError,
 }) {
   const others = useOthers()
   const self = useSelf()
@@ -368,6 +400,8 @@ const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
       campaignMembers={campaignMembers}
       inviteCode={inviteCode}
       showOfflineMembers={showOfflineMembers}
+      mutationError={mutationError}
+      clearMutationError={clearMutationError}
     >
       <CollaborativeEditor
         noteContent={noteContent}
@@ -395,6 +429,11 @@ export default memo(function SessionEditor() {
   const [campaignName, setCampaignName] = useState('')
   const [sessionId, setSessionId] = useState(null)
   const [loadingIds, setLoadingIds] = useState(true)
+  const [resolveError, setResolveError] = useState('')
+
+  useEffect(() => {
+    document.title = campaignName ? `${campaignName} — Squill` : 'Session — Squill'
+  }, [campaignName])
 
   // First, resolve slugs to IDs
   useEffect(() => {
@@ -406,7 +445,7 @@ export default memo(function SessionEditor() {
       const userId = authState.user?.id
       const guestRoute = userId ? getGuestSessionBySlug(userId, campaignSlug, sessionSlug) : null
       if (!guestRoute) {
-        navigate('/campaigns')
+        setResolveError('This session could not be found. It may have been deleted or the link may be incorrect.')
         return
       }
       setCampaignId(guestRoute.campaign.id)
@@ -426,7 +465,7 @@ export default memo(function SessionEditor() {
           .single()
 
         if (campaignError || !campaignData) {
-          navigate('/campaigns')
+          setResolveError('This campaign could not be found. It may have been deleted or the link may be incorrect.')
           return
         }
 
@@ -438,7 +477,7 @@ export default memo(function SessionEditor() {
           .single()
 
         if (sessionError || !sessionData) {
-          navigate(`/campaigns/${campaignSlug}`)
+          setResolveError('This session could not be found. It may have been deleted or the link may be incorrect.')
           return
         }
 
@@ -447,7 +486,7 @@ export default memo(function SessionEditor() {
         setSessionId(sessionData.id)
       } catch (err) {
         console.error('Error resolving slugs:', err)
-        navigate('/campaigns')
+        setResolveError('Something went wrong while loading this session. Please try again.')
       } finally {
         setLoadingIds(false)
       }
@@ -469,6 +508,8 @@ export default memo(function SessionEditor() {
     error,
     saving,
     saveNote,
+    mutationError,
+    clearMutationError,
   } = useSessionData(sessionId, campaignId)
 
   const { displayName } = useCampaignDisplayName(campaignId)
@@ -654,27 +695,39 @@ export default memo(function SessionEditor() {
     return finalList
   }, [tags, campaignMembers, activityLogs])
 
+  if (resolveError) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-red-600 dark:text-red-400 p-4 border border-red-200 dark:border-red-800 rounded bg-red-50 dark:bg-red-900/20" role="alert">
+            <h3 className="font-bold mb-2">Not Found</h3>
+            <p>{resolveError}</p>
+          </div>
+          <Button onClick={() => navigate('/campaigns')}>
+            Back to Campaigns
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   // Check if still resolving slug IDs
   if (loadingIds) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200" aria-live="polite" aria-busy="true">
         <p className="text-slate-500 dark:text-gray-400">Loading...</p>
       </div>
     )
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
-        <p className="text-slate-500 dark:text-gray-400">Loading session...</p>
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   if (error) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
-        <div className="text-red-600 dark:text-red-400 p-4 border border-red-200 dark:border-red-800 rounded bg-red-50 dark:bg-red-900/20">
+        <div className="text-red-600 dark:text-red-400 p-4 border border-red-200 dark:border-red-800 rounded bg-red-50 dark:bg-red-900/20" role="alert">
           <h3 className="font-bold mb-2">Error</h3>
           <p>{error}</p>
           <Button onClick={() => navigate(`/campaigns/${campaignSlug}`)} className="mt-4">
@@ -716,6 +769,8 @@ export default memo(function SessionEditor() {
           tags={tags}
           sessionNotes={sessionNotes}
           currentUserId={authState.user?.id}
+          mutationError={mutationError}
+          clearMutationError={clearMutationError}
         />
       </RoomProvider>
     )
@@ -739,6 +794,8 @@ export default memo(function SessionEditor() {
       campaignMembers={campaignMembers}
       inviteCode={inviteCode}
       showOfflineMembers={showOfflineMembers}
+      mutationError={mutationError}
+      clearMutationError={clearMutationError}
     >
       <LocalEditor
         noteContent={noteContent}

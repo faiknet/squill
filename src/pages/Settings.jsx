@@ -3,7 +3,7 @@ import { useAuth } from "../hooks/useSupabaseAuth";
 import { useFormState } from "../hooks/useFormState";
 import { useDarkMode } from "../hooks/useDarkMode";
 import { requireSupabase } from "../lib/supabase";
-import { Button, Input } from "../components/ui";
+import { Button, Input, LoadingSpinner } from "../components/ui";
 import {
   validateUpdateProfile,
   validateEmail,
@@ -13,6 +13,10 @@ import {
 
 export default function Settings() {
   const { authState, refreshProfile } = useAuth();
+
+  useEffect(() => {
+    document.title = 'Settings — Squill'
+  }, [])
   const { theme, setTheme } = useDarkMode();
   const isGuest = authState.isGuest;
 
@@ -176,11 +180,7 @@ export default function Settings() {
   };
 
   if (authState.isLoading) {
-    return (
-      <div className="text-slate-400 dark:text-gray-400 p-8 text-center">
-        Loading settings...
-      </div>
-    );
+    return <LoadingSpinner />
   }
 
   return (
@@ -200,9 +200,9 @@ export default function Settings() {
         {/* Bento Adaptive Grid */}
         <div className="grid grid-cols-12 gap-6">
           {/* Public Profile Bento Tile */}
-          <section className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between">
+          <section aria-labelledby="profile-heading" className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between">
             <div>
-              <h3 className="font-semibold text-lg text-brand-600 dark:text-brand-400 mb-1">
+              <h3 id="profile-heading" className="font-semibold text-lg text-brand-600 dark:text-brand-400 mb-1">
                 Public Profile
               </h3>
               <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">
@@ -231,13 +231,13 @@ export default function Settings() {
                 </div>
 
                 {profileForm.error && (
-                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-xs">
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-xs" role="alert">
                     {profileForm.error}
                   </div>
                 )}
 
                 {profileForm.message && (
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-xs">
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-xs" role="status">
                     {profileForm.message}
                   </div>
                 )}
@@ -256,9 +256,9 @@ export default function Settings() {
           </section>
 
           {/* Account Settings Bento Tile */}
-          <section className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between">
+          <section aria-labelledby="account-heading" className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between">
             <div>
-              <h3 className="font-semibold text-lg text-brand-600 dark:text-brand-400 mb-1">
+              <h3 id="account-heading" className="font-semibold text-lg text-brand-600 dark:text-brand-400 mb-1">
                 Account Credentials
               </h3>
               <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">
@@ -288,13 +288,13 @@ export default function Settings() {
                 </div>
 
                 {accountForm.error && (
-                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-xs">
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-xs" role="alert">
                     {accountForm.error}
                   </div>
                 )}
 
                 {accountForm.message && (
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-xs">
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-xs" role="status">
                     {accountForm.message}
                   </div>
                 )}
@@ -316,9 +316,9 @@ export default function Settings() {
           </section>
 
           {/* Security Bento Tile */}
-          <section className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between">
+          <section aria-labelledby="security-heading" className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between">
             <div>
-              <h3 className="font-semibold text-lg text-brand-600 dark:text-brand-400 mb-1">
+              <h3 id="security-heading" className="font-semibold text-lg text-brand-600 dark:text-brand-400 mb-1">
                 Change Password
               </h3>
               <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">
@@ -392,13 +392,13 @@ export default function Settings() {
                 </div>
 
                 {securityForm.error && (
-                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-xs">
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 text-xs" role="alert">
                     {securityForm.error}
                   </div>
                 )}
 
                 {securityForm.message && (
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-xs">
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md border border-green-200 dark:border-green-900/50 text-xs" role="status">
                     {securityForm.message}
                   </div>
                 )}
@@ -417,9 +417,9 @@ export default function Settings() {
           </section>
 
           {/* Appearance Bento Tile */}
-          <section className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between">
+          <section aria-labelledby="theme-heading" className="col-span-12 lg:col-span-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-6 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-200 flex flex-col justify-between">
             <div>
-              <h3 className="font-semibold text-lg text-brand-600 dark:text-brand-400 mb-1">
+              <h3 id="theme-heading" className="font-semibold text-lg text-brand-600 dark:text-brand-400 mb-1">
                 Theme Preferences
               </h3>
               <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">

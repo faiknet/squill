@@ -146,9 +146,14 @@ function useSupabaseAuth() {
       if (session?.user) {
         loadProfile(session.user.id).then(({ displayName, avatarUrl }) => {
           if (!mounted) return
+          const userMeta = session.user.user_metadata
           setAuthState((current) => {
             if (current.user?.id !== session.user.id) return current
-            return { ...current, displayName, avatarUrl }
+            return {
+              ...current,
+              displayName: displayName || userMeta?.full_name || null,
+              avatarUrl: avatarUrl || userMeta?.avatar_url || null,
+            }
           })
         })
       }
@@ -319,6 +324,22 @@ function useSupabaseAuth() {
     }
   }, [])
 
+  const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: unknown }> => {
+    try {
+      const client = requireSupabase()
+      const { error } = await client.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (error) return { success: false, error }
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: err }
+    }
+  }, [])
+
   const refreshSession = useCallback(async (): Promise<{ success: boolean; error?: unknown; session?: Session | null }> => {
     const client = requireSupabase()
     const { data, error } = await client.auth.refreshSession()
@@ -352,12 +373,13 @@ function useSupabaseAuth() {
     authState,
     signIn,
     signUp,
+    signInWithGoogle,
     signInAsGuest,
     signOut,
     resetPasswordForEmail,
     refreshSession,
     refreshProfile,
-  }), [authState, refreshProfile, refreshSession, resetPasswordForEmail, signIn, signInAsGuest, signOut, signUp])
+  }), [authState, refreshProfile, refreshSession, resetPasswordForEmail, signIn, signInAsGuest, signOut, signUp, signInWithGoogle])
 }
 
 export const useAuth = useSupabaseAuth

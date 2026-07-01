@@ -3,18 +3,60 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    touch-action: manipulation;
+  }
+
   body {
     font-family: 'Gravity', sans-serif;
   }
 
-  /* Enable smooth touch momentum scrolling on mobile/iOS devices */
+  /* Prevent scroll chaining on mobile — stops scroll "sticking" at container boundaries */
   .overflow-y-auto,
   .overflow-auto,
   main,
   aside,
   nav {
-    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom loading animation — mask-based dot sequence */
+.custom-loader {
+  width: 70px;
+  height: 26px;
+  background: #307473;
+  --c: linear-gradient(#000 0 0);
+  --s: 18px 18px;
+  -webkit-mask:
+    var(--c) left 4px top 50%,
+    var(--c) center,
+    var(--c) right 4px top 50%,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  -webkit-mask-repeat: no-repeat;
+  animation: cu2 3s infinite;
+}
+
+@keyframes cu2 {
+  0%    { -webkit-mask-size: 0 0, 0 0, 0 0, auto; }
+  16.67% { -webkit-mask-size: var(--s), 0 0, 0 0, auto; }
+  33.33% { -webkit-mask-size: var(--s), var(--s), 0 0, auto; }
+  50%   { -webkit-mask-size: var(--s), var(--s), var(--s), auto; }
+  66.67% { -webkit-mask-size: 0 0, var(--s), var(--s), auto; }
+  83.33% { -webkit-mask-size: 0 0, 0 0, var(--s), auto; }
+  100%  { -webkit-mask-size: 0 0, 0 0, 0 0, auto; }
 }
 
 @layer utilities {

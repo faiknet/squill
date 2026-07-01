@@ -114,15 +114,17 @@ export default function SessionTabsLayout() {
               <span className="lg:hidden">←</span>
             </Button>
             <div className="h-6 w-px bg-slate-100 dark:bg-gray-700 mx-1 lg:mx-2 shrink-0" />
-            <div className="flex items-baseline gap-1.5 min-w-0">
-              <span className="text-xs lg:text-sm text-slate-400 dark:text-gray-500 truncate max-w-[80px] sm:max-w-[150px] lg:max-w-[200px]">
-                {effectiveCampaignName}
-              </span>
-              <span className="text-xs text-slate-300 dark:text-gray-600 shrink-0">/</span>
-              <h1 className="text-base lg:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
-                {sessionName}
-              </h1>
-            </div>
+            <nav aria-label="Breadcrumb">
+              <div className="flex items-baseline gap-1.5 min-w-0">
+                <a href={`/campaigns/${campaignSlug}`} className="text-xs lg:text-sm text-slate-400 dark:text-gray-500 truncate max-w-[80px] sm:max-w-[150px] lg:max-w-[200px] hover:text-slate-600 dark:hover:text-gray-300">
+                  {effectiveCampaignName}
+                </a>
+                <span className="text-xs text-slate-300 dark:text-gray-600 shrink-0" aria-hidden="true">/</span>
+                <h1 className="text-base lg:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
+                  {sessionName}
+                </h1>
+              </div>
+            </nav>
           </div>
         </div>
 

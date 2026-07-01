@@ -1,7 +1,12 @@
 import { Link } from 'react-router-dom'
 import { Button, Card } from '../components/ui'
 
+import { useEffect } from 'react'
+
 export default function NotFound() {
+  useEffect(() => {
+    document.title = 'Page Not Found — Squill'
+  }, [])
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <Card className="max-w-md w-full bg-gray-800 border-gray-700 text-center">

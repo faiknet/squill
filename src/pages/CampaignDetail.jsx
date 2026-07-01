@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useMobileMenu } from '../contexts/MobileMenuContext'
-import { Button, Card, Input } from '../components/ui'
+import { Button, Card, Input, LoadingSpinner } from '../components/ui'
 import { EditSessionModal, DeleteSessionModal } from '../components/sessions'
 import { colorFromString } from '../lib/liveblocks'
 import { createUrlSlug } from '../lib/utils'
@@ -83,10 +83,14 @@ function CampaignDetail() {
   const { campaignSlug } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
+
   const { isGuest } = authState
   const { setMobileMenuOpen } = useMobileMenu()
   const currentUserId = authState.user?.id ?? null
   const [campaign, setCampaign] = useState(null)
+  useEffect(() => {
+    document.title = campaign ? `${campaign.name} — Squill` : 'Campaign — Squill'
+  }, [campaign])
   const [sessions, setSessions] = useState([])
   const [partyMembers, setPartyMembers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -211,7 +215,7 @@ function CampaignDetail() {
       if (membersError) {
         const message = String(membersError.message || '')
         if (message.includes('Could not find the function public.get_campaign_members')) {
-          setErrorMessage('Party Members is unavailable until migration 0006_campaign_members_rpc.sql is applied in Supabase.')
+          setErrorMessage('Party members are temporarily unavailable. Please try refreshing the page.')
           setPartyMembers([])
         } else {
           throw membersError
@@ -371,12 +375,10 @@ function CampaignDetail() {
         setErrorMessage(error.getClientMessage())
       } else {
         const message = String(error.message || '')
-        if (message.includes('Could not find the function public.update_campaign_as_gm_with_streak')) {
-          setErrorMessage('Campaign edit helper is unavailable until migration 20260405_campaign_streak_cadence_rpc.sql is applied in Supabase.')
-        } else if (message.toLowerCase().includes('row-level security')) {
+        if (message.toLowerCase().includes('row-level security')) {
           setErrorMessage('Only the GM can edit this campaign.')
         } else {
-          setErrorMessage(message || 'Failed to update campaign')
+          setErrorMessage('Failed to update campaign. Please try again.')
         }
       }
     } finally {
@@ -591,11 +593,7 @@ function CampaignDetail() {
   const campaignStreakCount = getActiveStreakCount(campaign)
 
   if (loading) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <p className="text-slate-500 dark:text-gray-400">Loading campaign...</p>
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   return (
@@ -759,7 +757,7 @@ function CampaignDetail() {
       </div>
 
       {errorMessage && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 flex items-center justify-between">
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 flex items-center justify-between" role="alert">
           <span>{errorMessage}</span>
           <button onClick={() => setErrorMessage('')} className="text-sm font-bold hover:underline">Dismiss</button>
         </div>
@@ -773,8 +771,9 @@ function CampaignDetail() {
           <div className="p-6">
             <form onSubmit={handleSaveCampaign} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Campaign Name</label>
+                <label htmlFor="edit-campaign-name" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Campaign Name</label>
                 <Input
+                  id="edit-campaign-name"
                   type="text"
                   value={campaignName}
                   onChange={(e) => setCampaignName(e.target.value)}
@@ -783,8 +782,9 @@ function CampaignDetail() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Description</label>
+                <label htmlFor="edit-campaign-description" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Description</label>
                 <textarea
+                  id="edit-campaign-description"
                   value={campaignDescription}
                   onChange={(e) => setCampaignDescription(e.target.value)}
                   rows={3}
@@ -792,8 +792,9 @@ function CampaignDetail() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Streak Cadence</label>
+                <label htmlFor="edit-campaign-streak-cadence" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Streak Cadence</label>
                 <select
+                  id="edit-campaign-streak-cadence"
                   value={campaignStreakCadence}
                   onChange={(e) => setCampaignStreakCadence(e.target.value)}
                   className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
@@ -851,8 +852,9 @@ function CampaignDetail() {
             <h3 className="text-sm font-bold text-slate-900 dark:text-gray-100 mb-4">Create New Session</h3>
             <form onSubmit={handleCreateSession} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Session Name</label>
+                <label htmlFor="session-name" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Session Name</label>
                 <Input
+                  id="session-name"
                   type="text"
                   value={sessionName}
                   onChange={(e) => setSessionName(e.target.value)}
@@ -862,8 +864,9 @@ function CampaignDetail() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Date (Optional)</label>
+                <label htmlFor="session-date" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Date (Optional)</label>
                 <Input
+                  id="session-date"
                   type="date"
                   value={sessionDate}
                   onChange={(e) => setSessionDate(e.target.value)}
@@ -975,7 +978,7 @@ function CampaignDetail() {
       </div>
 
       {copyConfirmation && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 rounded-full shadow-lg border border-emerald-200 dark:border-emerald-800 font-medium text-sm animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 rounded-full shadow-lg border border-emerald-200 dark:border-emerald-800 font-medium text-sm animate-in fade-in slide-in-from-bottom-4" role="status" aria-live="polite">
           {copyConfirmation}
         </div>
       )}

@@ -26,7 +26,12 @@ export class ValidationError extends Error {
    * Safe message for client display (never leaks DB info)
    */
   getClientMessage(): string {
-    return 'Invalid input provided. Please check your entries and try again.'
+    const defaultMessage = 'Please check your entries and try again'
+    if (this.issues.length === 0) return defaultMessage
+    if (this.issues.length === 1) return this.issues[0].message
+    const firstIssue = this.issues[0].message
+    const count = this.issues.length - 1
+    return `${firstIssue} (and ${count} more ${count === 1 ? 'issue' : 'issues'})`
   }
 }
 

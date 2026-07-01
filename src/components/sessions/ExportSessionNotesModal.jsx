@@ -74,12 +74,12 @@ export default function ExportSessionNotesModal({
         </div>
 
         {!hasContent && (
-          <p className="text-sm text-amber-700 dark:text-amber-300">
+          <p className="text-sm text-amber-700 dark:text-amber-300" role="status">
             Notes are currently empty. Add content before exporting.
           </p>
         )}
         {exportError && (
-          <p className="text-sm text-red-600 dark:text-red-400">{exportError}</p>
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">{exportError}</p>
         )}
 
         <div className="flex justify-end gap-3 border-t border-slate-100 dark:border-gray-700/50 pt-4 mt-6">

@@ -4,7 +4,7 @@ import { Modal, Button } from '../ui'
 // Helper to optimize Supabase Storage URLs by leveraging on-the-fly transformations
 function optimizeImageUrl(url) {
   if (!url) return url
-  const supabasePattern = /^(https:\/\/[\w-]+\.supabase\.co)\/storage\/v1\/object\/public\/([^\s\?]+)/
+  const supabasePattern = /^(https:\/\/[\w-]+\.supabase\.co)\/storage\/v1\/object\/public\/([^\s?]+)/
   const match = url.match(supabasePattern)
   if (match) {
     const baseUrl = match[1]
@@ -127,16 +127,16 @@ export default function ImageModal({ isOpen, onClose, onInsert }) {
       {activeTab === 'url' && (
         <form onSubmit={handleUrlSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-gray-300">
+            <label htmlFor="image-url" className="block text-sm font-medium mb-2 text-slate-700 dark:text-gray-300">
               Image URL
             </label>
             <input
+              id="image-url"
               type="url"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://example.com/image.jpg"
               className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-slate-900 dark:text-gray-100"
-              autoFocus
               required
             />
           </div>
@@ -156,10 +156,11 @@ export default function ImageModal({ isOpen, onClose, onInsert }) {
       {activeTab === 'upload' && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-gray-300">
+            <label htmlFor="image-file" className="block text-sm font-medium mb-2 text-slate-700 dark:text-gray-300">
               Select Image File
             </label>
             <input
+              id="image-file"
               ref={fileInputRef}
               type="file"
               accept="image/*"

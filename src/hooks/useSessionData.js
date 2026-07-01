@@ -382,6 +382,10 @@ export function useSessionData(sessionId, campaignId) {
 
   // --- Mutations ---
 
+  const [mutationError, setMutationError] = useState(null)
+
+  const clearMutationError = useCallback(() => setMutationError(null), [])
+
   // 1. Save Note Content
   const saveNoteMutation = useMutation({
     mutationFn: async (content) => {
@@ -414,6 +418,7 @@ export function useSessionData(sessionId, campaignId) {
       if (context?.previousNote !== undefined) {
         queryClient.setQueryData(['session-notes', sessionId], context.previousNote)
       }
+      setMutationError('Failed to save note. Your changes have been reverted.')
     }
   })
 
@@ -487,6 +492,7 @@ export function useSessionData(sessionId, campaignId) {
       if (context?.previousTags) {
         queryClient.setQueryData(['entity-tags', campaignId], context.previousTags)
       }
+      setMutationError('Failed to add tag. Please try again.')
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['entity-tags', campaignId], (old = []) => {
@@ -535,6 +541,7 @@ export function useSessionData(sessionId, campaignId) {
       if (context?.previousTags) {
         queryClient.setQueryData(['entity-tags', campaignId], context.previousTags)
       }
+      setMutationError('Failed to remove tag. Please try again.')
     }
   })
 
@@ -564,6 +571,7 @@ export function useSessionData(sessionId, campaignId) {
       if (context?.previousTags) {
         queryClient.setQueryData(['entity-tags', campaignId], context.previousTags)
       }
+      setMutationError('Failed to update tag. Please try again.')
     }
   })
 
@@ -761,6 +769,8 @@ export function useSessionData(sessionId, campaignId) {
     saveNote,
     addTag,
     removeTag,
-    updateTag
+    updateTag,
+    mutationError,
+    clearMutationError
   }
 }

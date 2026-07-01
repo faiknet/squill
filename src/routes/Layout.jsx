@@ -103,14 +103,15 @@ export default function Layout() {
           <button
             onClick={() => setMobileMenuOpen(false)}
             className="md:hidden p-1 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200"
+            aria-label="Close menu"
           >
-            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto" aria-label="Main navigation">
           {/* Campaigns Button */}
           <div>
             <div className="w-full flex items-center gap-3">
@@ -130,6 +131,8 @@ export default function Layout() {
               <button
                 onClick={() => setCampaignsExpanded(!campaignsExpanded)}
                 className="p-1.5 hover:bg-slate-50 dark:hover:bg-gray-700/50 rounded-md transition-colors"
+                aria-expanded={campaignsExpanded}
+                aria-label={campaignsExpanded ? 'Collapse campaigns list' : 'Expand campaigns list'}
               >
                 <svg
                   className={`w-4 h-4 transition-transform ${campaignsExpanded ? 'rotate-180' : ''} ${
@@ -180,7 +183,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto w-full flex flex-col">
+      <main id="main-content" className="flex-1 overflow-y-auto w-full flex flex-col">
         <div className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
           <Suspense fallback={<LoadingSpinner />}>
             <Outlet />

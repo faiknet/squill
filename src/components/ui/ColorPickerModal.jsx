@@ -24,7 +24,7 @@ export default function ColorPickerModal({ isOpen, onClose, currentColor, onSele
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={headerContent} size="sm">
       <div className="space-y-6">
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-5 gap-3" role="radiogroup" aria-label="Select cursor color">
           {USER_COLOR_OPTIONS.map((option) => {
             const isSelected = currentColor === option.value
             return (
@@ -41,10 +41,12 @@ export default function ColorPickerModal({ isOpen, onClose, currentColor, onSele
                     : 'border-transparent hover:border-slate-300 dark:hover:border-gray-600'
                 }`}
                 style={{ backgroundColor: option.value }}
-                title={option.label}
+                role="radio"
+                aria-checked={isSelected}
+                aria-label={option.label}
               >
                 {isSelected && (
-                  <svg className="w-4 h-4 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 )}

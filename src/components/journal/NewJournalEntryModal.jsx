@@ -30,22 +30,22 @@ export default function NewJournalEntryModal({ isOpen, onClose, onSave, sectionT
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`New ${sectionTitle}`} size="md">
       {error && (
-        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-md text-sm">
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-md text-sm" role="alert">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
+          <label htmlFor="new-entry-name" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
             Name
           </label>
           <Input
+            id="new-entry-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={`Enter ${sectionTitle} name`}
-            autoFocus
             disabled={loading}
             className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700"
           />

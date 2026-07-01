@@ -14,12 +14,17 @@ import { getGuestCampaigns, createGuestCampaign } from '../lib/guestData'
 import CreateCampaignModal from '../components/campaigns/CreateCampaignModal'
 import EditCampaignModal from '../components/campaigns/EditCampaignModal'
 import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
+import { LoadingSpinner } from '../components/ui'
 import Logo from '../components/ui/logo.webp'
 
 export default memo(function CampaignList() {
   const navigate = useNavigate()
   const location = useLocation()
   const { authState, signOut } = useAuth()
+
+  useEffect(() => {
+    document.title = 'Campaigns — Squill'
+  }, [])
   const { user, isGuest } = authState
   const { error, message, setFail, setSuccess, clear } = useFormState()
 
@@ -253,11 +258,7 @@ export default memo(function CampaignList() {
   const isSelected = false
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-slate-500">Loading campaigns...</div>
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   const profileLabel = getDisplayLabel(authState)
@@ -312,6 +313,8 @@ export default memo(function CampaignList() {
               <button
                 onClick={() => setCampaignsExpanded(!campaignsExpanded)}
                 className="p-1.5 hover:bg-brand-100 dark:hover:bg-brand-900/40 rounded-md transition-colors"
+                aria-expanded={campaignsExpanded}
+                aria-label={campaignsExpanded ? 'Collapse campaigns list' : 'Expand campaigns list'}
               >
                 <svg
                   className={`w-4 h-4 transition-transform ${campaignsExpanded ? 'rotate-180' : ''} text-brand-700 dark:text-brand-400`}
@@ -393,19 +396,19 @@ export default memo(function CampaignList() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
+      <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden w-full">
         <div className="p-4 lg:p-6 w-full">
           {error && (
-            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 flex items-center justify-between">
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 flex items-center justify-between" role="alert">
               <span>{error}</span>
               <button onClick={clear} className="text-sm font-bold hover:underline">Dismiss</button>
             </div>
           )}
           {message && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 rounded-full shadow-xl border border-green-200 dark:border-green-700 flex items-center gap-4 transition-all animate-in fade-in slide-in-from-bottom-4">
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 rounded-full shadow-xl border border-green-200 dark:border-green-700 flex items-center gap-4 transition-all animate-in fade-in slide-in-from-bottom-4" role="status" aria-live="polite">
               <span className="font-medium">{message}</span>
               <button onClick={clear} className="p-1 hover:bg-black/10 rounded-full transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -417,8 +420,9 @@ export default memo(function CampaignList() {
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               >
-                <svg className="w-6 h-6 text-slate-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-6 h-6 text-slate-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
@@ -427,10 +431,12 @@ export default memo(function CampaignList() {
             </div>
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3 w-full lg:w-auto">
               <div className="relative flex-1 lg:flex-none lg:w-56">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <label htmlFor="campaign-search" className="sr-only">Search campaigns</label>
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
+                  id="campaign-search"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -680,6 +686,7 @@ export default memo(function CampaignList() {
         <div 
           className="fixed z-50 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 pointer-events-auto"
           style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+          role="menu"
         >
           {(() => {
             const campaign = campaigns.find(c => c.id === openMenuId)
@@ -689,12 +696,14 @@ export default memo(function CampaignList() {
                 <button
                   onClick={(e) => { e.stopPropagation(); handleCopyLink(campaign) }}
                   className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  role="menuitem"
                 >
                   Invite
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handlePinCampaign(campaign) }}
                   className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  role="menuitem"
                 >
                   {campaign.pinned ? 'Unpin' : 'Pin'}
                 </button>
@@ -703,12 +712,14 @@ export default memo(function CampaignList() {
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditingCampaign(campaign); setOpenMenuId(null) }}
                       className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                      role="menuitem"
                     >
                       Edit Details
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setDeletingCampaign(campaign); setOpenMenuId(null) }}
                       className="w-full px-4 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                      role="menuitem"
                     >
                       Delete Campaign
                     </button>

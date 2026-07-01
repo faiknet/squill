@@ -8,6 +8,10 @@ function JoinCampaign() {
   const { code } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
+
+  useEffect(() => {
+    document.title = 'Join Campaign — Squill'
+  }, [])
   const [loading, setLoading] = useState(false)
   const [joined, setJoined] = useState(false)
   const [error, setError] = useState(null)
@@ -83,7 +87,7 @@ function JoinCampaign() {
           ) : (
             <div className="space-y-6">
               {error && (
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded border border-red-200 dark:border-red-900/50 text-sm">
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded border border-red-200 dark:border-red-900/50 text-sm" role="alert">
                   {error}
                 </div>
               )}

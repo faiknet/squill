@@ -35,6 +35,9 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
       <button
         onClick={() => setShowUserMenu(!showUserMenu)}
         className={`w-full flex items-center gap-2.5 p-1.5 hover:bg-brand-50 dark:hover:bg-brand-800/40 rounded-md cursor-pointer transition-colors ${collapsed ? 'justify-center' : ''}`}
+        aria-haspopup="true"
+        aria-expanded={showUserMenu}
+        aria-label={`User menu for ${profileLabel}`}
       >
         <div className="size-8 rounded-full bg-slate-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-gray-300 shrink-0"
              style={userColor ? { backgroundColor: userColor, color: '#fff' } : {}}
@@ -46,7 +49,7 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
             <div className="flex-1 overflow-hidden text-left">
               <p className="text-sm font-medium truncate text-slate-900 dark:text-gray-200">{profileLabel}</p>
             </div>
-            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </>
@@ -54,7 +57,8 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
       </button>
 
       {showUserMenu && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xl rounded-md overflow-hidden z-50 min-w-[240px] max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xl rounded-md overflow-hidden z-50 min-w-[240px] max-h-[70vh] overflow-y-auto custom-scrollbar"
+             role="menu">
           
           {setUserColor && (
             <>
@@ -63,8 +67,8 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
                 <button
                   onClick={() => setIsColorModalOpen(true)}
                   className="w-6 h-6 rounded-full border-2 border-slate-200 dark:border-gray-600 transition-transform hover:scale-110 shadow-sm cursor-pointer"
-                  style={{ backgroundColor: userColor || '#ef4444' }}
                   title="Change colour"
+                  aria-label="Change colour"
                 />
               </div>
               <ColorPickerModal
@@ -79,6 +83,7 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
           <button
             onClick={() => { setShowUserMenu(false); setIsAchievementsModalOpen(true) }}
             className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-gray-200 hover:bg-brand-50 dark:hover:bg-brand-800/40 flex items-center gap-2 hidden"
+            role="menuitem"
           >
             Achievements
           </button>
@@ -89,12 +94,14 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
           <button
             onClick={() => { setShowUserMenu(false); navigate('/settings') }}
             className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-gray-200 hover:bg-brand-50 dark:hover:bg-brand-800/40 flex items-center gap-2"
+            role="menuitem"
           >
             Settings
           </button>
           <button
             onClick={() => { setShowUserMenu(false); signOut().then(() => navigate('/auth')) }}
             className="w-full px-4 py-2 text-left text-sm hover:bg-brand-50 dark:hover:bg-brand-800/40 flex items-center gap-2 border-t border-slate-100 dark:border-gray-700 text-red-600 dark:text-red-400"
+            role="menuitem"
           >
             Sign Out
           </button>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { requireSupabase } from '../lib/supabase'
@@ -8,6 +8,10 @@ import { Button, Input, Card } from '../components/ui'
 function AuthResetPassword() {
   const navigate = useNavigate()
   const { authState, resetPasswordForEmail } = useAuth()
+
+  useEffect(() => {
+    document.title = 'Reset Password — Squill'
+  }, [])
 
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')

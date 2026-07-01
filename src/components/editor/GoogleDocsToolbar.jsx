@@ -14,7 +14,8 @@ const IconButton = memo(function IconButton({ onClick, isActive, label, icon, cl
         onClick()
       }}
       className={`h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center flex-shrink-0 ${isActive ? 'toolbar-active' : ''} ${className}`}
-      title={label}
+      aria-label={label}
+      aria-pressed={isActive}
     >
       <span className="md:hidden flex items-center">
         <MaterialIcon icon={icon} size={22} />
@@ -72,6 +73,17 @@ const GOOGLE_FONTS = [
 ]
 
 const FONT_SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '32', '36', '48', '72']
+
+function loadGoogleFont(fontValue) {
+  if (!fontValue || fontValue === 'Gravity') return
+  const fontId = `gf-${fontValue.toLowerCase().replace(/\s+/g, '-')}`
+  if (document.getElementById(fontId)) return
+  const link = document.createElement('link')
+  link.id = fontId
+  link.rel = 'stylesheet'
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontValue)}:wght@400;500;600;700&display=swap`
+  document.head.appendChild(link)
+}
 
 const HEADING_OPTIONS = [
   { label: 'Paragraph', value: 0, command: 'setParagraph' },
@@ -185,7 +197,7 @@ function ColorPicker({ value, onChange, colors, label, icon, showUnderline = fal
                     }}
                     className="w-5 h-5 rounded border border-slate-200 dark:border-gray-600 hover:scale-110 transition-transform relative"
                     style={{ backgroundColor: color }}
-                    title={color}
+                    aria-label={color === 'transparent' ? 'No color' : `Color ${color}`}
                   >
                     {color === 'transparent' && (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -301,6 +313,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
     alignCenter: ed.isActive({ textAlign: 'center' }),
     alignRight: ed.isActive({ textAlign: 'right' }),
     alignJustify: ed.isActive({ textAlign: 'justify' }),
+    fontFamily: ed.getAttributes('textStyle').fontFamily,
     fontSize: ed.getAttributes('textStyle').fontSize,
     textColor: ed.getAttributes('textStyle').color,
     highlightColor: ed.getAttributes('highlight').color,
@@ -382,6 +395,24 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
       />
 
       <div data-toolbar className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-100 dark:border-gray-700 flex flex-nowrap md:flex-wrap gap-1 items-center overflow-x-auto md:overflow-x-visible whitespace-nowrap scrollbar-none transition-colors duration-200 sticky top-0 z-10">
+        {/* Font Family */}
+        <select
+          value={activeMarks.fontFamily || ''}
+          onChange={(e) => {
+            const val = e.target.value
+            if (val) loadGoogleFont(val)
+            editor.chain().focus().setFontFamily(val).run()
+          }}
+          className="h-11 md:h-7 bg-transparent border border-slate-100 dark:border-gray-700 rounded-[8px] text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none px-3 max-w-[120px] md:max-w-[100px]"
+          aria-label="Font family"
+        >
+          {GOOGLE_FONTS.map(font => (
+            <option key={font.value} value={font.value} style={{ fontFamily: font.family }}>
+              {font.name}
+            </option>
+          ))}
+        </select>
+
         {/* Font Size */}
         <div className="flex items-center flex-shrink-0">
           <button
@@ -400,9 +431,9 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
               editor.chain().focus().setFontSize(`${newSize}px`).run()
             }}
             className="h-11 w-8 md:h-7 md:w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-l text-slate-600 dark:text-gray-300"
-            title="Decrease font size"
+            aria-label="Decrease font size"
           >
-            <svg className="w-4 h-4 md:w-3 md:h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 md:w-3 md:h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
             </svg>
           </button>
@@ -411,6 +442,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
             onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}px`).run()}
             className="h-11 w-14 md:h-7 md:w-12 text-sm bg-transparent border border-slate-100 dark:border-gray-700 rounded-[8px] text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none"
             style={{ textAlign: 'center', textAlignLast: 'center' }}
+            aria-label="Font size"
           >
             {FONT_SIZES.map(size => (
               <option key={size} value={size}>{size}</option>
@@ -432,9 +464,9 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
               editor.chain().focus().setFontSize(`${newSize}px`).run()
             }}
             className="h-11 w-8 md:h-7 md:w-6 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-gray-700 rounded-r text-slate-600 dark:text-gray-300"
-            title="Increase font size"
+            aria-label="Increase font size"
           >
-            <svg className="w-4 h-4 md:w-3 md:h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 md:w-3 md:h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -452,6 +484,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
             }
           }}
           className="h-11 md:h-7 bg-transparent border border-slate-100 dark:border-gray-700 rounded-[8px] text-center text-slate-700 dark:text-gray-200 focus:outline-none cursor-pointer appearance-none px-3"
+          aria-label="Heading level"
         >
           {HEADING_OPTIONS.map(opt => {
             const headingSizes = { 0: '0.875rem', 1: '1.4rem', 2: '1.2rem', 3: '1rem', 4: '0.925rem' }
@@ -469,25 +502,25 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
         <IconButton
           onClick={() => editor.chain().focus().toggleBold().run()}
           isActive={activeMarks.bold}
-          label="Bold (Ctrl+B)"
+          label="Bold"
           icon="format_bold"
         />
         <IconButton
           onClick={() => editor.chain().focus().toggleItalic().run()}
           isActive={activeMarks.italic}
-          label="Italic (Ctrl+I)"
+          label="Italic"
           icon="format_italic"
         />
         <IconButton
           onClick={() => editor.chain().focus().toggleUnderline().run()}
           isActive={activeMarks.underline}
-          label="Underline (Ctrl+U)"
+          label="Underline"
           icon="format_underlined"
         />
         <IconButton
           onClick={() => editor.chain().focus().toggleStrike().run()}
           isActive={activeMarks.strike}
-          label="Strikethrough (Ctrl+Shift+X)"
+          label="Strikethrough"
           icon="format_strikethrough"
         />
 
@@ -608,13 +641,14 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
 
         {/* Right-aligned: Save status, Export, Share, sidebar controls */}
         <div className="ml-auto flex items-center gap-1 flex-shrink-0">
-          <span className="hidden xl:inline text-xs text-slate-400 dark:text-gray-500 whitespace-nowrap">
+          <span className="hidden xl:inline text-xs text-slate-400 dark:text-gray-500 whitespace-nowrap" aria-live="polite" aria-atomic="true">
             {saving ? 'Saving…' : showSaved ? 'All changes saved' : ''}
           </span>
           <button
             type="button"
             onMouseDown={(e) => { e.preventDefault(); onOpenExport?.() }}
             className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors text-xs text-slate-700 dark:text-gray-300 flex items-center justify-center"
+            aria-label="Export session notes"
           >
             Export
           </button>
@@ -622,6 +656,7 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
             type="button"
             onMouseDown={(e) => { e.preventDefault(); onShare?.() }}
             className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors text-xs text-slate-700 dark:text-gray-300 flex items-center justify-center"
+            aria-label={copied ? 'Link copied' : 'Share session link'}
           >
             {copied ? 'Copied!' : 'Share'}
           </button>

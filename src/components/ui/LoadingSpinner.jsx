@@ -1,14 +1,33 @@
-import React from 'react'
+import { useState, useEffect, useRef } from 'react'
+
+const MESSAGES = [
+  'Putting pen to paper...',
+  'Refilling your inkwell...',
+  'Getting fresh paper...',
+  'Feeding Squillbert...',
+  'Making the pen mightier than the sword...',
+]
 
 export function LoadingSpinner({ className = '' }) {
+  const [message, setMessage] = useState(() =>
+    MESSAGES[Math.floor(Math.random() * MESSAGES.length)]
+  )
+  const [stalled, setStalled] = useState(false)
+  const timerRef = useRef(null)
+
+  useEffect(() => {
+    timerRef.current = setTimeout(() => setStalled(true), 10000)
+    return () => clearTimeout(timerRef.current)
+  }, [])
+
   return (
-    <div className={`flex items-center justify-center p-4 ${className}`}>
-      <div className="relative w-12 h-12">
-        {/* Outer glowing track */}
-        <div className="absolute inset-0 rounded-full border-4 border-slate-200/20 dark:border-gray-800/40"></div>
-        {/* Spinning gradient arc */}
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-brand-500 border-r-brand-500 animate-spin"></div>
-      </div>
+    <div className={`min-h-screen w-full flex flex-col items-center justify-center gap-4 p-4 ${className}`}>
+      {!stalled && <div className="custom-loader" />}
+      <p className="text-sm text-slate-500 dark:text-gray-400 animate-pulse">
+        {stalled
+          ? 'This is taking longer than anticipated, please hold on...'
+          : message}
+      </p>
     </div>
   )
 }

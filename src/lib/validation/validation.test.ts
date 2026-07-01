@@ -210,7 +210,7 @@ describe('Input Validation & Injection Prevention', () => {
       } catch (err) {
         if (err instanceof ValidationError) {
           const clientMsg = err.getClientMessage()
-          expect(clientMsg).toBe('Invalid input provided. Please check your entries and try again.')
+          expect(clientMsg).toBe('Invalid email format')
           expect(clientMsg).not.toContain('database')
           expect(clientMsg).not.toContain('SQL')
         }

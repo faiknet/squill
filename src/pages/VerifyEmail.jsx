@@ -11,6 +11,10 @@ function VerifyEmail() {
   const { refreshSession, authState } = useAuth()
   const { user } = authState
 
+  useEffect(() => {
+    document.title = 'Verify Email — Squill'
+  }, [])
+
   // Get email from location state or current user email
   const email = location.state?.email || user?.email
 

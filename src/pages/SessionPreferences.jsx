@@ -67,6 +67,10 @@ const USER_COLOR_OPTIONS = [
 export default function SessionPreferences() {
   const { campaignSlug, sessionSlug } = useParams()
 
+  useEffect(() => {
+    document.title = 'Preferences — Squill'
+  }, [])
+
   const { authState } = useAuth()
   const { isGuest } = authState
   const [campaignId, setCampaignId] = useState(null)

@@ -16,6 +16,7 @@ const CampaignDetail = lazy(() => import('../pages/CampaignDetail'))
 const Settings = lazy(() => import('../pages/Settings'))
 const JoinCampaign = lazy(() => import('../pages/JoinCampaign'))
 const Auth = lazy(() => import('../pages/Auth'))
+const AuthCallback = lazy(() => import('../pages/AuthCallback'))
 const AuthResetPassword = lazy(() => import('../pages/AuthResetPassword'))
 const VerifyEmail = lazy(() => import('../pages/VerifyEmail'))
 const NotFound = lazy(() => import('./NotFound'))
@@ -51,6 +52,7 @@ export default function AppRoutes() {
       <Routes>
         {/* Public routes */}
         <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/auth/reset-password" element={<AuthResetPassword />} />
         <Route path="/auth/verify-email" element={<VerifyEmail />} />
         <Route path="/join/:code" element={<JoinCampaign />} />

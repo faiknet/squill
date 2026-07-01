@@ -22,6 +22,10 @@ export default function Journal() {
   const { campaignSlug, sessionSlug } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
+
+  useEffect(() => {
+    document.title = 'Journal — Squill'
+  }, [])
   const { isGuest, isLoading: authLoading } = authState
   const [campaignId, setCampaignId] = useState(null)
   const [campaignName, setCampaignName] = useState('')
@@ -179,6 +183,24 @@ export default function Journal() {
     setDraggedOverType(type)
   }
 
+  const handleMoveEntry = async (tag, type, direction) => {
+    const items = groupedTags[type]
+    const currentIndex = items.findIndex(t => t.id === tag.id)
+    if (currentIndex === -1) return
+
+    const targetIndex = currentIndex + direction
+    if (targetIndex < 0 || targetIndex >= items.length) return
+
+    const swapTag = items[targetIndex]
+    const currentOrderIndex = tag.order_index ?? currentIndex
+    const targetOrderIndex = swapTag.order_index ?? targetIndex
+
+    await Promise.all([
+      updateTag(tag.id, { order_index: targetOrderIndex }),
+      updateTag(swapTag.id, { order_index: currentOrderIndex }),
+    ])
+  }
+
   const handleDragEnd = () => {
     setDraggedItem(null)
     setDraggedOverType(null)
@@ -240,7 +262,7 @@ export default function Journal() {
     <div className="flex-1 bg-white dark:bg-gray-900 text-slate-900 dark:text-gray-100 flex flex-col font-sans transition-colors duration-200 overflow-hidden">
       {/* Error Message */}
       {error && (
-        <div className="mx-6 my-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-md shrink-0">
+        <div className="mx-6 my-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-md shrink-0" role="alert">
           {error}
         </div>
       )}
@@ -283,7 +305,9 @@ export default function Journal() {
                 {/* Collapsible search and sort */}
                 <div className={`flex flex-col gap-3 ${collapsedSections[section.type] ? 'hidden md:flex' : ''}`}>
                   {/* Search Bar */}
+                  <label htmlFor={`search-${section.type}`} className="sr-only">Search {section.title}</label>
                   <Input
+                    id={`search-${section.type}`}
                     type="text"
                     placeholder="Search..."
                     value={searchTerms[section.type]}
@@ -315,7 +339,7 @@ export default function Journal() {
                 </button>
 
                 {groupedTags[section.type]?.length > 0 ? (
-                  groupedTags[section.type].map((tag) => (
+                  groupedTags[section.type].map((tag, index) => (
                     <div
                       key={tag.id}
                       draggable={sortBy[section.type] === 'order'}
@@ -326,6 +350,31 @@ export default function Journal() {
                       className={`group flex items-start justify-between p-3 bg-white dark:bg-gray-900/50 border border-slate-100 dark:border-gray-700 rounded-md hover:border-brand-400 dark:hover:border-gray-600 transition-all ${sortBy[section.type] === 'order' ? 'cursor-move' : ''
                         } ${draggedItem?.tag.id === tag.id ? 'opacity-50' : ''}`}
                     >
+                      {/* Mobile up/down reorder buttons */}
+                      {sortBy[section.type] === 'order' && (
+                        <div className="flex flex-col gap-0.5 mr-2 shrink-0 md:hidden">
+                          <button
+                            onClick={() => handleMoveEntry(tag, section.type, -1)}
+                            disabled={index === 0}
+                            className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-gray-200 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                            aria-label="Move up"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleMoveEntry(tag, section.type, 1)}
+                            disabled={index === groupedTags[section.type].length - 1}
+                            className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-gray-200 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+                            aria-label="Move down"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-900 dark:text-gray-200 text-sm truncate">
                           {tag.label}

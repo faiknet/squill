@@ -158,7 +158,7 @@ export default memo(function PresenceSidebar({
   }
 
   return (
-    <aside className="w-full bg-white dark:bg-gray-900 border-slate-100 dark:border-gray-700 flex flex-col flex-1 min-h-0 font-sans transition-colors duration-200">
+    <aside className="w-full bg-white dark:bg-gray-900 border-slate-100 dark:border-gray-700 flex flex-col flex-1 min-h-0 font-sans transition-colors duration-200" aria-label="Members and activity">
       {/* Scrollable area: Members + Activity */}
       <div className="flex-1 overflow-y-auto">
         {/* Members Section */}
