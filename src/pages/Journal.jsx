@@ -269,11 +269,11 @@ export default function Journal() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
-        <div className="h-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+        <div className="h-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 grid-rows-4 md:grid-rows-2 lg:grid-rows-1">
           {TAG_SECTIONS.map((section) => (
             <div
               key={section.type}
-              className="flex flex-col bg-white dark:bg-gray-800 transition-colors duration-200"
+              className="flex flex-col bg-white dark:bg-gray-800 transition-colors duration-200 min-h-0"
               onDragOver={(e) => handleDragOver(e, section.type)}
             >
               {/* Section Header */}
@@ -329,7 +329,7 @@ export default function Journal() {
               </div>
 
               {/* Scrollable Entity List */}
-              <div className={`flex-1 overflow-y-auto p-4 space-y-2 ${collapsedSections[section.type] ? 'hidden md:block' : ''}`}>
+              <div className={`flex-1 overflow-y-auto p-4 space-y-2 min-h-0 ${collapsedSections[section.type] ? 'hidden md:block' : ''}`}>
                 {/* New Entry Button at Top */}
                 <button
                   onClick={() => handleNewEntryClick(section)}
