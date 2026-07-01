@@ -21,7 +21,7 @@ function JoinCampaign() {
   useEffect(() => {
     if (!authState.isLoading && !authState.user) {
       const next = encodeURIComponent(`/join/${code || ''}`)
-      navigate(`/auth?next=${next}`)
+      navigate(`/?next=${next}`)
     }
   }, [authState.isLoading, authState.user, code, navigate])
 

@@ -27,14 +27,14 @@ function ProtectedRoute({ children }) {
 
   if (authState.isLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 text-gray-300 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-600 dark:text-gray-300 flex items-center justify-center">
         <LoadingSpinner />
       </div>
     )
   }
 
   if (!authState || !authState.user) {
-    return <Navigate to="/auth" replace />
+    return <Navigate to="/" replace />
   }
 
   return children
@@ -44,14 +44,14 @@ export default function AppRoutes() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
           <LoadingSpinner />
         </div>
       }
     >
       <Routes>
         {/* Public routes */}
-        <Route path="/auth" element={<Auth />} />
+        <Route path="/" element={<Auth />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/auth/reset-password" element={<AuthResetPassword />} />
         <Route path="/auth/verify-email" element={<VerifyEmail />} />
@@ -82,10 +82,6 @@ export default function AppRoutes() {
         </Route>
         <Route
           path="/dashboard"
-          element={<Navigate to="/campaigns" replace />}
-        />
-        <Route
-          path="/"
           element={<Navigate to="/campaigns" replace />}
         />
 

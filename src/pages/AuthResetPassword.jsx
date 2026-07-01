@@ -58,7 +58,7 @@ function AuthResetPassword() {
       const { error } = await requireSupabase().auth.updateUser({ password: newPassword })
       if (error) throw error
       setSuccess('Password updated successfully. Redirecting to sign in...')
-      setTimeout(() => navigate('/auth?mode=signin'), 3000)
+      setTimeout(() => navigate('/?mode=signin'), 3000)
     } catch (err) {
       setFail(err?.message || 'Failed to update password')
     } finally {
@@ -131,7 +131,7 @@ function AuthResetPassword() {
 
             {message && (
               <div className="mt-6 text-center">
-                <Button onClick={() => navigate('/auth?mode=signin')} variant="outline" className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700">
+                <Button onClick={() => navigate('/?mode=signin')} variant="outline" className="border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700">
                   Go to Sign In
                 </Button>
               </div>

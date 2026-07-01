@@ -159,10 +159,17 @@ function useSupabaseAuth() {
       }
     }
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return
       const session = data?.session ?? null
-      applySession(session)
+
+      if (session?.expires_at && Date.now() / 1000 >= session.expires_at - 60) {
+        const { data: { session: refreshed } } = await requireSupabase().auth.refreshSession()
+        if (!mounted) return
+        applySession(refreshed ?? null)
+      } else {
+        applySession(session)
+      }
     })
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {

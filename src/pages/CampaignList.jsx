@@ -386,7 +386,7 @@ export default memo(function CampaignList() {
                 Settings
               </button>
               <button
-                onClick={() => { setShowUserMenu(false); signOut().then(() => navigate('/auth')) }}
+                onClick={() => { setShowUserMenu(false); signOut().then(() => navigate('/')) }}
                 className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-2 border-t border-slate-100 dark:border-gray-700 text-red-600 dark:text-red-400"
               >
                 Sign Out

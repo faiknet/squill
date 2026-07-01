@@ -99,7 +99,7 @@ export default function UserProfileMenu({ collapsed = false, userColor, setUserC
             Settings
           </button>
           <button
-            onClick={() => { setShowUserMenu(false); signOut().then(() => navigate('/auth')) }}
+            onClick={() => { setShowUserMenu(false); signOut().then(() => navigate('/')) }}
             className="w-full px-4 py-2 text-left text-sm hover:bg-brand-50 dark:hover:bg-brand-800/40 flex items-center gap-2 border-t border-slate-100 dark:border-gray-700 text-red-600 dark:text-red-400"
             role="menuitem"
           >

@@ -49,6 +49,10 @@
   animation: cu2 3s infinite;
 }
 
+.dark .custom-loader {
+  background: #5da7a4;
+}
+
 @keyframes cu2 {
   0%    { -webkit-mask-size: 0 0, 0 0, 0 0, auto; }
   16.67% { -webkit-mask-size: var(--s), 0 0, 0 0, auto; }

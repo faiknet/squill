@@ -16,7 +16,7 @@ export default function AuthCallback() {
       if (authState.user) {
         navigate('/dashboard', { replace: true })
       } else {
-        navigate('/auth', { replace: true })
+        navigate('/', { replace: true })
       }
     }
   }, [authState.isLoading, authState.user, navigate])

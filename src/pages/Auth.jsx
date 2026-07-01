@@ -9,13 +9,15 @@ import { DarkModeToggle } from '../components/ui/DarkModeToggle'
 export default function Auth() {
   const location = useLocation()
   const { authState, signIn, signUp, signInWithGoogle, signInAsGuest } = useAuth()
-  const [mode, setMode] = useState('signin')
+  const [mode, setMode] = useState('signup')
 
   useEffect(() => {
     document.title = mode === 'signin' ? 'Sign In — Squill' : 'Create Account — Squill'
   }, [mode])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
   const [loading, setLoading] = useState(false)
   const { error, message, setSuccess, setFail, clear } = useFormState()
 
@@ -29,22 +31,65 @@ export default function Auth() {
     return <Navigate to={nextPath} replace />
   }
 
+  const validateEmail = (value) => {
+    if (!value.trim()) return 'Please enter your email address.'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address.'
+    return ''
+  }
+
+  const validatePassword = (value) => {
+    if (!value) return 'Please enter your password.'
+    return ''
+  }
+
+  const getFieldError = (err) => {
+    if (!err) return {}
+    const msg = err instanceof Error ? err.message : err?.message || String(err)
+    const lower = msg.toLowerCase()
+    if (lower.includes('invalid login credentials') || lower.includes('wrong password') || lower.includes('email or password') || lower.includes('incorrect')) {
+      return { password: 'Password does not match the email address.' }
+    }
+    if (lower.includes('email not confirmed') || lower.includes('email not verified')) {
+      return { email: 'Please verify your email before signing in.' }
+    }
+    return {}
+  }
+
   const onSubmit = async (event) => {
     event.preventDefault()
     if (loading) return
+
+    const isSignIn = mode === 'signin'
+    if (isSignIn) {
+      const eErr = validateEmail(email)
+      const pErr = validatePassword(password)
+      setEmailError(eErr)
+      setPasswordError(pErr)
+      if (eErr || pErr) return
+    }
 
     setLoading(true)
     clear()
 
     try {
-      const isSignIn = mode === 'signin'
       const action = isSignIn ? signIn : signUp
-      const result = isSignIn
-        ? await action(email, password)
-        : await action(email, password)
+      const result = await action(email, password)
 
       if (!result.success) {
-        setFail(result.error)
+        if (isSignIn) {
+          const fieldErr = getFieldError(result.error)
+          if (fieldErr.password) {
+            setPasswordError(fieldErr.password)
+          }
+          if (fieldErr.email) {
+            setEmailError(fieldErr.email)
+          }
+          if (!fieldErr.password && !fieldErr.email) {
+            setFail(result.error)
+          }
+        } else {
+          setFail(result.error)
+        }
       } else if (!isSignIn) {
         setSuccess(result.message || 'Account created. Check your email for verification.')
         setMode('signin')
@@ -59,6 +104,8 @@ export default function Auth() {
   const toggleMode = () => {
     setMode(prev => prev === 'signin' ? 'signup' : 'signin')
     clear()
+    setEmailError('')
+    setPasswordError('')
   }
 
   const onGoogleSignIn = async () => {
@@ -92,7 +139,7 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-      <Card className="max-w-md w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-sm">
+      <Card className="max-w-md w-full bg-white dark:bg-gray-800 border-0 shadow-sm">
         <div className="p-6">
           <div className="mb-5 flex items-center gap-3">
             <img
@@ -126,12 +173,16 @@ export default function Auth() {
                 id="auth-email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => { setEmail(event.target.value); if (emailError) setEmailError('') }}
                 placeholder="you@example.com"
                 required
                 disabled={loading}
-                className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
+                aria-invalid={!!emailError || undefined}
+                className={`bg-white dark:bg-gray-900 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500 ${emailError ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-slate-200 dark:border-gray-700'}`}
               />
+              {emailError && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">{emailError}</p>
+              )}
             </div>
             <div>
               <label htmlFor="auth-password" className="sr-only">Password</label>
@@ -139,18 +190,21 @@ export default function Auth() {
                 id="auth-password"
                 type="password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => { setPassword(event.target.value); if (passwordError) setPasswordError('') }}
                 placeholder="Password"
                 required
                 disabled={loading}
-                aria-invalid={passwordDoesNotMeetRequirements || undefined}
-                aria-describedby={passwordDoesNotMeetRequirements ? 'password-error' : undefined}
-                className={`bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500 ${passwordDoesNotMeetRequirements ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
+                aria-invalid={passwordDoesNotMeetRequirements || !!passwordError || undefined}
+                aria-describedby={(passwordDoesNotMeetRequirements ? 'password-error' : passwordError ? 'password-error-signin' : undefined)}
+                className={`bg-white dark:bg-gray-900 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500 ${passwordDoesNotMeetRequirements || passwordError ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-slate-200 dark:border-gray-700'}`}
               />
               {passwordDoesNotMeetRequirements && (
                 <p id="password-error" className="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">
                   Password does not meet requirements.
                 </p>
+              )}
+              {passwordError && (
+                <p id="password-error-signin" className="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">{passwordError}</p>
               )}
               {mode === 'signup' && !passwordDoesNotMeetRequirements && (
                 <p className="mt-1 text-xs text-slate-500/80 dark:text-gray-400/80">

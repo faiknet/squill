@@ -21,7 +21,7 @@ export function LoadingSpinner({ className = '' }) {
   }, [])
 
   return (
-    <div className={`min-h-screen w-full flex flex-col items-center justify-center gap-4 p-4 ${className}`}>
+    <div className={`min-h-screen w-full flex flex-col items-center justify-center gap-4 p-4 bg-gray-50 dark:bg-gray-950 ${className}`}>
       {!stalled && <div className="custom-loader" />}
       <p className="text-sm text-slate-500 dark:text-gray-400 animate-pulse">
         {stalled
