@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { storageAdapter } from './storageAdapter'
 
 const supabaseUrl = String(import.meta.env.VITE_SUPABASE_URL || '')
 const supabaseAnonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
@@ -9,6 +10,7 @@ export const supabase = supabaseUrl && supabaseAnonKey
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
+        storage: storageAdapter,
       },
     })
   : null

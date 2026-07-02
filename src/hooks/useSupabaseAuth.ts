@@ -159,18 +159,25 @@ function useSupabaseAuth() {
       }
     }
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return
-      const session = data?.session ?? null
-
-      if (session?.expires_at && Date.now() / 1000 >= session.expires_at - 60) {
-        const { data: { session: refreshed } } = await requireSupabase().auth.refreshSession()
+    ;(async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
         if (!mounted) return
-        applySession(refreshed ?? null)
-      } else {
-        applySession(session)
+        const session = data?.session ?? null
+
+        if (session?.expires_at && Date.now() / 1000 >= session.expires_at - 60) {
+          const { data: { session: refreshed } } = await requireSupabase().auth.refreshSession()
+          if (!mounted) return
+          applySession(refreshed ?? null)
+        } else {
+          applySession(session)
+        }
+      } catch (err) {
+        if (!mounted) return
+        console.warn('Failed to recover session:', err)
+        applySession(null)
       }
-    })
+    })()
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return
