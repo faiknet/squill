@@ -36,8 +36,8 @@ interface RequestWindow {
  * Note: This is in-memory only. For distributed systems, use Redis or Supabase.
  */
 export class RateLimiter {
-  private windows: Map<string, RequestWindow> = new Map();
   private cleanupInterval: number = 60000; // 1 minute
+  private cleanupTimer?: number;
 
   constructor() {
     // Auto-cleanup old entries every minute
@@ -137,7 +137,7 @@ export class RateLimiter {
   private startCleanup(): void {
     // Note: Edge functions are typically short-lived, but cleanup helps
     // if the function stays alive for extended periods
-    setInterval(() => {
+    this.cleanupTimer = setInterval(() => {
       const now = Date.now();
       let cleaned = 0;
 
@@ -158,7 +158,10 @@ export class RateLimiter {
    * Note: Not typically needed in edge functions
    */
   stopCleanup(): void {
-    // Intervals in Deno are automatically cleaned up when the function exits
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = undefined;
+    }
   }
 }
 

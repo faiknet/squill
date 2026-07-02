@@ -4,12 +4,12 @@ import { useAuth } from '../hooks/useSupabaseAuth'
 import Layout from './Layout'
 import { LoadingSpinner } from '../components/ui'
 
-// Core Session Workspace Pages (Eagerly loaded to prevent spinner on transition)
-import SessionEditor from '../pages/SessionEditor'
-import Journal from '../pages/Journal'
-import Activity from '../pages/Activity'
-import SessionPreferences from '../pages/SessionPreferences'
-import SessionTabsLayout from '../components/sessions/SessionTabsLayout'
+// Core Session Workspace Pages (Lazy loaded to reduce initial bundle and improve non-session page loads)
+const SessionEditor = lazy(() => import('../pages/SessionEditor'))
+const Journal = lazy(() => import('../pages/Journal'))
+const Activity = lazy(() => import('../pages/Activity'))
+const SessionPreferences = lazy(() => import('../pages/SessionPreferences'))
+const SessionTabsLayout = lazy(() => import('../components/sessions/SessionTabsLayout'))
 
 // Lazy loaded pages
 const CampaignList = lazy(() => import('../pages/CampaignList'))

@@ -105,7 +105,13 @@ export default function Activity() {
 
   // Apply filtering and sorting
   const processedActivities = useMemo(() => {
-    let result = [...allActivities]
+    // Pre-convert timestamps to epoch ms for all activities once
+    const activitiesWithTime = allActivities.map(act => ({
+      ...act,
+      timeValue: act.timestamp ? new Date(act.timestamp).getTime() : 0
+    }))
+
+    let result = activitiesWithTime
 
     // 1. Filter by Search Query (action or user)
     if (searchQuery.trim()) {
@@ -124,21 +130,19 @@ export default function Activity() {
 
     // 3. Filter by Date Range
     if (startDate) {
-      const start = new Date(startDate)
-      start.setHours(0, 0, 0, 0)
-      result = result.filter(act => new Date(act.timestamp) >= start)
+      const start = new Date(startDate).getTime()
+      result = result.filter(act => act.timeValue >= start)
     }
     if (endDate) {
       const end = new Date(endDate)
       end.setHours(23, 59, 59, 999)
-      result = result.filter(act => new Date(act.timestamp) <= end)
+      const endTime = end.getTime()
+      result = result.filter(act => act.timeValue <= endTime)
     }
 
     // 4. Sort by Date
     result.sort((a, b) => {
-      const timeA = new Date(a.timestamp).getTime()
-      const timeB = new Date(b.timestamp).getTime()
-      return sortOrder === 'newest' ? timeB - timeA : timeA - timeB
+      return sortOrder === 'newest' ? b.timeValue - a.timeValue : a.timeValue - b.timeValue
     })
 
     return result

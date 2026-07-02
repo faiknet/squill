@@ -103,7 +103,10 @@ export function computeSessionActivities(activityLogs, tags, campaignMembers) {
 
   // Filter out duplicates from the combined list based on unique action+timestamp signature
   const seen = new Set()
-  const finalList = list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  const finalList = list.map(item => ({
+    ...item,
+    timeValue: item.timestamp ? new Date(item.timestamp).getTime() : 0
+  })).sort((a, b) => b.timeValue - a.timeValue)
     .filter(item => {
       const signature = `${item.action}-${item.timestamp}`
       if (seen.has(signature)) return false

@@ -35,6 +35,10 @@ export default memo(function CampaignList() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [openMenuId, setOpenMenuId] = useState(null)
+  const openCampaign = useMemo(() => {
+    if (!openMenuId) return null
+    return campaigns.find(c => c.id === openMenuId) || null
+  }, [openMenuId, campaigns])
   // useRef instead of useState: menuPosition only positions an absolutely-placed menu,
   // it doesn't need to trigger a React re-render
   const menuPositionRef = useRef({ top: 0, left: 0 })
@@ -676,20 +680,20 @@ export default memo(function CampaignList() {
       />
 
       {/* Desktop Context Menu Overlay */}
-      {openMenuId && campaigns.find(c => c.id === openMenuId) && (
+      {openCampaign && (
         <div
           className="fixed inset-0 z-40 hidden lg:block"
           onClick={() => setOpenMenuId(null)}
         />
       )}
-      {openMenuId && campaigns.find(c => c.id === openMenuId) && (
+      {openCampaign && (
         <div 
           className="fixed z-50 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 pointer-events-auto hidden lg:block"
           style={{ top: `${menuPositionRef.current.top}px`, left: `${menuPositionRef.current.left}px` }}
           role="menu"
         >
           {(() => {
-            const campaign = campaigns.find(c => c.id === openMenuId)
+            const campaign = openCampaign
             const isOwner = user && campaign.created_by === user.id
             return (
               <>

@@ -1,4 +1,4 @@
-import React, { useMemo, useImperativeHandle, forwardRef } from 'react'
+import React, { useMemo, useImperativeHandle, forwardRef, useState, useEffect, useDeferredValue } from 'react'
 import { colorFromString } from '../../lib/liveblocks'
 
 const TYPE_COLORS = {
@@ -27,8 +27,19 @@ const MentionDropdown = forwardRef(function MentionDropdown({
   userColorMap = new Map(),
   onSelect
 }, ref) {
+  const [debouncedQuery, setDebouncedQuery] = useState(query)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query)
+    }, 150)
+    return () => clearTimeout(handler)
+  }, [query])
+
+  const deferredQuery = useDeferredValue(debouncedQuery)
+
   const suggestions = useMemo(() => {
-    const queryLower = (query || '').toLowerCase()
+    const queryLower = (deferredQuery || '').toLowerCase()
     const results = []
 
     // Journal entities (NPCs, Inventory, Pets, Locations)
@@ -74,7 +85,7 @@ const MentionDropdown = forwardRef(function MentionDropdown({
 
     // Sort by order, then by label
     return results.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label))
-  }, [query, journalEntities, campaignMembers, sessionNotes, userColorMap])
+  }, [deferredQuery, journalEntities, campaignMembers, sessionNotes, userColorMap])
 
   const handleSelect = (suggestion) => {
     if (!editor) return

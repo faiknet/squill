@@ -117,9 +117,16 @@ function createRenderContainer(noteHtml, { forceBlackReferenceColors = false } =
 }
 
 function applyInlineStyles(contentRoot) {
-  const elements = [contentRoot, ...contentRoot.querySelectorAll('*')]
-  elements.forEach((element) => {
-    if (!(element instanceof HTMLElement)) return
+  const elements = [contentRoot]
+  const walker = document.createTreeWalker(contentRoot, NodeFilter.SHOW_ELEMENT)
+  let node = walker.nextNode()
+  while (node) {
+    elements.push(node)
+    node = walker.nextNode()
+  }
+
+  for (const element of elements) {
+    if (!(element instanceof HTMLElement)) continue
 
     const computed = window.getComputedStyle(element)
     const inlineStyle = INLINE_STYLE_PROPERTIES
@@ -128,7 +135,7 @@ function applyInlineStyles(contentRoot) {
 
     const existingStyle = element.getAttribute('style')
     element.setAttribute('style', existingStyle ? `${existingStyle};${inlineStyle}` : inlineStyle)
-  })
+  }
 }
 
 function createStyledHtml(noteHtml, options = {}) {
@@ -163,15 +170,18 @@ async function toDataUrl(url) {
 }
 
 async function inlineImageSources(content) {
-  const images = Array.from(content.querySelectorAll('img'))
-  await Promise.all(
-    images.map(async (image) => {
-      const source = image.getAttribute('src')
-      if (!source || source.startsWith('data:')) return
-      const dataUrl = await toDataUrl(source)
-      if (dataUrl) image.setAttribute('src', dataUrl)
-    })
-  )
+  const images = content.querySelectorAll('img')
+  const promises = []
+  for (const image of images) {
+    const source = image.getAttribute('src')
+    if (!source || source.startsWith('data:')) continue
+    promises.push(
+      toDataUrl(source).then((dataUrl) => {
+        if (dataUrl) image.setAttribute('src', dataUrl)
+      })
+    )
+  }
+  await Promise.all(promises)
 }
 
 function flattenListElementForPdf(listElement, depth = 0) {
@@ -246,16 +256,22 @@ function flattenListElementForPdf(listElement, depth = 0) {
 }
 
 function normalizeListsForPdf(content) {
-  const rootLists = Array.from(content.querySelectorAll('ul,ol')).filter((listElement) => {
+  const allLists = content.querySelectorAll('ul,ol')
+  const rootLists = []
+  for (const listElement of allLists) {
     const parentTag = listElement.parentElement?.tagName?.toLowerCase()
-    return parentTag !== 'li'
-  })
+    if (parentTag !== 'li') {
+      rootLists.push(listElement)
+    }
+  }
 
-  rootLists.forEach((listElement) => {
+  for (const listElement of rootLists) {
     const flattened = flattenListElementForPdf(listElement)
     listElement.replaceWith(flattened)
-  })
+  }
 }
+
+const STRIP_STYLE_REGEX = /(?:^|;)\s*(?:font-family|font-size|line-height|transform)\s*:[^;]*|(?:^|;)\s*letter-spacing\s*:\s*normal/gi
 
 function normalizePdfExportDom(content, { forceBlackReferenceColors = false } = {}) {
   const SAFE_PDF_STYLE_KEYS = new Set([
@@ -303,50 +319,62 @@ function normalizePdfExportDom(content, { forceBlackReferenceColors = false } = 
     return trimmedValue
   }
   const sanitizeInlineStyle = (styleValue) => {
-    const sanitizedDeclarations = styleValue
-      .split(';')
-      .map((declaration) => declaration.trim())
-      .filter(Boolean)
-      .map((declaration) => {
-        const separatorIndex = declaration.indexOf(':')
-        if (separatorIndex === -1) return null
-        const key = declaration.slice(0, separatorIndex).trim().toLowerCase()
-        if (!SAFE_PDF_STYLE_KEYS.has(key)) return null
-        const value = declaration.slice(separatorIndex + 1).trim()
-        const safeValue = sanitizeStyleValue(key, value)
-        if (!safeValue) return null
-        return `${key}:${safeValue}`
-      })
-      .filter(Boolean)
-    return sanitizedDeclarations.join(';')
+    if (!styleValue) return ''
+    const parts = styleValue.split(';')
+    const results = []
+    for (let i = 0; i < parts.length; i++) {
+      const declaration = parts[i].trim()
+      if (!declaration) continue
+      const separatorIndex = declaration.indexOf(':')
+      if (separatorIndex === -1) continue
+      const key = declaration.slice(0, separatorIndex).trim().toLowerCase()
+      if (!SAFE_PDF_STYLE_KEYS.has(key)) continue
+      const value = declaration.slice(separatorIndex + 1).trim()
+      const safeValue = sanitizeStyleValue(key, value)
+      if (!safeValue) continue
+      results.push(`${key}:${safeValue}`)
+    }
+    return results.join(';')
   }
 
-  const allElements = [content, ...Array.from(content.querySelectorAll('*'))]
-  allElements.forEach((element) => {
-    if (!(element instanceof HTMLElement)) return
+  const stylesCache = new Map()
+  const getStyle = (el) => {
+    let s = stylesCache.get(el)
+    if (!s) {
+      s = window.getComputedStyle(el)
+      stylesCache.set(el, s)
+    }
+    return s
+  }
+
+  const allElements = [content]
+  const walker = document.createTreeWalker(content, NodeFilter.SHOW_ELEMENT)
+  let node = walker.nextNode()
+  while (node) {
+    allElements.push(node)
+    node = walker.nextNode()
+  }
+
+  for (const element of allElements) {
+    if (!(element instanceof HTMLElement)) continue
     element.style.removeProperty('font-family')
     const inlineStyle = element.getAttribute('style') || ''
     const cleanedStyle = sanitizeInlineStyle(
-      inlineStyle
-        .replace(/(^|;)\s*font-family\s*:[^;]*/gi, '')
-        .replace(/(^|;)\s*font-size\s*:[^;]*/gi, '')
-        .replace(/(^|;)\s*line-height\s*:[^;]*/gi, '')
-        .replace(/(^|;)\s*transform\s*:[^;]*/gi, '')
-        .replace(/(^|;)\s*letter-spacing\s*:\s*normal/gi, '')
+      inlineStyle.replace(STRIP_STYLE_REGEX, '')
     )
     if (cleanedStyle) {
       element.setAttribute('style', cleanedStyle)
     } else {
       element.removeAttribute('style')
     }
-  })
+  }
 
-  const mentionElements = Array.from(content.querySelectorAll('span[data-mention-type]'))
-  mentionElements.forEach((element) => {
+  const mentionElements = content.querySelectorAll('span[data-mention-type]')
+  for (const element of mentionElements) {
     const mentionType = element.getAttribute('data-mention-type')
     const mentionEntityType = element.getAttribute('data-mention-entity-type')
     const mentionColor = element.getAttribute('data-mention-color')
-    const computedColor = window.getComputedStyle(element).color
+    const computedColor = getStyle(element).color
     const entityColorFallbacks = {
       npc: '#3b82f6',
       item: '#a16207',
@@ -379,21 +407,21 @@ function normalizePdfExportDom(content, { forceBlackReferenceColors = false } = 
     simplifiedMention.style.color = resolvedColor
 
     element.replaceWith(simplifiedMention)
-  })
+  }
 
-  const markElements = Array.from(content.querySelectorAll('mark'))
-  markElements.forEach((markElement) => {
+  const markElements = content.querySelectorAll('mark')
+  for (const markElement of markElements) {
     const replacement = document.createElement('span')
     replacement.innerHTML = markElement.innerHTML
     replacement.setAttribute('style', markElement.getAttribute('style') || '')
-    const computed = window.getComputedStyle(markElement)
+    const computed = getStyle(markElement)
     replacement.style.backgroundColor = computed.backgroundColor
     replacement.style.color = computed.color
     markElement.replaceWith(replacement)
-  })
+  }
 
-  const breakElements = Array.from(content.querySelectorAll('br'))
-  breakElements.forEach((breakElement) => {
+  const breakElements = content.querySelectorAll('br')
+  for (const breakElement of breakElements) {
     const previousElementSibling = breakElement.previousElementSibling
     const previousNode = breakElement.previousSibling
     const previousWasBreak =
@@ -403,7 +431,7 @@ function normalizePdfExportDom(content, { forceBlackReferenceColors = false } = 
     if (previousWasBreak) {
       breakElement.parentNode?.insertBefore(document.createTextNode('\u00A0'), breakElement)
     }
-  })
+  }
 }
 
 function downloadBlob(blob, filename) {
@@ -598,18 +626,24 @@ function toRtfText(value) {
     .replace(/\n/g, ' ')
 }
 
-function buildColorIndexMap(rootElement) {
+function buildColorIndexMap(rootElement, getStyle) {
   const colorTokenSet = new Set()
-  const allElements = [rootElement, ...rootElement.querySelectorAll('*')]
+  const allElements = [rootElement]
+  const walker = document.createTreeWalker(rootElement, NodeFilter.SHOW_ELEMENT)
+  let node = walker.nextNode()
+  while (node) {
+    allElements.push(node)
+    node = walker.nextNode()
+  }
 
-  allElements.forEach((element) => {
-    if (!(element instanceof HTMLElement)) return
-    const styles = window.getComputedStyle(element)
+  for (const element of allElements) {
+    if (!(element instanceof HTMLElement)) continue
+    const styles = getStyle(element)
     const textColor = normalizeColorToken(styles.color)
     const backgroundColor = normalizeColorToken(styles.backgroundColor)
     if (textColor) colorTokenSet.add(textColor)
     if (backgroundColor) colorTokenSet.add(backgroundColor)
-  })
+  }
 
   const colorTokens = Array.from(colorTokenSet)
   const colorTable = colorTokens
@@ -623,8 +657,8 @@ function buildColorIndexMap(rootElement) {
   return { colorIndexMap, colorTable }
 }
 
-function getElementStyleCodes(element, colorIndexMap) {
-  const styles = window.getComputedStyle(element)
+function getElementStyleCodes(element, colorIndexMap, getStyle) {
+  const styles = getStyle(element)
   const openCodes = []
   const closeCodes = []
 
@@ -662,7 +696,7 @@ function getElementStyleCodes(element, colorIndexMap) {
   return { openCodes, closeCodes }
 }
 
-function renderRtfNode(node, colorIndexMap, listState = null) {
+function renderRtfNode(node, colorIndexMap, listState = null, getStyle) {
   if (node.nodeType === Node.TEXT_NODE) {
     return toRtfText(node.textContent || '')
   }
@@ -675,22 +709,22 @@ function renderRtfNode(node, colorIndexMap, listState = null) {
   if (tagName === 'ul') {
     const items = Array.from(node.children).filter((child) => child.tagName?.toLowerCase() === 'li')
     return items
-      .map((item) => `\\par\\tx720 \\'95\\tab ${renderRtfNode(item, colorIndexMap, { type: 'ul', index: 0 })}`)
+      .map((item) => `\\par\\tx720 \\'95\\tab ${renderRtfNode(item, colorIndexMap, { type: 'ul', index: 0 }, getStyle)}`)
       .join(' ')
   }
 
   if (tagName === 'ol') {
     const items = Array.from(node.children).filter((child) => child.tagName?.toLowerCase() === 'li')
     return items
-      .map((item, index) => `\\par\\tx720 ${index + 1}.\\tab ${renderRtfNode(item, colorIndexMap, { type: 'ol', index })}`)
+      .map((item, index) => `\\par\\tx720 ${index + 1}.\\tab ${renderRtfNode(item, colorIndexMap, { type: 'ol', index }, getStyle)}`)
       .join(' ')
   }
 
   const childrenRtf = Array.from(node.childNodes)
-    .map((child) => renderRtfNode(child, colorIndexMap, listState))
+    .map((child) => renderRtfNode(child, colorIndexMap, listState, getStyle))
     .join('')
 
-  const { openCodes, closeCodes } = getElementStyleCodes(node, colorIndexMap)
+  const { openCodes, closeCodes } = getElementStyleCodes(node, colorIndexMap, getStyle)
   const open = openCodes.length > 0 ? `${openCodes.join(' ')} ` : ''
   const close = closeCodes.length > 0 ? ` ${closeCodes.join(' ')}` : ''
   const content = `{${open}${childrenRtf}${close}}`
@@ -698,7 +732,7 @@ function renderRtfNode(node, colorIndexMap, listState = null) {
   const isBlockTag = ['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote'].includes(tagName)
   if (!isBlockTag) return content
 
-  const alignment = window.getComputedStyle(node).textAlign
+  const alignment = getStyle(node).textAlign
   const alignCode =
     alignment === 'center' ? '\\qc ' :
       alignment === 'right' ? '\\qr ' :
@@ -710,9 +744,20 @@ function renderRtfNode(node, colorIndexMap, listState = null) {
 function htmlFragmentToRtf(htmlFragment) {
   const container = document.createElement('div')
   container.innerHTML = htmlFragment
-  const { colorIndexMap, colorTable } = buildColorIndexMap(container)
+
+  const stylesCache = new Map()
+  const getStyle = (el) => {
+    let s = stylesCache.get(el)
+    if (!s) {
+      s = window.getComputedStyle(el)
+      stylesCache.set(el, s)
+    }
+    return s
+  }
+
+  const { colorIndexMap, colorTable } = buildColorIndexMap(container, getStyle)
   const body = Array.from(container.childNodes)
-    .map((node) => renderRtfNode(node, colorIndexMap))
+    .map((node) => renderRtfNode(node, colorIndexMap, null, getStyle))
     .join(' ')
   return `{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}{\\colortbl ;${colorTable}}\\viewkind4\\uc1\\pard ${body}\\par}`
 }

@@ -248,13 +248,7 @@ function CampaignDetail() {
  
             if (colorError) {
               console.warn('Could not fetch user colors:', colorError.message)
-              // Sort members with GM first
-              const sorted = [...resolvedMembers].sort((a, b) => {
-                if (a.user_id === campaignData.created_by) return -1
-                if (b.user_id === campaignData.created_by) return 1
-                return 0
-              })
-              setPartyMembers(sorted)
+              setPartyMembers(sortMembersWithGmFirst(resolvedMembers, campaignData.created_by))
             } else {
               const colorMap = new Map()
               colorData?.forEach(item => {
@@ -267,24 +261,11 @@ function CampaignDetail() {
                 color: colorMap.get(member.user_id)
               }))
  
-              // Sort members with GM first
-              membersWithColor.sort((a, b) => {
-                if (a.user_id === campaignData.created_by) return -1
-                if (b.user_id === campaignData.created_by) return 1
-                return 0
-              })
- 
-              setPartyMembers(membersWithColor)
+              setPartyMembers(sortMembersWithGmFirst(membersWithColor, campaignData.created_by))
             }
           } catch (err) {
             console.debug('Error fetching colors:', err.message)
-            // Sort members with GM first
-            const sorted = [...resolvedMembers].sort((a, b) => {
-              if (a.user_id === campaignData.created_by) return -1
-              if (b.user_id === campaignData.created_by) return 1
-              return 0
-            })
-            setPartyMembers(sorted)
+            setPartyMembers(sortMembersWithGmFirst(resolvedMembers, campaignData.created_by))
           }
         } else {
           setPartyMembers(resolvedMembers)
@@ -314,23 +295,26 @@ function CampaignDetail() {
           sessionDate: validated.sessionDate || null,
           slug: createUrlSlug(validated.name),
         })
+        setSessions(getGuestSessionsForCampaign(campaign.id))
       } else {
-        const { error } = await requireSupabase().from('sessions').insert([
+        const { data: newSession, error } = await requireSupabase().from('sessions').insert([
           {
             campaign_id: validated.campaignId,
             name: validated.name,
             slug: createUrlSlug(validated.name),
             session_date: validated.sessionDate || null,
           },
-        ])
+        ]).select('id, slug, name, session_date, archived, created_at').single()
 
         if (error) throw error
+        if (newSession) {
+          setSessions((prev) => [newSession, ...prev])
+        }
       }
 
       setShowCreateSession(false)
       setSessionName('')
       setSessionDate('')
-      loadCampaign()
     } catch (error) {
       if (error instanceof ValidationError) {
         setErrorMessage(error.getClientMessage())
@@ -371,7 +355,6 @@ function CampaignDetail() {
       setCampaignDescription(updatedCampaign.description || '')
       setCampaignStreakCadence(updatedCampaign.streak_cadence || 'weekly')
       setEditingCampaign(false)
-      await loadCampaign()
     } catch (error) {
       if (error instanceof ValidationError) {
         setErrorMessage(error.getClientMessage())
@@ -424,7 +407,9 @@ function CampaignDetail() {
         .update({ archived: !session.archived })
         .eq('id', session.id)
       if (error) throw error
-      loadCampaign()
+      setSessions((prev) =>
+        prev.map((s) => (s.id === session.id ? { ...s, archived: !session.archived } : s))
+      )
     } catch (error) {
       setErrorMessage(error.message || 'Failed to archive session')
     }
@@ -457,7 +442,13 @@ function CampaignDetail() {
 
       setEditingSession(null)
       setIsEditSessionModalOpen(false)
-      await loadCampaign()
+      
+      const updated = data[0]
+      if (updated) {
+        setSessions((prev) =>
+          prev.map((s) => (s.id === sessionId ? { ...s, ...updated } : s))
+        )
+      }
     } catch (error) {
       console.error('Failed to save session:', error)
       throw error
@@ -1132,6 +1123,14 @@ function CampaignDetail() {
       />
     </div>
   )
+}
+
+const sortMembersWithGmFirst = (members, creatorId) => {
+  return [...members].sort((a, b) => {
+    if (a.user_id === creatorId) return -1
+    if (b.user_id === creatorId) return 1
+    return 0
+  })
 }
 
 import { memo } from 'react'

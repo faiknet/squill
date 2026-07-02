@@ -21,6 +21,10 @@ describe('RateLimiter', () => {
     limiter = new RateLimiter()
   })
 
+  afterEach(() => {
+    limiter.stopCleanup()
+  })
+
   describe('checkLimit', () => {
     it('allows requests within limit', () => {
       const remaining1 = limiter.checkLimit('user-1', 5, 60)
@@ -87,8 +91,12 @@ describe('RateLimiter', () => {
       // In real test, would wait 1+ second
       // For now, we test that a fresh limiter can accept requests
       const newLimiter = new RateLimiter()
-      const remaining = newLimiter.checkLimit('user-1', 2, 1)
-      expect(remaining).toBe(1)
+      try {
+        const remaining = newLimiter.checkLimit('user-1', 2, 1)
+        expect(remaining).toBe(1)
+      } finally {
+        newLimiter.stopCleanup()
+      }
     })
 
     it('handles multiple concurrent keys', () => {
@@ -197,12 +205,15 @@ describe('RateLimiter', () => {
     it('returns null for expired window', () => {
       // Create new limiter (simulating time passing)
       const newLimiter = new RateLimiter()
-      newLimiter.checkLimit('user-1', 5, 0.001) // Very short window
-
-      // State should be null after expiration (after next cleanup)
-      const state = newLimiter.getState('user-1')
-      // May be null or have small value depending on timing
-      // This is a timing-sensitive test
+      try {
+        newLimiter.checkLimit('user-1', 5, 0.001) // Very short window
+        // State should be null after expiration (after next cleanup)
+        const state = newLimiter.getState('user-1')
+        // May be null or have small value depending on timing
+        // This is a timing-sensitive test
+      } finally {
+        newLimiter.stopCleanup()
+      }
     })
   })
 })

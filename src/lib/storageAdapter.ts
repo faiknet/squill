@@ -25,11 +25,23 @@ function probe(storage: Storage): Store | null {
   }
 }
 
-const ls = probe(localStorage)
-const ss = ls ? null : probe(sessionStorage)
+let activeStore: Store | null = null
 
-export const storageAdapter: Store = ls ?? ss ?? {
-  getItem: (key) => memoryStore[key] ?? null,
-  setItem: (key, value) => { memoryStore[key] = value },
-  removeItem: (key) => { delete memoryStore[key] },
+function getStore(): Store {
+  if (activeStore) return activeStore
+
+  const ls = probe(localStorage)
+  const ss = ls ? null : probe(sessionStorage)
+  activeStore = ls ?? ss ?? {
+    getItem: (key) => memoryStore[key] ?? null,
+    setItem: (key, value) => { memoryStore[key] = value },
+    removeItem: (key) => { delete memoryStore[key] },
+  }
+  return activeStore
+}
+
+export const storageAdapter: Store = {
+  getItem: (key) => getStore().getItem(key),
+  setItem: (key, value) => { getStore().setItem(key, value) },
+  removeItem: (key) => { getStore().removeItem(key) },
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { UserProfileMenu } from '../ui'
 import { colorFromString } from '../../lib/liveblocks'
@@ -29,7 +29,12 @@ export default memo(function PresenceSidebar({
   const sessionSlug = propSessionSlug || params.sessionSlug
 
   const sortedActivities = useMemo(() => {
-    return [...activities].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    return activities
+      .map(act => ({
+        ...act,
+        timeValue: act.timestamp ? new Date(act.timestamp).getTime() : 0
+      }))
+      .sort((a, b) => b.timeValue - a.timeValue)
   }, [activities])
 
   // Merge campaign members with active presence
@@ -119,50 +124,40 @@ export default memo(function PresenceSidebar({
   const [activityHeight, setActivityHeight] = useState(192) // default 192px (12rem)
   const [isResizing, setIsResizing] = useState(false)
 
-  const handleMouseDown = (e) => {
+  const startYRef = useRef(0)
+  const startHeightRef = useRef(0)
+
+  const handlePointerMove = useCallback((moveEvent) => {
+    const deltaY = startYRef.current - moveEvent.clientY
+    const newHeight = startHeightRef.current + deltaY
+    setActivityHeight(Math.max(80, Math.min(500, newHeight)))
+  }, [])
+
+  const handlePointerUp = useCallback(() => {
+    setIsResizing(false)
+    document.removeEventListener('pointermove', handlePointerMove)
+    document.removeEventListener('pointerup', handlePointerUp)
+  }, [handlePointerMove])
+
+  const handlePointerDown = useCallback((e) => {
     e.preventDefault()
     setIsResizing(true)
-    const startY = e.clientY
-    const startHeight = activityHeight
+    startYRef.current = e.clientY
+    startHeightRef.current = activityHeight
 
-    const handleMouseMove = (moveEvent) => {
-      const deltaY = startY - moveEvent.clientY
-      const newHeight = startHeight + deltaY
-      setActivityHeight(Math.max(80, Math.min(500, newHeight)))
+    document.removeEventListener('pointermove', handlePointerMove)
+    document.removeEventListener('pointerup', handlePointerUp)
+
+    document.addEventListener('pointermove', handlePointerMove)
+    document.addEventListener('pointerup', handlePointerUp)
+  }, [activityHeight, handlePointerMove, handlePointerUp])
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove)
+      document.removeEventListener('pointerup', handlePointerUp)
     }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-  }
-
-  const handleTouchStart = (e) => {
-    if (e.touches.length !== 1) return
-    setIsResizing(true)
-    const startY = e.touches[0].clientY
-    const startHeight = activityHeight
-
-    const handleTouchMove = (moveEvent) => {
-      if (moveEvent.touches.length !== 1) return
-      const deltaY = startY - moveEvent.touches[0].clientY
-      const newHeight = startHeight + deltaY
-      setActivityHeight(Math.max(80, Math.min(500, newHeight)))
-    }
-
-    const handleTouchEnd = () => {
-      setIsResizing(false)
-      document.removeEventListener('touchmove', handleTouchMove)
-      document.removeEventListener('touchend', handleTouchEnd)
-    }
-
-    document.addEventListener('touchmove', handleTouchMove)
-    document.addEventListener('touchend', handleTouchEnd)
-  }
+  }, [handlePointerMove, handlePointerUp])
 
   return (
     <aside className="w-full bg-white dark:bg-gray-900 border-slate-100 dark:border-gray-700 flex flex-col flex-1 min-h-0 font-sans transition-colors duration-200" aria-label="Members and activity">
@@ -211,8 +206,7 @@ export default memo(function PresenceSidebar({
       >
         {/* Resize Handle */}
         <div
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
+          onPointerDown={handlePointerDown}
           className="absolute top-0 left-0 right-0 h-1.5 cursor-row-resize bg-transparent hover:bg-brand-500/30 active:bg-brand-500/50 transition-colors z-20"
         />
         <div className="flex items-center justify-between mb-3">

@@ -52,22 +52,24 @@ export default function CollaborativeEditor({
   // --- Dynamic Styles for User Mentions ---
   const userColorMap = useMemo(() => {
     const styleMap = new Map()
+    const memberByName = new Map()
     campaignMembers.forEach(member => {
       const color = member.color || colorFromString(member.display_name)
       styleMap.set(member.user_id, color)
+      memberByName.set(member.display_name, member)
     })
     others.forEach(user => {
       const name = user.presence?.name
       const color = user.presence?.color
       if (name && color) {
-        const member = campaignMembers.find(m => m.display_name === name)
+        const member = memberByName.get(name)
         if (member) styleMap.set(member.user_id, color)
       }
     })
     if (currentUserId && localColor) {
       styleMap.set(currentUserId, localColor)
     } else if (userLabel && localColor) {
-      const selfMember = campaignMembers.find(m => m.display_name === userLabel)
+      const selfMember = memberByName.get(userLabel)
       if (selfMember) styleMap.set(selfMember.user_id, localColor)
     }
     return styleMap

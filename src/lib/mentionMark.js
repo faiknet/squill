@@ -1,5 +1,7 @@
 import { Mark } from '@tiptap/core'
 
+const mentionRenderCache = new Map()
+
 export const MentionMark = Mark.create({
   name: 'mention',
   
@@ -39,7 +41,11 @@ export const MentionMark = Mark.create({
         default: '',
         parseHTML: element => element.getAttribute('data-mention-color'),
         renderHTML: attributes => {
-          return {
+          const key = `${attributes.mentionType || ''}:${attributes.mentionId || ''}:${attributes.mentionColor || ''}`
+          if (mentionRenderCache.has(key)) {
+            return mentionRenderCache.get(key)
+          }
+          const result = {
             'data-mention-color': attributes.mentionColor,
             class: attributes.mentionType === 'user' && attributes.mentionId 
               ? `mention-user-${attributes.mentionId}` 
@@ -47,6 +53,8 @@ export const MentionMark = Mark.create({
             style: attributes.mentionColor ? `color: ${attributes.mentionColor}; font-weight: bold;` : null,
             spellcheck: 'false',
           }
+          mentionRenderCache.set(key, result)
+          return result
         },
       },
     }
