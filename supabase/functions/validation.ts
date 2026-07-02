@@ -135,7 +135,7 @@ export function validateAuthorizationHeader(authHeader: string | null): void {
 // Batch Validation
 // ============================================================================
 
-interface ValidationResult<T> {
+export interface ValidationResult<T> {
   success: boolean
   data?: T
   error?: {
@@ -201,7 +201,7 @@ export function validateObject<T>(
  * Validates Liveblocks webhook signature using HMAC-SHA256.
  * Prevents unauthorized webhook calls.
  */
-async function validateWebhookSignature(
+export async function validateWebhookSignature(
   body: string,
   signature: string | null,
   secret: string

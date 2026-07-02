@@ -32,6 +32,7 @@ export default function CollaborativeEditor({
   const typingTimeoutRef = useRef(null)
   const isTypingRef = useRef(false)
   const mentionDropdownRef = useRef(null)
+  const hasInitializedRef = useRef(false)
   const { campaignSlug } = useParams()
 
   const {
@@ -82,6 +83,7 @@ export default function CollaborativeEditor({
   useEffect(() => {
     room.updatePresence({ name: userLabel, color: localColor, typing: false })
   }, [room, userLabel, localColor])
+
 
   const handleTyping = (isTyping) => {
     if (isTyping) {
@@ -235,6 +237,34 @@ export default function CollaborativeEditor({
   useEffect(() => {
     if (editor) onEditorReady?.(editor)
   }, [editor, onEditorReady])
+
+  // Initialize Yjs document with Supabase noteContent if empty when synced
+  useEffect(() => {
+    if (!editor || !yProvider || hasInitializedRef.current) return
+
+    const tryInitialize = () => {
+      if (yProvider.synced && !hasInitializedRef.current) {
+        const fragment = ydoc.getXmlFragment('default')
+        if (fragment.length === 0) {
+          hasInitializedRef.current = true
+          if (noteContent && noteContent !== '<p></p>') {
+            console.log('Initializing empty Yjs document with Supabase noteContent:', noteContent)
+            editor.commands.setContent(noteContent, { emitUpdate: false })
+          }
+        } else {
+          // If Yjs document is NOT empty, we don't overwrite it, but we mark it as initialized
+          hasInitializedRef.current = true
+        }
+      }
+    }
+
+    tryInitialize()
+
+    yProvider.on('sync', tryInitialize)
+    return () => {
+      yProvider.off('sync', tryInitialize)
+    }
+  }, [editor, yProvider, ydoc, noteContent])
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800 relative">

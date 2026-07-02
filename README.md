@@ -66,7 +66,7 @@ src/
 
 supabase/
   migrations/     # Database schema & RLS policies
-  edge-functions/ # Deno serverless functions
+  functions/      # Deno serverless functions
     join-campaign/  # Invite link handler (rate limited)
     snapshot-note/  # Liveblocks webhook (rate limited)
 
