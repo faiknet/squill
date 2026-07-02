@@ -106,6 +106,7 @@ function CampaignDetail() {
   const [errorMessage, setErrorMessage] = useState('')
   const [copyConfirmation, setCopyConfirmation] = useState('')
   const [editingSession, setEditingSession] = useState(null)
+  const [isPartyCollapsed, setIsPartyCollapsed] = useState(() => localStorage.getItem('party_collapsed') === 'true')
   const [menuSession, setMenuSession] = useState(null)
   const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false)
   const [deletingSessionId, setDeletingSessionId] = useState(null)
@@ -683,76 +684,98 @@ function CampaignDetail() {
             </div>
           </div>
 
-          <Card className="p-0">
-            <div className="p-4 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-gray-100">Party Members</h3>
-              <span className="bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
-                {partyMembers.length}
-              </span>
-            </div>
-            <ul className="divide-y divide-slate-100 dark:divide-gray-700/50">
-              {partyMembers.length > 0 ? (
-                partyMembers.map((member) => (
-                  <li
-                    key={member.user_id}
-                    onClick={() => isGM && member.user_id !== currentUserId && handleOpenPartyMemberMenu(member)}
-                    className={`p-3 flex items-center gap-3 transition-colors relative ${isGM && member.user_id !== currentUserId ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/50' : 'cursor-default'}`}
-                  >
-                    <div
-                      className="size-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
-                      style={{ backgroundColor: member.color || colorFromString(member.display_name) }}
-                    >
-                      {member.display_name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-gray-100 truncate">
-                        {member.display_name}
-                      </p>
-                      {campaign && member.user_id === campaign.created_by && (
-                        <p className="text-xs text-slate-500 dark:text-gray-400">Game Master</p>
-                      )}
-                    </div>
-
-                    {/* Context Menu */}
-                    {isGM && member.user_id !== currentUserId && selectedMember?.user_id === member.user_id && memberContextMenuOpen && (
-                      <div ref={menuRef} className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50 py-1 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleOpenTransferGMModal()
-                          }}
-                          className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700"
-                        >
-                          Transfer GM Status
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleOpenRemovePlayerModal()
-                          }}
-                          className="w-full px-4 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-gray-700"
-                        >
-                          Remove from Campaign
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                ))
-              ) : (
-                <li className="p-4 text-sm text-slate-500 dark:text-gray-400 text-center">
-                  No party members yet.
-                </li>
-              )}
-            </ul>
-            <div className="p-3 bg-slate-50 dark:bg-gray-800/50 border-t border-slate-100 dark:border-gray-700">
-              <Button
-                onClick={copyInviteLink}
-                variant="outline"
-                className="w-full justify-center text-sm border-dashed"
+          <Card className="p-0 overflow-hidden">
+            <button
+              onClick={() => {
+                const nextVal = !isPartyCollapsed
+                setIsPartyCollapsed(nextVal)
+                localStorage.setItem('party_collapsed', String(nextVal))
+              }}
+              className="w-full p-4 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-gray-700/30 transition-colors text-left"
+              aria-expanded={!isPartyCollapsed}
+            >
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 dark:text-gray-100">Party Members</h3>
+                <span className="bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {partyMembers.length}
+                </span>
+              </div>
+              <svg 
+                className={`w-4 h-4 text-slate-400 dark:text-gray-400 transition-transform duration-200 ${isPartyCollapsed ? '-rotate-90' : ''}`}
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
               >
-                + Invite Player
-              </Button>
-            </div>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {!isPartyCollapsed && (
+              <>
+                <ul className="divide-y divide-slate-100 dark:divide-gray-700/50">
+                  {partyMembers.length > 0 ? (
+                    partyMembers.map((member) => (
+                      <li
+                        key={member.user_id}
+                        onClick={() => isGM && member.user_id !== currentUserId && handleOpenPartyMemberMenu(member)}
+                        className={`p-3 flex items-center gap-3 transition-colors relative ${isGM && member.user_id !== currentUserId ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/50' : 'cursor-default'}`}
+                      >
+                        <div
+                          className="size-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
+                          style={{ backgroundColor: member.color || colorFromString(member.display_name) }}
+                        >
+                          {member.display_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900 dark:text-gray-100 truncate">
+                            {member.display_name}
+                          </p>
+                          {campaign && member.user_id === campaign.created_by && (
+                            <p className="text-xs text-slate-500 dark:text-gray-400">Game Master</p>
+                          )}
+                        </div>
+
+                        {/* Context Menu */}
+                        {isGM && member.user_id !== currentUserId && selectedMember?.user_id === member.user_id && memberContextMenuOpen && (
+                          <div ref={menuRef} className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50 py-1 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenTransferGMModal()
+                              }}
+                              className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700"
+                            >
+                              Transfer GM Status
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenRemovePlayerModal()
+                              }}
+                              className="w-full px-4 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-gray-700"
+                            >
+                              Remove from Campaign
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    ))
+                  ) : (
+                    <li className="p-4 text-sm text-slate-500 dark:text-gray-400 text-center">
+                      No party members yet.
+                    </li>
+                  )}
+                </ul>
+                <div className="p-3 bg-slate-50 dark:bg-gray-800/50 border-t border-slate-100 dark:border-gray-700">
+                  <Button
+                    onClick={copyInviteLink}
+                    variant="outline"
+                    className="w-full justify-center text-sm border-dashed"
+                  >
+                    + Invite Player
+                  </Button>
+                </div>
+              </>
+            )}
           </Card>
         </div>
       </div>

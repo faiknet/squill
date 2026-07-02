@@ -7,6 +7,7 @@ import { LoadingSpinner } from '../components/ui'
 // Core Session Workspace Pages (Eagerly loaded to prevent spinner on transition)
 import SessionEditor from '../pages/SessionEditor'
 import Journal from '../pages/Journal'
+import Activity from '../pages/Activity'
 import SessionPreferences from '../pages/SessionPreferences'
 import SessionTabsLayout from '../components/sessions/SessionTabsLayout'
 
@@ -68,6 +69,7 @@ export default function AppRoutes() {
         >
           <Route index element={<SessionEditor />} />
           <Route path="journal" element={<Journal />} />
+          <Route path="activity" element={<Activity />} />
           <Route path="preferences" element={<SessionPreferences />} />
         </Route>
         <Route

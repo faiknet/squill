@@ -32,7 +32,8 @@ export default function SessionTabsLayout() {
   const pathname = location.pathname;
   const isJournal = pathname.endsWith("/journal");
   const isPreferences = pathname.endsWith("/preferences");
-  const isWorkspace = !isJournal && !isPreferences;
+  const isActivity = pathname.endsWith("/activity");
+  const isWorkspace = !isJournal && !isPreferences && !isActivity;
 
   // Resolve slugs → IDs + names for the breadcrumb
   useEffect(() => {

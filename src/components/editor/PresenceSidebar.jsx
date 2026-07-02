@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { UserProfileMenu } from '../ui'
 import { colorFromString } from '../../lib/liveblocks'
 
@@ -19,8 +20,14 @@ export default memo(function PresenceSidebar({
   activities = [],
   userColor,
   setUserColor,
-  showOfflineMembers = true
+  showOfflineMembers = true,
+  campaignSlug: propCampaignSlug,
+  sessionSlug: propSessionSlug
 }) {
+  const params = useParams()
+  const campaignSlug = propCampaignSlug || params.campaignSlug
+  const sessionSlug = propSessionSlug || params.sessionSlug
+
   const sortedActivities = useMemo(() => {
     return [...activities].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
   }, [activities])
@@ -208,9 +215,17 @@ export default memo(function PresenceSidebar({
           onTouchStart={handleTouchStart}
           className="absolute top-0 left-0 right-0 h-1.5 cursor-row-resize bg-transparent hover:bg-brand-500/30 active:bg-brand-500/50 transition-colors z-20"
         />
-        <h3 className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-          Recent Activity
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
+            Recent Activity
+          </h3>
+          <Link
+            to={`/campaigns/${campaignSlug}/sessions/${sessionSlug}/activity`}
+            className="text-[10px] font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 transition-colors uppercase tracking-wider"
+          >
+            VIEW ALL
+          </Link>
+        </div>
         <div className="space-y-3 flex-1 overflow-y-auto min-h-0">
           {sortedActivities.length > 0 ? (
             sortedActivities.slice(0, 5).map((activity, i) => (
