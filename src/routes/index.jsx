@@ -20,7 +20,7 @@ const Auth = lazy(() => import('../pages/Auth'))
 const AuthCallback = lazy(() => import('../pages/AuthCallback'))
 const AuthResetPassword = lazy(() => import('../pages/AuthResetPassword'))
 const VerifyEmail = lazy(() => import('../pages/VerifyEmail'))
-const NotFound = lazy(() => import('./NotFound'))
+import NotFound from './NotFound'
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {

@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Outlet, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useSupabaseAuth";
 import { requireSupabase } from "../../lib/supabase";
-import { Button } from "../ui";
+import { Button, LoadingSpinner } from "../ui";
+import NotFound from "../../routes/NotFound";
 import { getGuestSessionBySlug } from "../../lib/guestData";
 
 /**
@@ -27,6 +28,8 @@ export default function SessionTabsLayout() {
   const [campaignId, setCampaignId] = useState(null);
   const [campaignName, setCampaignName] = useState("");
   const [sessionName, setSessionName] = useState("");
+  const [isNotFound, setIsNotFound] = useState(false);
+  const [resolving, setResolving] = useState(true);
 
   // Determine active tab from pathname
   const pathname = location.pathname;
@@ -35,7 +38,6 @@ export default function SessionTabsLayout() {
   const isActivity = pathname.endsWith("/activity");
   const isWorkspace = !isJournal && !isPreferences && !isActivity;
 
-  // Resolve slugs → IDs + names for the breadcrumb
   useEffect(() => {
     if (authLoading) return;
 
@@ -48,7 +50,10 @@ export default function SessionTabsLayout() {
         setCampaignId(guestRoute.campaign.id);
         setCampaignName(guestRoute.campaign.name);
         setSessionName(guestRoute.session.name || "Session");
+      } else {
+        setIsNotFound(true);
       }
+      setResolving(false);
       return;
     }
 
@@ -62,7 +67,7 @@ export default function SessionTabsLayout() {
           .single();
 
         if (campaignError || !campaignData) {
-          navigate("/campaigns");
+          setIsNotFound(true);
           return;
         }
 
@@ -74,7 +79,20 @@ export default function SessionTabsLayout() {
           .single();
 
         if (sessionError || !sessionData) {
-          navigate(`/campaigns/${campaignSlug}`);
+          setIsNotFound(true);
+          return;
+        }
+
+        // Verify campaign membership
+        const { data: memberData, error: memberError } = await client
+          .from("campaign_members")
+          .select("campaign_id")
+          .eq("campaign_id", campaignData.id)
+          .eq("user_id", authState.user.id)
+          .maybeSingle();
+
+        if (memberError || !memberData) {
+          setIsNotFound(true);
           return;
         }
 
@@ -83,7 +101,9 @@ export default function SessionTabsLayout() {
         setSessionName(sessionData.name || "Session");
       } catch (err) {
         console.error("SessionTabsLayout: error resolving slugs:", err);
-        navigate("/campaigns");
+        setIsNotFound(true);
+      } finally {
+        setResolving(false);
       }
     };
 
@@ -96,6 +116,18 @@ export default function SessionTabsLayout() {
     authLoading,
     authState.user?.id,
   ]);
+
+  if (resolving) {
+    return (
+      <div className="h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (isNotFound) {
+    return <NotFound />;
+  }
 
   const effectiveCampaignName = campaignName;
 
