@@ -60,7 +60,7 @@ export default function LocalEditor({
     content: noteContent,
     editorProps: {
       attributes: {
-        class: 'w-full min-h-full bg-white dark:bg-gray-800 text-slate-900 dark:text-gray-100 text-base focus:outline-none px-12 md:px-24 lg:px-32 xl:px-48 py-8 md:py-12 prose prose-slate dark:prose-invert max-w-none transition-colors duration-200',
+        class: 'w-full min-h-full bg-white dark:bg-gray-800 text-slate-900 dark:text-gray-100 text-base focus:outline-none px-12 md:px-24 lg:px-32 xl:px-48 pt-8 pb-[35vh] md:pt-12 md:pb-24 prose prose-slate dark:prose-invert max-w-none transition-colors duration-200',
       },
       handleClick: (view, pos, event) => {
         const { schema, doc, tr } = view.state

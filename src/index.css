@@ -5,10 +5,12 @@
 @layer base {
   html {
     touch-action: manipulation;
+    @apply bg-gray-50 dark:bg-gray-900;
   }
 
   body {
     font-family: 'Gravity', sans-serif;
+    @apply bg-gray-50 dark:bg-gray-900;
   }
 
   /* Prevent scroll chaining on mobile — stops scroll "sticking" at container boundaries */
