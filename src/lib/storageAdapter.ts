@@ -6,11 +6,11 @@ interface Store {
 
 const memoryStore: Record<string, string> = {}
 
-function createStore(store: Record<string, string | undefined>): Store {
+function createStore(storage: Storage): Store {
   return {
-    getItem: (key) => store[key] ?? null,
-    setItem: (key, value) => { store[key] = value },
-    removeItem: (key) => { delete store[key] },
+    getItem: (key) => storage.getItem(key),
+    setItem: (key, value) => { storage.setItem(key, value) },
+    removeItem: (key) => { storage.removeItem(key) },
   }
 }
 
@@ -19,7 +19,7 @@ function probe(storage: Storage): Store | null {
     const key = '__squill_probe__'
     storage.setItem(key, '1')
     storage.removeItem(key)
-    return createStore(storage as unknown as Record<string, string | undefined>)
+    return createStore(storage)
   } catch {
     return null
   }
