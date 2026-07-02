@@ -102,6 +102,7 @@ const EditorLayout = memo(function EditorLayout({
   showOfflineMembers,
   mutationError,
   clearMutationError,
+  onEditorReady,
   children
 }) {
   const [copied, setCopied] = useState(false)
@@ -232,7 +233,10 @@ const EditorLayout = memo(function EditorLayout({
 
   const editorChild = isValidElement(children)
     ? cloneElement(children, {
-        onEditorReady: setEditorInstance,
+        onEditorReady: (ed) => {
+          setEditorInstance(ed)
+          onEditorReady?.(ed)
+        },
       })
     : children
   const desktopSidebarWidth = isSidebarCollapsed ? 0 : sidebarWidth
@@ -360,6 +364,7 @@ const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
   currentUserId,
   mutationError,
   clearMutationError,
+  onEditorReady,
 }) {
   const others = useOthers()
   const self = useSelf()
@@ -393,6 +398,7 @@ const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
       showOfflineMembers={showOfflineMembers}
       mutationError={mutationError}
       clearMutationError={clearMutationError}
+      onEditorReady={onEditorReady}
     >
       <CollaborativeEditor
         noteContent={noteContent}
@@ -517,6 +523,7 @@ export default memo(function SessionEditor() {
   // Refs to track saving state and prevent initial save
   const lastSavedContent = useRef(null)
   const isFirstLoad = useRef(true)
+  const [editorInstance, setEditorInstance] = useState(null)
 
   // Sync user color to localStorage and database
   useEffect(() => {
@@ -559,13 +566,14 @@ export default memo(function SessionEditor() {
       // Only save if content exists, isn't empty, and HAS CHANGED from last save
       if (noteContent && noteContent !== '<p></p>' && noteContent !== lastSavedContent.current) {
         console.log('Auto-saving note content...')
-        saveNote(noteContent)
+        const isUserEdit = editorInstance?.isFocused || false
+        saveNote(noteContent, isUserEdit)
         lastSavedContent.current = noteContent
       }
     }, 2000) // Save after 2 seconds of inactivity
 
     return () => clearTimeout(timer)
-  }, [noteContent, saveNote, loading])
+  }, [noteContent, saveNote, loading, editorInstance])
 
   // Synthesize activities from tags and members
   const activities = useMemo(() => {
@@ -704,15 +712,11 @@ export default memo(function SessionEditor() {
 
   // Check if still resolving slug IDs
   if (loadingIds) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center transition-colors duration-200" aria-live="polite" aria-busy="true">
-        <p className="text-slate-500 dark:text-gray-400">Loading...</p>
-      </div>
-    )
+    return <LoadingSpinner fullPage={false} />
   }
 
   if (loading) {
-    return <LoadingSpinner />
+    return <LoadingSpinner fullPage={false} />
   }
 
   if (error) {
@@ -762,6 +766,7 @@ export default memo(function SessionEditor() {
           currentUserId={authState.user?.id}
           mutationError={mutationError}
           clearMutationError={clearMutationError}
+          onEditorReady={setEditorInstance}
         />
       </RoomProvider>
     )
@@ -787,6 +792,7 @@ export default memo(function SessionEditor() {
       showOfflineMembers={showOfflineMembers}
       mutationError={mutationError}
       clearMutationError={clearMutationError}
+      onEditorReady={setEditorInstance}
     >
       <LocalEditor
         noteContent={noteContent}

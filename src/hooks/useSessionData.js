@@ -388,7 +388,7 @@ export function useSessionData(sessionId, campaignId) {
 
   // 1. Save Note Content
   const saveNoteMutation = useMutation({
-    mutationFn: async (content) => {
+    mutationFn: async ({ content, isUserEdit }) => {
       const client = requireSupabase()
       const validatedContent = validateUpdateNote({ contentMd: content })
       const validatedSessionId = validateSessionId(sessionId)
@@ -404,17 +404,17 @@ export function useSessionData(sessionId, campaignId) {
       if (error) throw error
 
       const user = authState.user
-      if (user) {
+      if (user && isUserEdit) {
         await logActivityBackground(sessionId, user.id, 'edit_document', sessionQuery.data?.name)
       }
     },
-    onMutate: async (content) => {
+    onMutate: async ({ content }) => {
       await queryClient.cancelQueries({ queryKey: ['session-notes', sessionId] })
       const previousNote = queryClient.getQueryData(['session-notes', sessionId])
       queryClient.setQueryData(['session-notes', sessionId], content)
       return { previousNote }
     },
-    onError: (err, content, context) => {
+    onError: (err, { content }, context) => {
       if (context?.previousNote !== undefined) {
         queryClient.setQueryData(['session-notes', sessionId], context.previousNote)
       }
@@ -594,7 +594,7 @@ export function useSessionData(sessionId, campaignId) {
     ? guestSaving 
     : saveNoteMutation.isPending
 
-  const saveNote = useCallback(async (content) => {
+  const saveNote = useCallback(async (content, isUserEdit = false) => {
     if (isGuest) {
       setGuestSaving(true)
       try {
@@ -602,7 +602,7 @@ export function useSessionData(sessionId, campaignId) {
         setGuestNoteContent(content)
 
         const now = Date.now()
-        let shouldLogEditActivity = true
+        let shouldLogEditActivity = isUserEdit
         const guestEditActivityKey = `squill_guest_last_edit_activity_at:${sessionId || 'guest'}:${authState.user?.id || 'guest'}`
 
         try {
@@ -640,7 +640,7 @@ export function useSessionData(sessionId, campaignId) {
     }
 
     try {
-      await saveNoteMutation.mutateAsync(content)
+      await saveNoteMutation.mutateAsync({ content, isUserEdit })
     } catch (err) {
       // Handled via React Query mutation
     }

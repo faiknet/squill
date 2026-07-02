@@ -678,13 +678,13 @@ export default memo(function CampaignList() {
       {/* Desktop Context Menu Overlay */}
       {openMenuId && campaigns.find(c => c.id === openMenuId) && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-40 hidden lg:block"
           onClick={() => setOpenMenuId(null)}
         />
       )}
       {openMenuId && campaigns.find(c => c.id === openMenuId) && (
         <div 
-          className="fixed z-50 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 pointer-events-auto"
+          className="fixed z-50 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 pointer-events-auto hidden lg:block"
           style={{ top: `${menuPositionRef.current.top}px`, left: `${menuPositionRef.current.left}px` }}
           role="menu"
         >

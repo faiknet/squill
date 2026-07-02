@@ -106,6 +106,7 @@ function CampaignDetail() {
   const [errorMessage, setErrorMessage] = useState('')
   const [copyConfirmation, setCopyConfirmation] = useState('')
   const [editingSession, setEditingSession] = useState(null)
+  const [menuSession, setMenuSession] = useState(null)
   const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false)
   const [deletingSessionId, setDeletingSessionId] = useState(null)
   const [isDeleteSessionModalOpen, setIsDeleteSessionModalOpen] = useState(false)
@@ -593,7 +594,7 @@ function CampaignDetail() {
   const campaignStreakCount = getActiveStreakCount(campaign)
 
   if (loading) {
-    return <LoadingSpinner />
+    return <LoadingSpinner fullPage={false} />
   }
 
   return (
@@ -911,10 +912,10 @@ function CampaignDetail() {
                   ${session.archived ? 'border-slate-100 dark:border-gray-800 opacity-75' : 'border-slate-200 dark:border-gray-700'}
                 `}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-slate-900 dark:text-gray-100 text-lg truncate">
+                      <h3 className="font-semibold text-slate-900 dark:text-gray-100 text-base sm:text-lg truncate">
                         <button onClick={() => navigate(`/campaigns/${campaign.slug}/sessions/${session.slug}`)} className="hover:underline text-left truncate">
                           {session.name}
                         </button>
@@ -925,12 +926,13 @@ function CampaignDetail() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-gray-400 mt-0.5">
                       {session.session_date ? new Date(session.session_date + 'T00:00:00').toLocaleDateString() : 'No date set'}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto lg:opacity-0 lg:group-hover:opacity-100 opacity-100 transition-opacity shrink-0">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Desktop Actions */}
+                    <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         onClick={() => openEditSessionModal(session)}
                         variant="ghost"
@@ -965,9 +967,18 @@ function CampaignDetail() {
                         </Button>
                       )}
                     </div>
+                    {/* Mobile Menu Button */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setMenuSession(session) }}
+                      className="sm:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700/50 rounded-full transition-colors shrink-0"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                      </svg>
+                    </button>
                     <Button
                       onClick={() => navigate(`/campaigns/${campaign.slug}/sessions/${session.slug}`)}
-                      className="bg-brand-600 text-white hover:bg-brand-700 text-sm px-3 py-1.5"
+                      className="bg-brand-600 text-white hover:bg-brand-700 text-sm px-3 py-1.5 rounded shrink-0"
                     >
                       Open
                     </Button>
@@ -978,6 +989,56 @@ function CampaignDetail() {
           )}
         </div>
       </div>
+
+      {/* Session Actions Sheet Modal for Mobile */}
+      {menuSession && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60" onClick={() => setMenuSession(null)}>
+          <div 
+            className="w-full sm:max-w-sm bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-xl overflow-hidden shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-gray-700 flex justify-between items-center">
+              <span className="font-semibold text-slate-800 dark:text-gray-200 truncate">{menuSession.name}</span>
+              <button onClick={() => setMenuSession(null)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-full">
+                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="py-1">
+              <button
+                onClick={() => { openEditSessionModal(menuSession); setMenuSession(null) }}
+                className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-gray-700/50 flex items-center gap-3 text-sm text-slate-700 dark:text-gray-300"
+              >
+                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit details
+              </button>
+              <button
+                onClick={() => { toggleArchive(menuSession); setMenuSession(null) }}
+                className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-gray-700/50 flex items-center gap-3 text-sm text-slate-700 dark:text-gray-300"
+              >
+                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                {menuSession.archived ? 'Unarchive' : 'Archive'}
+              </button>
+              {isGM && (
+                <button
+                  onClick={() => { handleDeleteSession(menuSession); setMenuSession(null) }}
+                  className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-gray-700/50 flex items-center gap-3 text-sm text-red-600 dark:text-red-400"
+                >
+                  <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14" />
+                  </svg>
+                  Delete session
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {copyConfirmation && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 rounded-full shadow-lg border border-emerald-200 dark:border-emerald-800 font-medium text-sm animate-in fade-in slide-in-from-bottom-4" role="status" aria-live="polite">

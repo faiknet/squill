@@ -355,5 +355,88 @@
   background: radial-gradient(ellipse at center, rgba(48, 116, 115, 0.06) 0%, rgba(48, 116, 115, 0) 75%);
 }
 
+/* Toolbar responsive splitting */
+.toolbar-container {
+  flex-direction: column;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.toolbar-container::-webkit-scrollbar {
+  display: none;
+}
+
+.toolbar-left {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  width: 100%;
+}
+.toolbar-left::-webkit-scrollbar {
+  display: none;
+}
+
+.toolbar-divider {
+  display: none;
+}
+
+.toolbar-right {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  width: 100%;
+}
+.toolbar-right::-webkit-scrollbar {
+  display: none;
+}
+
+.toolbar-actions {
+  margin-left: 0;
+}
+
+/* Mobile size (until 767px wide) where they are scrollable and left-aligned */
+@media (max-width: 767px) {
+  .toolbar-right {
+    justify-content: flex-start;
+  }
+}
+
+@media (min-width: 1101px) {
+  .toolbar-container {
+    flex-direction: row;
+    align-items: center;
+    overflow-x: visible;
+  }
+  
+  .toolbar-left {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: visible;
+    width: auto;
+    flex-shrink: 0;
+  }
+  
+  .toolbar-divider {
+    display: block;
+  }
+  
+  .toolbar-right {
+    flex-wrap: nowrap;
+    overflow-x: visible;
+    flex: 1 1 0%;
+    justify-content: flex-start;
+  }
+
+  .toolbar-actions {
+    margin-left: auto;
+  }
+}
+
+
+
 
 

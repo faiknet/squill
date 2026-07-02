@@ -26,11 +26,7 @@ function ProtectedRoute({ children }) {
   const { authState } = useAuth()
 
   if (authState.isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-600 dark:text-gray-300 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   if (!authState || !authState.user) {
@@ -42,13 +38,7 @@ function ProtectedRoute({ children }) {
 
 export default function AppRoutes() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-          <LoadingSpinner />
-        </div>
-      }
-    >
+    <Suspense fallback={<LoadingSpinner />}>
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Auth />} />

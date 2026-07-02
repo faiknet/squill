@@ -180,7 +180,7 @@ export default function Settings() {
   };
 
   if (authState.isLoading) {
-    return <LoadingSpinner />
+    return <LoadingSpinner fullPage={false} />
   }
 
   return (

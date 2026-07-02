@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react'
+import { createPortal } from 'react-dom'
 import LinkModal from './LinkModal'
 import ImageModal from './ImageModal'
 
@@ -288,6 +289,15 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
   const [activeMarks, setActiveMarks] = useState(null)
   const [showSaved, setShowSaved] = useState(false)
   const prevSavingRef = useRef(saving)
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 767px)')
+    setIsMobileViewport(mediaQuery.matches)
+    const handler = (e) => setIsMobileViewport(e.matches)
+    mediaQuery.addEventListener('change', handler)
+    return () => mediaQuery.removeEventListener('change', handler)
+  }, [])
 
   useEffect(() => {
     const wasSaving = prevSavingRef.current
@@ -379,8 +389,24 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
   }
 
 
+  const portalTarget = document.getElementById('mobile-header-actions-portal')
+
   return (
     <>
+      {isMobileViewport && portalTarget && createPortal(
+        <>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); onOpenExport?.() }}
+            className="h-8 px-2.5 rounded border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors text-xs font-semibold text-slate-700 dark:text-gray-200 flex items-center justify-center shrink-0"
+            aria-label="Export session notes"
+          >
+            Export
+          </button>
+        </>,
+        portalTarget
+      )}
+
       <LinkModal
         isOpen={isLinkModalOpen}
         onClose={() => setIsLinkModalOpen(false)}
@@ -394,8 +420,8 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
         onInsert={handleImageInsert}
       />
 
-      <div data-toolbar className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-100 dark:border-gray-700 flex flex-col md:flex-row md:flex-wrap gap-1 md:items-center overflow-x-auto md:overflow-x-visible whitespace-nowrap scrollbar-none transition-colors duration-200 sticky top-0 z-10">
-        <div className="flex flex-nowrap md:flex-wrap gap-1 items-center justify-center md:justify-start overflow-x-auto md:overflow-x-visible whitespace-nowrap scrollbar-none w-full md:w-auto">
+      <div data-toolbar className="toolbar-container px-3 py-2 bg-white dark:bg-gray-800 border-b border-slate-100 dark:border-gray-700 flex gap-1 transition-colors duration-200 sticky top-0 z-10">
+        <div className="toolbar-left flex gap-1 items-center whitespace-nowrap">
           {/* Font Family */}
           <select
             value={activeMarks.fontFamily || ''}
@@ -490,9 +516,9 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           </select>
         </div>
 
-        <div className="hidden md:block w-px h-5 bg-slate-100 dark:bg-gray-700 flex-shrink-0" />
+        <div className="toolbar-divider w-px h-5 bg-slate-100 dark:bg-gray-700 flex-shrink-0" />
 
-        <div className="flex flex-nowrap md:flex-wrap gap-1 items-center overflow-x-auto md:overflow-x-visible whitespace-nowrap scrollbar-none w-full md:flex-1">
+        <div className="toolbar-right flex gap-1 items-center whitespace-nowrap">
           {/* Text Formatting */}
           <IconButton
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -631,26 +657,20 @@ export default memo(function GoogleDocsToolbar({ editor, isSidebarCollapsed = fa
           />
 
           {/* Right-aligned: Save status, Export, Share, sidebar controls */}
-          <div className="ml-auto flex items-center gap-1 flex-shrink-0">
+          <div className="toolbar-actions flex items-center gap-1 flex-shrink-0">
             <span className="hidden xl:inline text-xs text-slate-400 dark:text-gray-500 whitespace-nowrap" aria-live="polite" aria-atomic="true">
               {saving ? 'Saving…' : showSaved ? 'All changes saved' : ''}
             </span>
-            <button
-              type="button"
-              onMouseDown={(e) => { e.preventDefault(); onOpenExport?.() }}
-              className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors text-xs text-slate-700 dark:text-gray-300 flex items-center justify-center"
-              aria-label="Export session notes"
-            >
-              Export
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => { e.preventDefault(); onShare?.() }}
-              className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors text-xs text-slate-700 dark:text-gray-300 flex items-center justify-center"
-              aria-label={copied ? 'Link copied' : 'Share session link'}
-            >
-              {copied ? 'Copied!' : 'Share'}
-            </button>
+            {!isMobileViewport && (
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); onOpenExport?.() }}
+                className="h-11 md:h-7 px-3 md:px-2 rounded hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors text-xs text-slate-700 dark:text-gray-300 flex items-center justify-center"
+                aria-label="Export session notes"
+              >
+                Export
+              </button>
+            )}
 
             {isSidebarCollapsed && (
               <button

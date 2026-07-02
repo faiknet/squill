@@ -255,7 +255,7 @@ export default function Journal() {
   }
 
   if (loadingIds || loading) {
-    return <LoadingSpinner />
+    return <LoadingSpinner fullPage={false} />
   }
 
   return (
@@ -269,7 +269,7 @@ export default function Journal() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto md:overflow-hidden">
-        <div className="min-h-full md:h-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 grid-rows-none md:grid-rows-2 lg:grid-rows-1">
+        <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-4 md:grid-rows-2 lg:grid-rows-1 min-h-full md:h-full">
           {TAG_SECTIONS.map((section) => (
             <div
               key={section.type}

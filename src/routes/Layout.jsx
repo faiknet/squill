@@ -185,7 +185,7 @@ export default function Layout() {
 
       <main id="main-content" className="flex-1 overflow-y-auto w-full flex flex-col">
         <div className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
-          <Suspense fallback={<LoadingSpinner />}>
+          <Suspense fallback={<LoadingSpinner fullPage={false} />}>
             <Outlet />
           </Suspense>
         </div>

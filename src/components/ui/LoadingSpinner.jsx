@@ -8,7 +8,7 @@ const MESSAGES = [
   'Making the pen mightier than the sword...',
 ]
 
-export function LoadingSpinner({ className = '' }) {
+export function LoadingSpinner({ className = '', fullPage = true }) {
   const [message, setMessage] = useState(() =>
     MESSAGES[Math.floor(Math.random() * MESSAGES.length)]
   )
@@ -21,7 +21,11 @@ export function LoadingSpinner({ className = '' }) {
   }, [])
 
   return (
-    <div className={`min-h-screen w-full flex flex-col items-center justify-center gap-4 p-4 bg-gray-50 dark:bg-gray-950 ${className}`}>
+    <div className={
+      fullPage
+        ? `min-h-screen w-full flex flex-col items-center justify-center gap-4 p-4 bg-gray-50 dark:bg-gray-900 ${className}`
+        : `flex-1 min-h-[60vh] h-full w-full flex flex-col items-center justify-center gap-4 p-4 bg-transparent ${className}`
+    }>
       {!stalled && <div className="custom-loader" />}
       <p className="text-sm text-slate-500 dark:text-gray-400 animate-pulse">
         {stalled

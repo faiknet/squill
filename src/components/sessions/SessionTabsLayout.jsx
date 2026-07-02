@@ -1,12 +1,9 @@
-import { useState, useEffect } from 'react'
-import { Outlet, useParams, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../hooks/useSupabaseAuth'
-import { requireSupabase } from '../../lib/supabase'
-import { Button } from '../ui'
-import {
-  getGuestSessionBySlug,
-} from '../../lib/guestData'
-
+import { useState, useEffect } from "react";
+import { Outlet, useParams, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useSupabaseAuth";
+import { requireSupabase } from "../../lib/supabase";
+import { Button } from "../ui";
+import { getGuestSessionBySlug } from "../../lib/guestData";
 
 /**
  * SessionTabsLayout
@@ -21,82 +18,91 @@ import {
  * the tab buttons can animate font-size, font-weight, and background smoothly.
  */
 export default function SessionTabsLayout() {
-  const { campaignSlug, sessionSlug } = useParams()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const { authState } = useAuth()
-  const { isGuest, isLoading: authLoading } = authState
+  const { campaignSlug, sessionSlug } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { authState } = useAuth();
+  const { isGuest, isLoading: authLoading } = authState;
 
-  const [campaignId, setCampaignId] = useState(null)
-  const [campaignName, setCampaignName] = useState('')
-  const [sessionName, setSessionName] = useState('')
+  const [campaignId, setCampaignId] = useState(null);
+  const [campaignName, setCampaignName] = useState("");
+  const [sessionName, setSessionName] = useState("");
 
   // Determine active tab from pathname
-  const pathname = location.pathname
-  const isJournal = pathname.endsWith('/journal')
-  const isPreferences = pathname.endsWith('/preferences')
-  const isWorkspace = !isJournal && !isPreferences
+  const pathname = location.pathname;
+  const isJournal = pathname.endsWith("/journal");
+  const isPreferences = pathname.endsWith("/preferences");
+  const isWorkspace = !isJournal && !isPreferences;
 
   // Resolve slugs → IDs + names for the breadcrumb
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading) return;
 
     if (isGuest) {
-      const userId = authState.user?.id
-      const guestRoute = userId ? getGuestSessionBySlug(userId, campaignSlug, sessionSlug) : null
+      const userId = authState.user?.id;
+      const guestRoute = userId
+        ? getGuestSessionBySlug(userId, campaignSlug, sessionSlug)
+        : null;
       if (guestRoute) {
-        setCampaignId(guestRoute.campaign.id)
-        setCampaignName(guestRoute.campaign.name)
-        setSessionName(guestRoute.session.name || 'Session')
+        setCampaignId(guestRoute.campaign.id);
+        setCampaignName(guestRoute.campaign.name);
+        setSessionName(guestRoute.session.name || "Session");
       }
-      return
+      return;
     }
 
     const resolveNames = async () => {
       try {
-        const client = requireSupabase()
+        const client = requireSupabase();
         const { data: campaignData, error: campaignError } = await client
-          .from('campaigns')
-          .select('id, name')
-          .eq('slug', campaignSlug)
-          .single()
+          .from("campaigns")
+          .select("id, name")
+          .eq("slug", campaignSlug)
+          .single();
 
         if (campaignError || !campaignData) {
-          navigate('/campaigns')
-          return
+          navigate("/campaigns");
+          return;
         }
 
         const { data: sessionData, error: sessionError } = await client
-          .from('sessions')
-          .select('id, name')
-          .eq('slug', sessionSlug)
-          .eq('campaign_id', campaignData.id)
-          .single()
+          .from("sessions")
+          .select("id, name")
+          .eq("slug", sessionSlug)
+          .eq("campaign_id", campaignData.id)
+          .single();
 
         if (sessionError || !sessionData) {
-          navigate(`/campaigns/${campaignSlug}`)
-          return
+          navigate(`/campaigns/${campaignSlug}`);
+          return;
         }
 
-        setCampaignId(campaignData.id)
-        setCampaignName(campaignData.name)
-        setSessionName(sessionData.name || 'Session')
+        setCampaignId(campaignData.id);
+        setCampaignName(campaignData.name);
+        setSessionName(sessionData.name || "Session");
       } catch (err) {
-        console.error('SessionTabsLayout: error resolving slugs:', err)
-        navigate('/campaigns')
+        console.error("SessionTabsLayout: error resolving slugs:", err);
+        navigate("/campaigns");
       }
-    }
+    };
 
-    resolveNames()
-  }, [campaignSlug, sessionSlug, navigate, isGuest, authLoading, authState.user?.id])
+    resolveNames();
+  }, [
+    campaignSlug,
+    sessionSlug,
+    navigate,
+    isGuest,
+    authLoading,
+    authState.user?.id,
+  ]);
 
-  const effectiveCampaignName = campaignName
+  const effectiveCampaignName = campaignName;
 
   // Tab class helpers — these apply transition-all so font-size/weight/bg animate
   const activeTabClass =
-    'px-3 py-1.5 text-sm lg:text-base font-bold dark:bg-gray-900 text-slate-900 dark:text-white rounded text-center transition-all duration-200 ease-in-out'
+    "px-3 py-1.5 text-sm lg:text-base font-bold dark:bg-gray-900 text-slate-900 dark:text-white rounded text-center transition-all duration-200 ease-in-out";
   const inactiveTabClass =
-    'px-3 py-1.5 text-xs lg:text-sm font-medium text-slate-400 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover-fade-edges rounded text-center transition-all duration-200 ease-in-out'
+    "px-3 py-1.5 text-xs lg:text-sm font-medium text-slate-400 hover:text-slate-900 dark:text-gray-400 dark:hover:text-gray-200 hover-fade-edges rounded text-center transition-all duration-200 ease-in-out";
 
   return (
     <div className="h-screen bg-white dark:bg-gray-900 flex flex-col font-sans overflow-hidden transition-colors duration-200">
@@ -116,43 +122,65 @@ export default function SessionTabsLayout() {
             <div className="h-6 w-px bg-slate-100 dark:bg-gray-700 mx-1 lg:mx-2 shrink-0" />
             <nav aria-label="Breadcrumb">
               <div className="flex items-baseline gap-1.5 min-w-0">
-                <a href={`/campaigns/${campaignSlug}`} className="text-xs lg:text-sm text-slate-400 dark:text-gray-500 truncate max-w-[80px] sm:max-w-[150px] lg:max-w-[200px] hover:text-slate-600 dark:hover:text-gray-300">
+                <a
+                  href={`/campaigns/${campaignSlug}`}
+                  className="text-xs lg:text-sm text-slate-400 dark:text-gray-500 truncate max-w-[80px] sm:max-w-[150px] lg:max-w-[200px] hover:text-slate-600 dark:hover:text-gray-300"
+                >
                   {effectiveCampaignName}
                 </a>
-                <span className="text-xs text-slate-300 dark:text-gray-600 shrink-0" aria-hidden="true">/</span>
+                <span
+                  className="text-xs text-slate-300 dark:text-gray-600 shrink-0"
+                  aria-hidden="true"
+                >
+                  /
+                </span>
                 <h1 className="text-base lg:text-lg font-semibold text-slate-900 dark:text-gray-100 truncate font-sans">
                   {sessionName}
                 </h1>
               </div>
             </nav>
           </div>
+          {/* Portal target for mobile actions */}
+          <div
+            id="mobile-header-actions-portal"
+            className="flex items-center gap-1.5 md:hidden"
+          />
         </div>
 
-        {/* Row 2: Nav Tabs — centered, persistent, animated */}
         <div className="w-full lg:w-auto pb-3 lg:pb-0 flex items-center justify-center">
           <nav
-            className="flex items-center dark:bg-gray-800 p-1 shrink-0 rounded-md w-full lg:w-auto grid grid-cols-3 lg:flex lg:flex-row gap-0.5"
+            className="flex flex-row items-center justify-center dark:bg-gray-800 p-1 shrink-0 rounded-md gap-1 w-auto"
             aria-label="Session navigation"
           >
             <button
-              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}`)}
+              onClick={() =>
+                navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}`)
+              }
               className={isWorkspace ? activeTabClass : inactiveTabClass}
-              aria-current={isWorkspace ? 'page' : undefined}
+              aria-current={isWorkspace ? "page" : undefined}
             >
               <span className="hidden lg:inline">Workspace</span>
               <span className="lg:hidden">Edit</span>
             </button>
             <button
-              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}/journal`)}
+              onClick={() =>
+                navigate(
+                  `/campaigns/${campaignSlug}/sessions/${sessionSlug}/journal`,
+                )
+              }
               className={isJournal ? activeTabClass : inactiveTabClass}
-              aria-current={isJournal ? 'page' : undefined}
+              aria-current={isJournal ? "page" : undefined}
             >
               Journal
             </button>
             <button
-              onClick={() => navigate(`/campaigns/${campaignSlug}/sessions/${sessionSlug}/preferences`)}
+              onClick={() =>
+                navigate(
+                  `/campaigns/${campaignSlug}/sessions/${sessionSlug}/preferences`,
+                )
+              }
               className={isPreferences ? activeTabClass : inactiveTabClass}
-              aria-current={isPreferences ? 'page' : undefined}
+              aria-current={isPreferences ? "page" : undefined}
             >
               Preferences
             </button>
@@ -168,5 +196,5 @@ export default function SessionTabsLayout() {
         <Outlet />
       </div>
     </div>
-  )
+  );
 }
