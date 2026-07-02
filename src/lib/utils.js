@@ -2,7 +2,7 @@ export async function copyInviteLink(inviteCode, setConfirmation) {
   try {
     const link = `${window.location.origin}/join/${inviteCode}`
     await navigator.clipboard.writeText(link)
-    setConfirmation(`Invite link copied: ${inviteCode}`)
+    setConfirmation('Invite link copied!')
     setTimeout(() => setConfirmation(''), 2000)
     return true
   } catch (err) {

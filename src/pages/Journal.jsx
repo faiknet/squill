@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useSessionData } from '../hooks/useSessionData'
-import { Input } from '../components/ui'
+import { Input, LoadingSpinner } from '../components/ui'
 import NewJournalEntryModal from '../components/journal/NewJournalEntryModal'
 import { formatDistanceToNowCustom } from '../lib/dateUtils'
 import {
@@ -255,7 +255,7 @@ export default function Journal() {
   }
 
   if (loadingIds || loading) {
-    return null
+    return <LoadingSpinner />
   }
 
   return (

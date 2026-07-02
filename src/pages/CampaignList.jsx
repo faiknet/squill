@@ -457,7 +457,7 @@ export default memo(function CampaignList() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] overflow-x-auto">
+          <div className="bg-white dark:bg-gray-800 border-0 lg:border lg:border-slate-200 dark:lg:border-gray-700 rounded-lg shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] overflow-x-auto">
             {/* Desktop Table View */}
             <table className="w-full text-left hidden lg:table">
               <thead>
@@ -685,7 +685,7 @@ export default memo(function CampaignList() {
       {openMenuId && campaigns.find(c => c.id === openMenuId) && (
         <div 
           className="fixed z-50 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 pointer-events-auto"
-          style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+          style={{ top: `${menuPositionRef.current.top}px`, left: `${menuPositionRef.current.left}px` }}
           role="menu"
         >
           {(() => {

@@ -22,7 +22,7 @@ export default function AuthCallback() {
   }, [authState.isLoading, authState.user, navigate])
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
       <div className="text-center">
         <LoadingSpinner />
         <p className="mt-4 text-sm text-slate-600 dark:text-gray-400">

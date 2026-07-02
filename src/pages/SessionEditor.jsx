@@ -305,16 +305,7 @@ const EditorLayout = memo(function EditorLayout({
           >
             <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-slate-100 dark:bg-gray-700 group-hover:bg-slate-300 dark:group-hover:bg-gray-500" />
           </button>
-          {/* Mobile Close Header */}
-          <div className="lg:hidden p-4  flex items-center justify-between bg-white dark:bg-gray-900">
-            <h3 className="font-bold text-slate-900 dark:text-gray-100">Members & Activity</h3>
-            <button
-              onClick={() => setShowMobileSidebar(false)}
-              className="text-slate-400 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white"
-            >
-              ✕ Close
-            </button>
-          </div>
+
           <PresenceSidebar
             activeUsers={activeUsers}
             currentUser={currentUser}
@@ -697,7 +688,7 @@ export default memo(function SessionEditor() {
 
   if (resolveError) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center transition-colors duration-200">
         <div className="max-w-md text-center space-y-4">
           <div className="text-red-600 dark:text-red-400 p-4 border border-red-200 dark:border-red-800 rounded bg-red-50 dark:bg-red-900/20" role="alert">
             <h3 className="font-bold mb-2">Not Found</h3>
@@ -714,7 +705,7 @@ export default memo(function SessionEditor() {
   // Check if still resolving slug IDs
   if (loadingIds) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200" aria-live="polite" aria-busy="true">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center transition-colors duration-200" aria-live="polite" aria-busy="true">
         <p className="text-slate-500 dark:text-gray-400">Loading...</p>
       </div>
     )
@@ -726,7 +717,7 @@ export default memo(function SessionEditor() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center transition-colors duration-200">
         <div className="text-red-600 dark:text-red-400 p-4 border border-red-200 dark:border-red-800 rounded bg-red-50 dark:bg-red-900/20" role="alert">
           <h3 className="font-bold mb-2">Error</h3>
           <p>{error}</p>
