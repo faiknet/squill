@@ -104,6 +104,7 @@ const EditorLayout = memo(function EditorLayout({
   mutationError,
   clearMutationError,
   onEditorReady,
+  memberLabel = 'Players',
   children
 }) {
   const { campaignSlug, sessionSlug } = useParams()
@@ -322,6 +323,7 @@ const EditorLayout = memo(function EditorLayout({
             showOfflineMembers={showOfflineMembers}
             campaignSlug={campaignSlug}
             sessionSlug={sessionSlug}
+            memberLabel={memberLabel}
           />
         </div>
       </div>
@@ -369,6 +371,7 @@ const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
   mutationError,
   clearMutationError,
   onEditorReady,
+  memberLabel = 'Players',
 }) {
   const others = useOthers()
   const self = useSelf()
@@ -376,12 +379,12 @@ const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
   const effectiveUserColor = userColor || self?.presence?.color || colorFromString(userLabel)
 
   // Format current user for sidebar, including typing status from Liveblocks
-  const currentUser = {
+  const currentUser = useMemo(() => ({
     name: userLabel,
     color: effectiveUserColor,
     isSelf: true,
     typing: self?.presence?.typing || false
-  }
+  }), [userLabel, effectiveUserColor, self?.presence?.typing])
 
   return (
     <EditorLayout
@@ -403,6 +406,7 @@ const CollaborativeSessionContent = memo(function CollaborativeSessionContent({
       mutationError={mutationError}
       clearMutationError={clearMutationError}
       onEditorReady={onEditorReady}
+      memberLabel={memberLabel}
     >
       <CollaborativeEditor
         noteContent={noteContent}
@@ -429,6 +433,10 @@ export default memo(function SessionEditor() {
   const [campaignId, setCampaignId] = useState(null)
   const [campaignName, setCampaignName] = useState('')
   const [sessionId, setSessionId] = useState(null)
+  const [campaignLabel, setCampaignLabel] = useState('Campaign')
+  const [sessionLabel, setSessionLabel] = useState('Session')
+  const [memberLabel, setMemberLabel] = useState('Players')
+  const [gmLabel, setGmLabel] = useState('GM')
   const [loadingIds, setLoadingIds] = useState(true)
   const [resolveError, setResolveError] = useState('')
 
@@ -451,6 +459,10 @@ export default memo(function SessionEditor() {
       }
       setCampaignId(guestRoute.campaign.id)
       setCampaignName(guestRoute.campaign.name)
+      setCampaignLabel(guestRoute.campaign.label_campaign || 'Campaign')
+      setSessionLabel(guestRoute.campaign.label_session || 'Session')
+      setMemberLabel(guestRoute.campaign.label_member || 'Players')
+      setGmLabel(guestRoute.campaign.label_gm || 'GM')
       setSessionId(guestRoute.session.id)
       setLoadingIds(false)
       return
@@ -461,7 +473,7 @@ export default memo(function SessionEditor() {
         const client = requireSupabase()
         const { data: campaignData, error: campaignError } = await client
           .from('campaigns')
-          .select('id, name')
+          .select('id, name, label_campaign, label_session, label_member, label_gm')
           .eq('slug', campaignSlug)
           .single()
 
@@ -484,6 +496,10 @@ export default memo(function SessionEditor() {
 
         setCampaignId(campaignData.id)
         setCampaignName(campaignData.name)
+        setCampaignLabel(campaignData.label_campaign || 'Campaign')
+        setSessionLabel(campaignData.label_session || 'Session')
+        setMemberLabel(campaignData.label_member || 'Players')
+        setGmLabel(campaignData.label_gm || 'GM')
         setSessionId(sessionData.id)
       } catch (err) {
         console.error('Error resolving slugs:', err)
@@ -658,6 +674,7 @@ export default memo(function SessionEditor() {
           mutationError={mutationError}
           clearMutationError={clearMutationError}
           onEditorReady={setEditorInstance}
+          memberLabel={memberLabel}
         />
       </RoomProvider>
     )
@@ -684,6 +701,7 @@ export default memo(function SessionEditor() {
       mutationError={mutationError}
       clearMutationError={clearMutationError}
       onEditorReady={setEditorInstance}
+      memberLabel={memberLabel}
     >
       <LocalEditor
         noteContent={noteContent}

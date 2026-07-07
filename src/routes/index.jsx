@@ -14,6 +14,7 @@ const SessionTabsLayout = lazy(() => import('../components/sessions/SessionTabsL
 // Lazy loaded pages
 const CampaignList = lazy(() => import('../pages/CampaignList'))
 const CampaignDetail = lazy(() => import('../pages/CampaignDetail'))
+const CampaignSettings = lazy(() => import('../pages/CampaignSettings'))
 const Settings = lazy(() => import('../pages/Settings'))
 const JoinCampaign = lazy(() => import('../pages/JoinCampaign'))
 const Auth = lazy(() => import('../pages/Auth'))
@@ -87,6 +88,7 @@ export default function AppRoutes() {
         >
           <Route path="/settings" element={<Settings />} />
           <Route path="/campaigns/:campaignSlug" element={<CampaignDetail />} />
+          <Route path="/campaigns/:campaignSlug/settings" element={<CampaignSettings />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

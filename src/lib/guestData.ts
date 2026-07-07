@@ -103,6 +103,10 @@ This demo campaign showcases Squill's features. Feel free to explore, edit sessi
     streak_count: 1,
     streak_cadence: 'weekly',
     streak_last_period_start: seededPeriodStart,
+    label_campaign: 'Campaign',
+    label_session: 'Session',
+    label_member: 'Players',
+    label_gm: 'GM',
   }
 }
 
@@ -173,6 +177,10 @@ export function createGuestCampaign(userId: string, payload: { name: string; des
     streak_count: 0,
     streak_cadence: 'weekly',
     streak_last_period_start: null,
+    label_campaign: 'Campaign',
+    label_session: 'Session',
+    label_member: 'Players',
+    label_gm: 'GM',
   }
 
   const updated = [campaign, ...campaigns]

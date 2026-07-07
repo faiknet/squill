@@ -1,16 +1,21 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, useMemo, useRef, memo } from 'react'
-import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useFormState } from '../hooks/useFormState'
-import { copyInviteLink, getDisplayLabel, createUrlSlug } from '../lib/utils'
+import { copyInviteLink, getDisplayLabel } from '../lib/utils'
 import {
   validateCreateCampaign,
   validateUpdateCampaign,
   validateCampaignId,
   ValidationError,
 } from '../lib/validation'
-import { getGuestCampaigns, createGuestCampaign } from '../lib/guestData'
+import {
+  useCampaigns,
+  useCreateCampaignMutation,
+  useUpdateCampaignMutation,
+  useDeleteCampaignMutation,
+  useTogglePinCampaignMutation
+} from '../hooks/useCampaigns'
 import CreateCampaignModal from '../components/campaigns/CreateCampaignModal'
 import EditCampaignModal from '../components/campaigns/EditCampaignModal'
 import DeleteCampaignModal from '../components/campaigns/DeleteCampaignModal'
@@ -31,8 +36,12 @@ export default memo(function CampaignList() {
   // Extract current campaign slug from URL (e.g., /campaigns/my-campaign-a1b2)
   const currentCampaignSlug = location.pathname.match(/^\/campaigns\/([^\/]+)(?:\/|$)/)?.[1] || null
 
-  const [campaigns, setCampaigns] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { data: campaigns = [], isLoading: loading } = useCampaigns()
+  const createCampaignMutation = useCreateCampaignMutation()
+  const updateCampaignMutation = useUpdateCampaignMutation()
+  const deleteCampaignMutation = useDeleteCampaignMutation()
+  const togglePinCampaignMutation = useTogglePinCampaignMutation()
+
   const [searchQuery, setSearchQuery] = useState('')
   const [openMenuId, setOpenMenuId] = useState(null)
   const openCampaign = useMemo(() => {
@@ -59,11 +68,6 @@ export default memo(function CampaignList() {
   )
 
   useEffect(() => {
-    if (authState.isLoading || !authState.user) return
-    loadCampaigns()
-  }, [authState.isLoading, authState.user, isGuest])
-
-  useEffect(() => {
     const handleClickOutside = () => {
       if (openMenuId) setOpenMenuId(null)
     }
@@ -73,127 +77,37 @@ export default memo(function CampaignList() {
     }
   }, [openMenuId])
 
-  const loadCampaigns = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
-
-    // Return demo campaign for guest users
-    if (isGuest) {
-      setCampaigns(getGuestCampaigns(user.id))
-      setLoading(false)
-      return
-    }
-
-    try {
-      const client = requireSupabase()
-
-      // Parallel queries for efficiency
-      const [campaignsResult, pinsResult, partySizesResult, sessionsResult] = await Promise.all([
-        client.from('campaigns').select('id, slug, name, description, created_at, updated_at, created_by, invite_code, streak_count, streak_cadence').order('created_at', { ascending: false }),
-        client.from('campaign_pins').select('campaign_id'),
-        client.rpc('get_campaign_party_sizes'),
-        client.from('sessions').select('campaign_id')
-      ])
-
-      if (campaignsResult.error) throw campaignsResult.error
-      if (pinsResult.error) throw pinsResult.error
-      if (partySizesResult.error) throw partySizesResult.error
-      if (sessionsResult.error) throw sessionsResult.error
-
-      const pinnedIds = new Set((pinsResult.data || []).map(p => p.campaign_id))
-      const partySizeMap = new Map((partySizesResult.data || []).map(r => [r.campaign_id, Number(r.party_size) || 0]))
-
-      const sessionCountMap = new Map()
-      sessionsResult.data?.forEach(s => {
-        sessionCountMap.set(s.campaign_id, (sessionCountMap.get(s.campaign_id) || 0) + 1)
-      })
-
-      const processed = (campaignsResult.data || []).map(c => ({
-        ...c,
-        party_size: partySizeMap.get(c.id) ?? 0,
-        session_count: sessionCountMap.get(c.id) ?? 0,
-        pinned: pinnedIds.has(c.id),
-      }))
-
-      // Sort: pinned first, then recently updated
-      processed.sort((a, b) => {
-        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
-        return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
-      })
-
-      setCampaigns(processed)
-    } catch (err) {
-      setFail(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleCreateCampaign = async ({ name, description }) => {
     try {
-      // Validate input before database operation
+      // Validate input before operation
       const validated = validateCreateCampaign({ name, description })
-
-      if (isGuest) {
-        const slug = createUrlSlug(validated.name)
-        const guestCampaign = createGuestCampaign(user.id, {
-          name: validated.name,
-          description: validated.description,
-          slug,
-        })
-        setShowCreateModal(false)
-        await loadCampaigns()
-        navigate(`/campaigns/${guestCampaign.slug}`)
-        return
-      }
-
-      const client = requireSupabase()
-      const slug = createUrlSlug(validated.name)
-      const { data, error } = await client.from('campaigns').insert([
-        { name: validated.name, description: validated.description, slug, created_by: user.id }
-      ]).select().single()
-
-      if (error) throw error
-      await client.from('campaign_members').insert({ campaign_id: data.id, user_id: user.id })
+      const data = await createCampaignMutation.mutateAsync({ name: validated.name, description: validated.description })
 
       setShowCreateModal(false)
-      await loadCampaigns()
       navigate(`/campaigns/${data.slug}`)
     } catch (err) {
       if (err instanceof ValidationError) {
         setFail(err.getClientMessage())
       } else {
-        setFail(err)
+        setFail(err.message || err)
       }
     }
   }
 
   const handleUpdateCampaign = async (id, { name, description }) => {
     try {
-      // Validate inputs before database operation
+      // Validate inputs before operation
       const validated = validateUpdateCampaign({ name, description })
       const validatedId = validateCampaignId(id)
 
-      const client = requireSupabase()
-      const { data, error } = await client.rpc('update_campaign_as_gm', {
-        p_campaign_id: validatedId,
-        p_name: validated.name,
-        p_description: validated.description
-      })
-
-      if (error) throw error
-      if (!data || data.length === 0) throw new Error('Failed to update. Permission denied or campaign deleted.')
-
-      await loadCampaigns()
+      await updateCampaignMutation.mutateAsync({ id: validatedId, name: validated.name, description: validated.description })
       setEditingCampaign(null)
       setSuccess('Campaign updated successfully')
     } catch (err) {
       if (err instanceof ValidationError) {
         setFail(err.getClientMessage())
       } else {
-        setFail(err)
+        setFail(err.message || err)
       }
     }
   }
@@ -203,11 +117,8 @@ export default memo(function CampaignList() {
       // Validate campaign ID before deletion
       const validatedId = validateCampaignId(deletingCampaign.id)
 
-      const { error } = await requireSupabase().from('campaigns').delete().eq('id', validatedId)
-      if (error) throw error
-
+      await deleteCampaignMutation.mutateAsync(validatedId)
       setDeletingCampaign(null)
-      await loadCampaigns()
       setSuccess('Campaign deleted')
     } catch (err) {
       if (err instanceof ValidationError) {
@@ -225,22 +136,10 @@ export default memo(function CampaignList() {
 
   const handlePinCampaign = async (campaign) => {
     try {
-      const client = requireSupabase()
-      
-      // First, always try to delete any existing pin
-      const { error: deleteError } = await client.from('campaign_pins').delete().eq('campaign_id', campaign.id).eq('user_id', user.id)
-      if (deleteError) throw deleteError
-      
-      // If currently unpinned, insert new pin
-      if (!campaign.pinned) {
-        const { error: insertError } = await client.from('campaign_pins').insert({ campaign_id: campaign.id, user_id: user.id })
-        if (insertError) throw insertError
-      }
-
+      await togglePinCampaignMutation.mutateAsync(campaign)
       setOpenMenuId(null)
-      await loadCampaigns()
     } catch (err) {
-      setFail(err)
+      setFail(err.message || err)
     }
   }
 

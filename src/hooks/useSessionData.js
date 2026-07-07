@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from './useSupabaseAuth'
@@ -294,36 +294,37 @@ export function useSessionData(sessionId, campaignId) {
   })
 
   // 7. Activity Logs Query
+  // Filtered by campaign_id via an inner join so this fires in parallel with the
+  // other queries instead of waiting for sessionNotesListQuery to resolve first.
   const activityLogsQuery = useQuery({
     queryKey: ['activity-logs', campaignId],
     queryFn: async () => {
       const client = requireSupabase()
-      const sessions = sessionNotesListQuery.data || []
-      const sessionIds = sessions.map(s => s.id)
-      if (sessionIds.length === 0) return []
-
       const { data, error } = await client
         .from('session_activity_logs')
-        .select('*')
-        .in('session_id', sessionIds)
+        .select('id, session_id, user_id, action_type, details, created_at, sessions!inner(campaign_id)')
+        .eq('sessions.campaign_id', campaignId)
         .order('created_at', { ascending: false })
         .limit(100)
       if (error) throw error
-      return data || []
+      // Strip the joined sessions field — it was only needed for filtering
+      return (data || []).map(({ sessions: _sessions, ...log }) => log)
     },
-    enabled: !!campaignId && !isGuest && !!sessionNotesListQuery.data,
+    enabled: !!campaignId && !isGuest,
     staleTime: 5 * 60 * 1000,
   })
 
 
+  // Derive stable dependency key for session IDs and names to avoid subscription churn
+  const sessionNotesList = sessionNotesListQuery.data || []
+  const sessionIdsKey = useMemo(() => sessionNotesList.map(s => `${s.id}:${s.name}`).sort().join(','), [sessionNotesList])
+
   // --- Supabase Realtime Subscriptions ---
   useEffect(() => {
-    if (!campaignId || isGuest || !sessionNotesListQuery.data) return
+    if (!campaignId || isGuest || sessionNotesList.length === 0) return
 
     const client = requireSupabase()
-    const sessions = sessionNotesListQuery.data
-    const sessionIds = sessions.map(s => s.id)
-    if (sessionIds.length === 0) return
+    const sessionIds = sessionNotesList.map(s => s.id)
 
     // Realtime Activity Logs Channel
     const activityChannel = client
@@ -354,7 +355,7 @@ export function useSessionData(sessionId, campaignId) {
         if (payload.eventType === 'INSERT') {
           queryClient.setQueryData(['entity-tags', campaignId], (old = []) => {
             if (old.some(tag => tag.id === payload.new.id)) return old
-            const matchedSession = sessions.find(s => s.id === payload.new.session_id)
+            const matchedSession = sessionNotesList.find(s => s.id === payload.new.session_id)
             const newTag = {
               ...payload.new,
               sessions: matchedSession ? { name: matchedSession.name } : null
@@ -377,7 +378,7 @@ export function useSessionData(sessionId, campaignId) {
       client.removeChannel(activityChannel)
       client.removeChannel(tagsChannel)
     }
-  }, [campaignId, isGuest, sessionNotesListQuery.data, queryClient])
+  }, [campaignId, isGuest, sessionIdsKey, queryClient])
 
 
   // --- Mutations ---

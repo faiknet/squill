@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { requireSupabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useSupabaseAuth'
 import { useMobileMenu } from '../contexts/MobileMenuContext'
@@ -16,18 +17,16 @@ import GMLeaveWarningModal from '../components/campaigns/GMLeaveWarningModal'
 import {
   validateUpdateCampaign,
   validateCreateSession,
-  validateUpdateSession,
   validateCampaignId,
-  validateSessionId,
+  validateCampaignName,
   ValidationError,
 } from '../lib/validation'
 import {
   GUEST_CAMPAIGN_SLUG,
-  getGuestCampaigns,
-  getGuestSessionsForCampaign,
   createGuestSession,
-  getGuestCampaignMembers,
+  getGuestSessionsForCampaign,
 } from '../lib/guestData'
+import { useCampaignDetail, sortMembersWithGmFirst } from '../hooks/useCampaigns'
 
 const STREAK_PERIOD_LABELS = {
   weekly: 'week',
@@ -83,21 +82,43 @@ function CampaignDetail() {
   const { campaignSlug } = useParams()
   const navigate = useNavigate()
   const { authState } = useAuth()
+  const queryClient = useQueryClient()
 
   const { isGuest } = authState
   const { setMobileMenuOpen } = useMobileMenu()
   const currentUserId = authState.user?.id ?? null
-  const [campaign, setCampaign] = useState(null)
+
+  // React Query — replaces useState + loadCampaign useEffect
+  const {
+    data: campaignDetailData,
+    isLoading: campaignIsLoading,
+    error: campaignDetailError,
+  } = useCampaignDetail(campaignSlug)
+
+  // Include authState.isLoading: while auth resolves the query is disabled
+  // (isLoading=false) but campaign is still null — must show spinner.
+  const loading = authState.isLoading || campaignIsLoading
+
+  const campaign = campaignDetailData?.campaign ?? null
+  const sessions = campaignDetailData?.sessions ?? []
+  const partyMembers = campaignDetailData?.partyMembers ?? []
+
+  // Helper to patch the cached data without triggering a refetch
+  const updateCampaignCache = (updater) => {
+    queryClient.setQueryData(
+      ['campaign-detail', campaignSlug, currentUserId],
+      (old) => old ? { ...old, ...updater(old) } : old
+    )
+  }
+
   useEffect(() => {
     document.title = campaign ? `${campaign.name} — Squill` : 'Campaign — Squill'
   }, [campaign])
-  const [sessions, setSessions] = useState([])
-  const [partyMembers, setPartyMembers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [editingCampaign, setEditingCampaign] = useState(false)
-  const [campaignName, setCampaignName] = useState('')
-  const [campaignDescription, setCampaignDescription] = useState('')
-  const [campaignStreakCadence, setCampaignStreakCadence] = useState('weekly')
+
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [draftName, setDraftName] = useState('')
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [draftDescription, setDraftDescription] = useState('')
   const [campaignSaving, setCampaignSaving] = useState(false)
   const [showCreateSession, setShowCreateSession] = useState(false)
   const [sessionName, setSessionName] = useState('')
@@ -123,11 +144,26 @@ function CampaignDetail() {
   const copyConfirmationTimeoutRef = useRef(null)
   const menuRef = useRef(null)
 
+  // Navigate away if campaign not found
   useEffect(() => {
-    // Wait for auth state to be ready
-    if (authState.isLoading) return
-    loadCampaign()
-  }, [campaignSlug, isGuest, authState.isLoading])
+    if (campaignDetailError?.code === 'NOT_FOUND') {
+      navigate('/campaigns')
+    }
+  }, [campaignDetailError, navigate])
+
+  // Show non-critical members error inline
+  useEffect(() => {
+    if (campaignDetailData?.membersError) {
+      setErrorMessage(campaignDetailData.membersError)
+    }
+  }, [campaignDetailData?.membersError])
+
+  // Show critical campaign loading error if not NOT_FOUND
+  useEffect(() => {
+    if (campaignDetailError && campaignDetailError.code !== 'NOT_FOUND') {
+      setErrorMessage(campaignDetailError.message || 'Failed to load campaign')
+    }
+  }, [campaignDetailError])
 
   useEffect(() => {
     return () => {
@@ -151,133 +187,6 @@ function CampaignDetail() {
     }
   }, [memberContextMenuOpen])
 
-  const loadCampaign = async () => {
-    // Handle guest user with demo data
-    if (isGuest) {
-      const guestCampaign = getGuestCampaigns(currentUserId).find(c => c.slug === campaignSlug)
-      if (!guestCampaign) {
-        navigate('/campaigns')
-        return
-      }
-      const guestMembers = getGuestCampaignMembers(currentUserId)
-
-      setCampaign({
-        id: guestCampaign.id,
-        slug: guestCampaign.slug,
-        name: guestCampaign.name,
-        description: guestCampaign.description,
-        invite_code: guestCampaign.invite_code,
-        created_by: currentUserId,
-        streak_count: guestCampaign.streak_count ?? 0,
-        streak_cadence: guestCampaign.streak_cadence ?? 'weekly',
-        streak_last_period_start: guestCampaign.streak_last_period_start ?? null,
-      })
-      setCampaignName(guestCampaign.name)
-      setCampaignDescription(guestCampaign.description)
-      setCampaignStreakCadence(guestCampaign.streak_cadence ?? 'weekly')
-      setPartyMembers(guestMembers)
-      setSessions(getGuestSessionsForCampaign(guestCampaign.id))
-      setLoading(false)
-      return
-    }
-
-    try {
-      const client = requireSupabase()
-      const { data: campaignData, error: campaignError } = await client
-        .from('campaigns')
-        .select('id, slug, name, description, invite_code, created_by, streak_count, streak_cadence, streak_last_period_start')
-        .eq('slug', campaignSlug)
-        .single()
-
-      if (campaignError || !campaignData) {
-        navigate('/')
-        return
-      }
-
-      setCampaign(campaignData)
-      setCampaignName(campaignData.name || '')
-      setCampaignDescription(campaignData.description || '')
-      setCampaignStreakCadence(campaignData.streak_cadence || 'weekly')
-
-      // Fetch members and sessions in parallel
-      const [membersRes, sessionsRes] = await Promise.all([
-        client.rpc('get_campaign_members', { p_campaign_id: campaignData.id }),
-        client.from('sessions')
-          .select('id, slug, name, session_date, archived, created_at')
-          .eq('campaign_id', campaignData.id)
-          .order('created_at', { ascending: false })
-      ])
-
-      const { data: membersData, error: membersError } = membersRes
-      const { data: sessionsData, error: sessionsError } = sessionsRes
-
-      if (sessionsError) throw sessionsError
-      setSessions(sessionsData || [])
-
-      if (membersError) {
-        const message = String(membersError.message || '')
-        if (message.includes('Could not find the function public.get_campaign_members')) {
-          setErrorMessage('Party members are temporarily unavailable. Please try refreshing the page.')
-          setPartyMembers([])
-        } else {
-          throw membersError
-        }
-      } else {
-        const { data: displayPrefs } = await client
-          .from('campaign_display_preferences')
-          .select('user_id, display_name')
-          .eq('campaign_id', campaignData.id)
-
-        const prefMap = new Map()
-        displayPrefs?.forEach(p => {
-          if (p.display_name) prefMap.set(p.user_id, p.display_name)
-        })
-
-        const resolvedMembers = (membersData || []).map(m => ({
-          ...m,
-          display_name: prefMap.get(m.user_id) || m.display_name
-        }))
-
-        // Fetch user colors for all members
-        const memberIds = resolvedMembers.map(m => m.user_id)
-        if (memberIds.length > 0) {
-          try {
-            const { data: colorData, error: colorError } = await client.rpc('get_user_colors', {
-              user_ids: memberIds
-            })
- 
-            if (colorError) {
-              console.warn('Could not fetch user colors:', colorError.message)
-              setPartyMembers(sortMembersWithGmFirst(resolvedMembers, campaignData.created_by))
-            } else {
-              const colorMap = new Map()
-              colorData?.forEach(item => {
-                colorMap.set(item.user_id, item.editor_color)
-              })
- 
-              // Add color to members
-              const membersWithColor = resolvedMembers.map(member => ({
-                ...member,
-                color: colorMap.get(member.user_id)
-              }))
- 
-              setPartyMembers(sortMembersWithGmFirst(membersWithColor, campaignData.created_by))
-            }
-          } catch (err) {
-            console.debug('Error fetching colors:', err.message)
-            setPartyMembers(sortMembersWithGmFirst(resolvedMembers, campaignData.created_by))
-          }
-        } else {
-          setPartyMembers(resolvedMembers)
-        }
-      }
-    } catch (error) {
-      setErrorMessage(error.message || 'Failed to load campaign')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleCreateSession = async (e) => {
     e.preventDefault()
 
@@ -295,7 +204,8 @@ function CampaignDetail() {
           sessionDate: validated.sessionDate || null,
           slug: createUrlSlug(validated.name),
         })
-        setSessions(getGuestSessionsForCampaign(campaign.id))
+        const refreshedSessions = getGuestSessionsForCampaign(campaign.id)
+        updateCampaignCache(() => ({ sessions: refreshedSessions }))
       } else {
         const { data: newSession, error } = await requireSupabase().from('sessions').insert([
           {
@@ -308,7 +218,7 @@ function CampaignDetail() {
 
         if (error) throw error
         if (newSession) {
-          setSessions((prev) => [newSession, ...prev])
+          updateCampaignCache(old => ({ sessions: [newSession, ...old.sessions] }))
         }
       }
 
@@ -324,37 +234,42 @@ function CampaignDetail() {
     }
   }
 
-  const handleSaveCampaign = async (e) => {
-    e.preventDefault()
-
+  const handleSaveName = async (newName) => {
     try {
-      // Validate inputs before database operation
-      const validated = validateUpdateCampaign({
-        name: campaignName,
-        description: campaignDescription,
-        streakCadence: campaignStreakCadence,
-      })
-      const validatedId = validateCampaignId(campaign.id)
-
+      const validatedName = validateCampaignName(newName)
       setCampaignSaving(true)
       setErrorMessage('')
-      const { data: updatedCampaignData, error } = await requireSupabase().rpc('update_campaign_as_gm_with_streak', {
-        p_campaign_id: validatedId,
-        p_name: validated.name,
-        p_description: validated.description,
-        p_streak_cadence: validated.streakCadence,
-      })
 
-      if (error) throw error
-      const updatedCampaign = Array.isArray(updatedCampaignData) ? updatedCampaignData[0] : updatedCampaignData
-      if (!updatedCampaign) {
-        throw new Error('Only the GM can edit this campaign.')
+      if (isGuest) {
+        const stored = sessionStorage.getItem('squill_guest_campaigns')
+        if (stored) {
+          const campaigns = JSON.parse(stored)
+          const updatedCampaigns = campaigns.map(c =>
+            c.id === campaign.id ? { ...c, name: validatedName } : c
+          )
+          sessionStorage.setItem('squill_guest_campaigns', JSON.stringify(updatedCampaigns))
+        }
+        updateCampaignCache(old => ({ campaign: { ...old.campaign, name: validatedName } }))
+        setIsEditingName(false)
+      } else {
+        const validatedId = validateCampaignId(campaign.id)
+        const { data: updatedCampaignData, error } = await requireSupabase().rpc('update_campaign_as_gm_with_streak', {
+          p_campaign_id: validatedId,
+          p_name: validatedName,
+          p_description: campaign.description,
+          p_streak_cadence: campaign.streak_cadence || 'weekly',
+          p_label_campaign: campaign.label_campaign || 'Campaign',
+          p_label_session: campaign.label_session || 'Session',
+          p_label_member: campaign.label_member || 'Players',
+          p_label_gm: campaign.label_gm || 'GM',
+        })
+
+        if (error) throw error
+        const updatedCampaign = Array.isArray(updatedCampaignData) ? updatedCampaignData[0] : updatedCampaignData
+        if (!updatedCampaign) throw new Error('Only the GM can edit this campaign.')
+        updateCampaignCache(old => ({ campaign: { ...old.campaign, ...updatedCampaign } }))
+        setIsEditingName(false)
       }
-      setCampaign((previousCampaign) => ({ ...previousCampaign, ...updatedCampaign }))
-      setCampaignName(updatedCampaign.name || '')
-      setCampaignDescription(updatedCampaign.description || '')
-      setCampaignStreakCadence(updatedCampaign.streak_cadence || 'weekly')
-      setEditingCampaign(false)
     } catch (error) {
       if (error instanceof ValidationError) {
         setErrorMessage(error.getClientMessage())
@@ -363,7 +278,59 @@ function CampaignDetail() {
         if (message.toLowerCase().includes('row-level security')) {
           setErrorMessage('Only the GM can edit this campaign.')
         } else {
-          setErrorMessage('Failed to update campaign. Please try again.')
+          setErrorMessage('Failed to update campaign name. Please try again.')
+        }
+      }
+    } finally {
+      setCampaignSaving(false)
+    }
+  }
+
+  const handleSaveDescription = async (newDescription) => {
+    try {
+      const validated = validateUpdateCampaign({ description: newDescription })
+      setCampaignSaving(true)
+      setErrorMessage('')
+
+      if (isGuest) {
+        const stored = sessionStorage.getItem('squill_guest_campaigns')
+        if (stored) {
+          const campaigns = JSON.parse(stored)
+          const updatedCampaigns = campaigns.map(c =>
+            c.id === campaign.id ? { ...c, description: validated.description || '' } : c
+          )
+          sessionStorage.setItem('squill_guest_campaigns', JSON.stringify(updatedCampaigns))
+        }
+        updateCampaignCache(old => ({ campaign: { ...old.campaign, description: validated.description || '' } }))
+        setIsEditingDescription(false)
+      } else {
+        const validatedId = validateCampaignId(campaign.id)
+        const { data: updatedCampaignData, error } = await requireSupabase().rpc('update_campaign_as_gm_with_streak', {
+          p_campaign_id: validatedId,
+          p_name: campaign.name,
+          p_description: validated.description || '',
+          p_streak_cadence: campaign.streak_cadence || 'weekly',
+          p_label_campaign: campaign.label_campaign || 'Campaign',
+          p_label_session: campaign.label_session || 'Session',
+          p_label_member: campaign.label_member || 'Players',
+          p_label_gm: campaign.label_gm || 'GM',
+        })
+
+        if (error) throw error
+        const updatedCampaign = Array.isArray(updatedCampaignData) ? updatedCampaignData[0] : updatedCampaignData
+        if (!updatedCampaign) throw new Error('Only the GM can edit this campaign.')
+        updateCampaignCache(old => ({ campaign: { ...old.campaign, ...updatedCampaign } }))
+        setIsEditingDescription(false)
+      }
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        setErrorMessage(error.getClientMessage())
+      } else {
+        const message = String(error.message || '')
+        if (message.toLowerCase().includes('row-level security')) {
+          setErrorMessage('Only the GM can edit this campaign.')
+        } else {
+          setErrorMessage('Failed to update campaign description. Please try again.')
         }
       }
     } finally {
@@ -373,15 +340,6 @@ function CampaignDetail() {
 
   const handleDeleteCampaign = () => {
     setIsDeletingCampaignModalOpen(true)
-  }
-
-  const handleToggleEditCampaign = () => {
-    if (!editingCampaign && campaign) {
-      setCampaignName(campaign.name || '')
-      setCampaignDescription(campaign.description || '')
-      setCampaignStreakCadence(campaign.streak_cadence || 'weekly')
-    }
-    setEditingCampaign((prev) => !prev)
   }
 
   const handleConfirmDeleteCampaign = async () => {
@@ -407,9 +365,11 @@ function CampaignDetail() {
         .update({ archived: !session.archived })
         .eq('id', session.id)
       if (error) throw error
-      setSessions((prev) =>
-        prev.map((s) => (s.id === session.id ? { ...s, archived: !session.archived } : s))
-      )
+      updateCampaignCache(old => ({
+        sessions: old.sessions.map(s =>
+          s.id === session.id ? { ...s, archived: !session.archived } : s
+        )
+      }))
     } catch (error) {
       setErrorMessage(error.message || 'Failed to archive session')
     }
@@ -442,12 +402,12 @@ function CampaignDetail() {
 
       setEditingSession(null)
       setIsEditSessionModalOpen(false)
-      
+
       const updated = data[0]
       if (updated) {
-        setSessions((prev) =>
-          prev.map((s) => (s.id === sessionId ? { ...s, ...updated } : s))
-        )
+        updateCampaignCache(old => ({
+          sessions: old.sessions.map(s => s.id === sessionId ? { ...s, ...updated } : s)
+        }))
       }
     } catch (error) {
       console.error('Failed to save session:', error)
@@ -467,7 +427,9 @@ function CampaignDetail() {
       setDeletingSessionId(sessionToDelete.id)
       const { error } = await requireSupabase().from('sessions').delete().eq('id', sessionToDelete.id)
       if (error) throw error
-      setSessions((currentSessions) => currentSessions.filter((item) => item.id !== sessionToDelete.id))
+      updateCampaignCache(old => ({
+        sessions: old.sessions.filter(s => s.id !== sessionToDelete.id)
+      }))
       if (editingSession?.id === sessionToDelete.id) {
         setEditingSession(null)
         setIsEditSessionModalOpen(false)
@@ -522,7 +484,7 @@ function CampaignDetail() {
   const handleRemovePlayerFromCampaign = async (userId) => {
     try {
       const client = requireSupabase()
-      const { data, error } = await client.rpc('remove_campaign_member', {
+      const { error } = await client.rpc('remove_campaign_member', {
         p_campaign_id: campaign.id,
         p_user_id: userId
       })
@@ -532,8 +494,9 @@ function CampaignDetail() {
         throw error
       }
 
-      console.log('Player removed successfully:', { userId, campaignId: campaign.id })
-      setPartyMembers(partyMembers.filter(m => m.user_id !== userId))
+      updateCampaignCache(old => ({
+        partyMembers: old.partyMembers.filter(m => m.user_id !== userId)
+      }))
       setErrorMessage('')
     } catch (error) {
       console.error('Failed to remove player:', error)
@@ -545,7 +508,7 @@ function CampaignDetail() {
   const handleTransferGMStatus = async (userId) => {
     try {
       const client = requireSupabase()
-      const { data, error } = await client
+      const { error } = await client
         .from('campaigns')
         .update({ created_by: userId })
         .eq('id', campaign.id)
@@ -555,8 +518,10 @@ function CampaignDetail() {
         throw error
       }
 
-      console.log('GM status transferred successfully:', { userId, campaignId: campaign.id })
-      setCampaign({ ...campaign, created_by: userId })
+      updateCampaignCache(old => ({
+        campaign: { ...old.campaign, created_by: userId },
+        partyMembers: sortMembersWithGmFirst(old.partyMembers, userId),
+      }))
       setErrorMessage('')
     } catch (error) {
       console.error('Failed to transfer GM status:', error)
@@ -585,8 +550,28 @@ function CampaignDetail() {
   const campaignStreakText = formatCampaignStreak(campaign)
   const campaignStreakCount = getActiveStreakCount(campaign)
 
+  const campaignLabel = campaign?.label_campaign || 'Campaign'
+  const sessionLabel = campaign?.label_session || 'Session'
+  const memberLabel = campaign?.label_member || 'Players'
+  const gmLabel = campaign?.label_gm || 'GM'
+  const singularMember = memberLabel === 'Members' ? 'Member' : memberLabel === 'Editors' ? 'Editor' : memberLabel === 'Collaborators' ? 'Collaborator' : 'Player'
+
   if (loading) {
     return <LoadingSpinner fullPage={false} />
+  }
+
+  if (!campaign) {
+    return (
+      <div className="p-4 md:p-6 max-w-xl mx-auto mt-8">
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-md border border-red-200 dark:border-red-900/50 flex flex-col gap-4">
+          <h2 className="text-lg font-bold">Failed to load campaign</h2>
+          <p className="text-sm text-slate-600 dark:text-gray-300">{errorMessage || 'An error occurred while loading this campaign.'}</p>
+          <Button onClick={() => navigate('/campaigns')} className="w-fit bg-brand-600 text-white hover:bg-brand-700">
+            Back to Campaigns
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -596,38 +581,158 @@ function CampaignDetail() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div className="flex flex-col gap-4">
 
-            <div className="flex items-center gap-2 min-w-0">
-              <button
-                onClick={() => setMobileMenuOpen(true)}
-                className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-md transition-colors shrink-0"
+            {isEditingName ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSaveName(draftName)
+                }}
+                className="flex items-center gap-2 w-full max-w-md"
               >
-                <svg className="w-6 h-6 text-slate-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-gray-100 truncate">{campaign.name}</h1>
-
-              {isGM && (
-                <span className="inline-flex items-center rounded-md bg-brand-50 dark:bg-brand-900/30 px-2 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 ring-1 ring-inset ring-brand-700/10 shrink-0">
-                  GM
-                </span>
-              )}
-              {campaignStreakText && (
-                <button
-                  type="button"
-                  onClick={() => setIsStreakModalOpen(true)}
-                  className="inline-flex items-center ml-2 gap-1 text-amber-700 dark:text-amber-300 hover:opacity-80 transition-opacity cursor-pointer"
-                  title={campaignStreakText}
-                  aria-label={campaignStreakText}
+                <Input
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  className="bg-white dark:bg-gray-900 text-slate-900 dark:text-gray-100 py-1"
+                  autoFocus
+                  required
+                />
+                <Button
+                  size="sm"
+                  type="submit"
+                  disabled={campaignSaving}
+                  className="bg-brand-600 text-white hover:bg-brand-700 shrink-0"
                 >
-                  <img src="/icons/streak.png" alt="" className="h-7 w-7 shrink-0" aria-hidden="true" loading="lazy" />
-                  <span className="text-base font-semibold leading-none">{campaignStreakCount}</span>
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditingName(false)}
+                  disabled={campaignSaving}
+                  className="shrink-0"
+                >
+                  Cancel
+                </Button>
+              </form>
+            ) : (
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-md transition-colors shrink-0"
+                >
+                  <svg className="w-6 h-6 text-slate-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
                 </button>
-              )}
-            </div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-gray-100 truncate">{campaign.name}</h1>
+                {isGM && (
+                  <button
+                    onClick={() => {
+                      setDraftName(campaign.name)
+                      setIsEditingName(true)
+                    }}
+                    className="p-1 hover:bg-slate-100 dark:hover:bg-gray-700/50 rounded-md transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-gray-200 shrink-0"
+                    aria-label="Edit campaign name"
+                    title="Edit campaign name"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                )}
 
-            {campaign.description && (
-              <p className="mt-2 text-slate-500 dark:text-gray-400 max-w-2xl text-sm md:text-base">{campaign.description}</p>
+                {isGM && (
+                  <span className="inline-flex items-center rounded-md bg-brand-50 dark:bg-brand-900/30 px-2 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 ring-1 ring-inset ring-brand-700/10 shrink-0">
+                    {gmLabel}
+                  </span>
+                )}
+                {campaignStreakText && (
+                  <button
+                    type="button"
+                    onClick={() => setIsStreakModalOpen(true)}
+                    className="inline-flex items-center ml-2 gap-1 text-amber-700 dark:text-amber-300 hover:opacity-80 transition-opacity cursor-pointer"
+                    title={campaignStreakText}
+                    aria-label={campaignStreakText}
+                  >
+                    <img src="/icons/streak.png" alt="" className="h-7 w-7 shrink-0" aria-hidden="true" loading="lazy" />
+                    <span className="text-base font-semibold leading-none">{campaignStreakCount}</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {isEditingDescription ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSaveDescription(draftDescription)
+                }}
+                className="mt-2 space-y-2 max-w-2xl"
+              >
+                <textarea
+                  value={draftDescription}
+                  onChange={(e) => setDraftDescription(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder-slate-400 dark:placeholder-gray-600"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    type="submit"
+                    disabled={campaignSaving}
+                    className="bg-brand-600 text-white hover:bg-brand-700"
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsEditingDescription(false)}
+                    disabled={campaignSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              campaign.description ? (
+                <p className="mt-2 text-slate-500 dark:text-gray-400 max-w-2xl text-sm md:text-base">
+                  {campaign.description}
+                  {isGM && (
+                    <button
+                      onClick={() => {
+                        setDraftDescription(campaign.description)
+                        setIsEditingDescription(true)
+                      }}
+                      className="inline-flex ml-2 align-middle p-1 hover:bg-slate-100 dark:hover:bg-gray-700/50 rounded-md transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-gray-200"
+                      aria-label="Edit campaign description"
+                      title="Edit campaign description"
+                    >
+                      <svg className="w-4 h-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  )}
+                </p>
+              ) : (
+                isGM && (
+                  <button
+                    onClick={() => {
+                      setDraftDescription('')
+                      setIsEditingDescription(true)
+                    }}
+                    className="mt-2 text-sm text-slate-400 hover:text-slate-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors flex items-center gap-1.5 w-max"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span>Add description</span>
+                  </button>
+                )
+              )
             )}
 
             <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
@@ -643,13 +748,20 @@ function CampaignDetail() {
               </Button>
               {isGM && (
                 <>
-                  <Button
-                    variant="outline"
-                    onClick={handleToggleEditCampaign}
-                    className="shrink-0 whitespace-nowrap bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700"
-                  >
-                    {editingCampaign ? 'Cancel Edit' : 'Edit'}
-                  </Button>
+                  {!isGuest && (
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate(`/campaigns/${campaign.slug}/settings`)}
+                      className="shrink-0 p-2 bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700"
+                      aria-label="Campaign Settings"
+                      title="Campaign Settings"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </Button>
+                  )}
                   <Button
                     variant="danger"
                     className="shrink-0 whitespace-nowrap bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 border-red-200 dark:border-red-900/50"
@@ -686,7 +798,7 @@ function CampaignDetail() {
               aria-expanded={!isPartyCollapsed}
             >
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 dark:text-gray-100">Party Members</h3>
+                <h3 className="font-bold text-slate-900 dark:text-gray-100">{memberLabel}</h3>
                 <span className="bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full">
                   {partyMembers.length}
                 </span>
@@ -721,7 +833,7 @@ function CampaignDetail() {
                             {member.display_name}
                           </p>
                           {campaign && member.user_id === campaign.created_by && (
-                            <p className="text-xs text-slate-500 dark:text-gray-400">Game Master</p>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">{gmLabel}</p>
                           )}
                         </div>
 
@@ -735,7 +847,7 @@ function CampaignDetail() {
                               }}
                               className="w-full px-4 py-2 text-sm text-left text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700"
                             >
-                              Transfer GM Status
+                              Transfer {gmLabel} Status
                             </button>
                             <button
                               onClick={(e) => {
@@ -744,7 +856,7 @@ function CampaignDetail() {
                               }}
                               className="w-full px-4 py-2 text-sm text-left text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-gray-700"
                             >
-                              Remove from Campaign
+                              Remove from {campaignLabel}
                             </button>
                           </div>
                         )}
@@ -752,7 +864,7 @@ function CampaignDetail() {
                     ))
                   ) : (
                     <li className="p-4 text-sm text-slate-500 dark:text-gray-400 text-center">
-                      No party members yet.
+                      No {memberLabel.toLowerCase()} yet.
                     </li>
                   )}
                 </ul>
@@ -762,7 +874,7 @@ function CampaignDetail() {
                     variant="outline"
                     className="w-full justify-center text-sm border-dashed"
                   >
-                    + Invite Player
+                    + Invite {singularMember}
                   </Button>
                 </div>
               </>
@@ -778,71 +890,9 @@ function CampaignDetail() {
         </div>
       )}
 
-      {isGM && editingCampaign && (
-        <Card className="mb-8 animate-fadeIn">
-          <div className="p-6 border-b border-slate-200 dark:border-gray-700">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">Edit Campaign</h2>
-          </div>
-          <div className="p-6">
-            <form onSubmit={handleSaveCampaign} className="space-y-6">
-              <div>
-                <label htmlFor="edit-campaign-name" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Campaign Name</label>
-                <Input
-                  id="edit-campaign-name"
-                  type="text"
-                  value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                  required
-                  className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-600 focus:ring-brand-500 focus:border-brand-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="edit-campaign-description" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Description</label>
-                <textarea
-                  id="edit-campaign-description"
-                  value={campaignDescription}
-                  onChange={(e) => setCampaignDescription(e.target.value)}
-                  rows={3}
-                  className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent placeholder-slate-400 dark:placeholder-gray-600"
-                />
-              </div>
-              <div>
-                <label htmlFor="edit-campaign-streak-cadence" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Streak Cadence</label>
-                <select
-                  id="edit-campaign-streak-cadence"
-                  value={campaignStreakCadence}
-                  onChange={(e) => setCampaignStreakCadence(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                >
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Biweekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setCampaignName(campaign?.name || '')
-                    setCampaignDescription(campaign?.description || '')
-                    setCampaignStreakCadence(campaign?.streak_cadence || 'weekly')
-                    setEditingCampaign(false)
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" className="bg-brand-600 text-white hover:bg-brand-700" disabled={campaignSaving}>
-                  {campaignSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </Card>
-      )}
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">Sessions</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">{sessionLabel}s</h2>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
             <label className="text-sm text-slate-500 dark:text-gray-400 flex items-center gap-2 cursor-pointer select-none">
               <input
@@ -857,23 +907,23 @@ function CampaignDetail() {
               onClick={() => setShowCreateSession(!showCreateSession)}
               className="bg-brand-600 text-white hover:bg-brand-700 text-sm px-3 py-1.5 whitespace-nowrap w-full sm:w-auto justify-center"
             >
-              + New Session
+              + New {sessionLabel}
             </Button>
           </div>
         </div>
 
         {showCreateSession && (
           <Card className="p-6 mb-6 animate-fadeIn">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-gray-100 mb-4">Create New Session</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-gray-100 mb-4">Create New {sessionLabel}</h3>
             <form onSubmit={handleCreateSession} className="space-y-4">
               <div>
-                <label htmlFor="session-name" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">Session Name</label>
+                <label htmlFor="session-name" className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">{sessionLabel} Name</label>
                 <Input
                   id="session-name"
                   type="text"
                   value={sessionName}
                   onChange={(e) => setSessionName(e.target.value)}
-                  placeholder="e.g., Session 1: The Beginning"
+                  placeholder={`e.g., ${sessionLabel} 1: The Beginning`}
                   required
                   className="bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-700"
                 />
@@ -898,7 +948,7 @@ function CampaignDetail() {
                   Cancel
                 </Button>
                 <Button type="submit" className="bg-brand-600 text-white hover:bg-brand-700 text-sm">
-                  Create Session
+                  Create {sessionLabel}
                 </Button>
               </div>
             </form>
@@ -908,13 +958,13 @@ function CampaignDetail() {
         <div className="space-y-4">
           {visibleSessions.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg border-dashed ">
-              <p className="text-slate-500 dark:text-gray-400">No sessions found.</p>
+              <p className="text-slate-500 dark:text-gray-400">No {sessionLabel.toLowerCase()}s found.</p>
               <Button
                 onClick={() => setShowCreateSession(true)}
                 variant="link"
                 className="text-brand-600 hover:text-brand-700 dark:text-brand-400 mt-2 "
               >
-                Create your first session
+                Create your first {sessionLabel.toLowerCase()}
               </Button>
             </div>
           ) : (
@@ -1081,7 +1131,8 @@ function CampaignDetail() {
         isOpen={isDeletingCampaignModalOpen}
         onClose={() => setIsDeletingCampaignModalOpen(false)}
         onDelete={handleConfirmDeleteCampaign}
-        campaignName={campaignName}
+        campaignName={campaign?.name || ''}
+        campaignLabel={campaignLabel}
       />
 
       <RemovePlayerModal
@@ -1092,6 +1143,8 @@ function CampaignDetail() {
         }}
         onConfirm={() => handleRemovePlayerFromCampaign(selectedMember.user_id)}
         playerName={selectedMember?.display_name || ''}
+        memberLabel={singularMember}
+        campaignLabel={campaignLabel.toLowerCase()}
       />
 
       <TransferGMModal
@@ -1102,6 +1155,8 @@ function CampaignDetail() {
         }}
         onConfirm={() => handleTransferGMStatus(selectedMember.user_id)}
         playerName={selectedMember?.display_name || ''}
+        gmLabel={gmLabel}
+        campaignLabel={campaignLabel.toLowerCase()}
       />
 
       <StreakInfoModal
@@ -1115,6 +1170,7 @@ function CampaignDetail() {
         onClose={() => setIsLeaveCampaignModalOpen(false)}
         onConfirm={handleLeaveCampaign}
         campaignName={campaign?.name || ''}
+        campaignLabel={campaignLabel}
       />
 
       <GMLeaveWarningModal
@@ -1125,13 +1181,7 @@ function CampaignDetail() {
   )
 }
 
-const sortMembersWithGmFirst = (members, creatorId) => {
-  return [...members].sort((a, b) => {
-    if (a.user_id === creatorId) return -1
-    if (b.user_id === creatorId) return 1
-    return 0
-  })
-}
+// sortMembersWithGmFirst is now defined in useCampaigns.js and imported above
 
 import { memo } from 'react'
 export default memo(CampaignDetail)

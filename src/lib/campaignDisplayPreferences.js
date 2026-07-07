@@ -124,6 +124,8 @@ export function useCampaignDisplayNames(campaignIds = []) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  const campaignIdsKey = campaignIds.join(',')
+
   useEffect(() => {
     const cleanIds = campaignIds.filter(Boolean)
     if (cleanIds.length === 0 || isGuest || !user) {
@@ -186,7 +188,7 @@ export function useCampaignDisplayNames(campaignIds = []) {
     return () => {
       isMounted = false
     }
-  }, [JSON.stringify(campaignIds), user?.id, isGuest])
+  }, [campaignIdsKey, user?.id, isGuest])
 
   return { displayNameMap, isLoading, error }
 }

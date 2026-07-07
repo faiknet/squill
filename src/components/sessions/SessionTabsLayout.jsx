@@ -60,6 +60,8 @@ export default function SessionTabsLayout() {
     const resolveNames = async () => {
       try {
         const client = requireSupabase();
+
+        // Step 1: resolve campaign by slug
         const { data: campaignData, error: campaignError } = await client
           .from("campaigns")
           .select("id, name")
@@ -71,34 +73,35 @@ export default function SessionTabsLayout() {
           return;
         }
 
-        const { data: sessionData, error: sessionError } = await client
-          .from("sessions")
-          .select("id, name")
-          .eq("slug", sessionSlug)
-          .eq("campaign_id", campaignData.id)
-          .single();
+        // Step 2: session lookup + membership check in parallel
+        const [sessionResult, memberResult] = await Promise.all([
+          client
+            .from("sessions")
+            .select("id, name")
+            .eq("slug", sessionSlug)
+            .eq("campaign_id", campaignData.id)
+            .single(),
+          client
+            .from("campaign_members")
+            .select("campaign_id")
+            .eq("campaign_id", campaignData.id)
+            .eq("user_id", authState.user.id)
+            .maybeSingle(),
+        ]);
 
-        if (sessionError || !sessionData) {
+        if (sessionResult.error || !sessionResult.data) {
           setIsNotFound(true);
           return;
         }
 
-        // Verify campaign membership
-        const { data: memberData, error: memberError } = await client
-          .from("campaign_members")
-          .select("campaign_id")
-          .eq("campaign_id", campaignData.id)
-          .eq("user_id", authState.user.id)
-          .maybeSingle();
-
-        if (memberError || !memberData) {
+        if (memberResult.error || !memberResult.data) {
           setIsNotFound(true);
           return;
         }
 
         setCampaignId(campaignData.id);
         setCampaignName(campaignData.name);
-        setSessionName(sessionData.name || "Session");
+        setSessionName(sessionResult.data.name || "Session");
       } catch (err) {
         console.error("SessionTabsLayout: error resolving slugs:", err);
         setIsNotFound(true);

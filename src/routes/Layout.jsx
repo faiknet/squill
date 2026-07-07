@@ -4,8 +4,7 @@ import { useAuth } from '../hooks/useSupabaseAuth'
 import { getDisplayLabel } from '../lib/utils'
 import { UserProfileMenu } from '../components/ui'
 import Logo from '../components/ui/logo.webp'
-import { requireSupabase } from '../lib/supabase'
-import { getGuestCampaigns } from '../lib/guestData'
+import { useCampaigns } from '../hooks/useCampaigns'
 import { MobileMenuProvider } from '../contexts/MobileMenuContext'
 import { LoadingSpinner } from '../components/ui'
 
@@ -17,66 +16,16 @@ export default function Layout() {
   const { isGuest } = authState
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [campaignsExpanded, setCampaignsExpanded] = useState(true)
-  const [campaigns, setCampaigns] = useState([])
-  const [loadingCampaigns, setLoadingCampaigns] = useState(false)
+  const { data: campaigns = [], isLoading: loadingCampaigns } = useCampaigns()
 
   // Get current campaign slug from URL
   const currentCampaignSlug = location.pathname.match(/\/campaigns\/([^/]+)/)?.[1] || null
   const isOnCampaignsPage = location.pathname === '/campaigns' || location.pathname.startsWith('/campaigns/')
 
-  // Load campaigns when sidebar is expanded
-  useEffect(() => {
-    if (campaignsExpanded && campaigns.length === 0 && authState.user) {
-      loadCampaigns()
-    }
-  }, [campaignsExpanded, authState.user])
-
-  const loadCampaigns = async () => {
-    try {
-      setLoadingCampaigns(true)
-
-      // Show demo campaign in guest mode
-      if (isGuest && authState.user?.id) {
-        setCampaigns(getGuestCampaigns(authState.user.id))
-        return
-      }
-
-      const client = requireSupabase()
-      const [campaignsResult, pinsResult] = await Promise.all([
-        client
-          .from('campaigns')
-          .select('id, slug, name, updated_at, created_at'),
-        client
-          .from('campaign_pins')
-          .select('campaign_id')
-      ])
-
-      if (campaignsResult.error) throw campaignsResult.error
-      if (pinsResult.error) throw pinsResult.error
-
-      const pinnedIds = new Set((pinsResult.data || []).map(p => p.campaign_id))
-
-      const processed = (campaignsResult.data || []).map(c => ({
-        ...c,
-        pinned: pinnedIds.has(c.id),
-      }))
-
-      // Sort: pinned first, then recently updated
-      processed.sort((a, b) => {
-        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
-        return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
-      })
-
-      setCampaigns(processed)
-    } catch (err) {
-      console.error('Failed to load campaigns:', err)
-    } finally {
-      setLoadingCampaigns(false)
-    }
-  }
+  const mobileMenuValue = useMemo(() => ({ mobileMenuOpen, setMobileMenuOpen }), [mobileMenuOpen])
 
   return (
-    <MobileMenuProvider value={{ mobileMenuOpen, setMobileMenuOpen }}>
+    <MobileMenuProvider value={mobileMenuValue}>
       <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 font-sans text-slate-900 dark:text-gray-100 relative">
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
@@ -97,7 +46,7 @@ export default function Layout() {
             onClick={() => navigate('/campaigns')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <img src={Logo} alt="Squill Logo" className="size-8" />
+            <img src={Logo} alt="Squill Logo" className="size-8" loading="lazy" />
             <h1 className="text-2xl font-bold tracking-tight">Squill</h1>
           </button>
           <button

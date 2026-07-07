@@ -22,7 +22,8 @@ export default memo(function PresenceSidebar({
   setUserColor,
   showOfflineMembers = true,
   campaignSlug: propCampaignSlug,
-  sessionSlug: propSessionSlug
+  sessionSlug: propSessionSlug,
+  memberLabel = 'Players'
 }) {
   const params = useParams()
   const campaignSlug = propCampaignSlug || params.campaignSlug
@@ -127,37 +128,34 @@ export default memo(function PresenceSidebar({
   const startYRef = useRef(0)
   const startHeightRef = useRef(0)
 
-  const handlePointerMove = useCallback((moveEvent) => {
-    const deltaY = startYRef.current - moveEvent.clientY
-    const newHeight = startHeightRef.current + deltaY
-    setActivityHeight(Math.max(80, Math.min(500, newHeight)))
-  }, [])
-
-  const handlePointerUp = useCallback(() => {
-    setIsResizing(false)
-    document.removeEventListener('pointermove', handlePointerMove)
-    document.removeEventListener('pointerup', handlePointerUp)
-  }, [handlePointerMove])
-
   const handlePointerDown = useCallback((e) => {
     e.preventDefault()
     setIsResizing(true)
     startYRef.current = e.clientY
     startHeightRef.current = activityHeight
+  }, [activityHeight])
 
-    document.removeEventListener('pointermove', handlePointerMove)
-    document.removeEventListener('pointerup', handlePointerUp)
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handlePointerMove = (moveEvent) => {
+      const deltaY = startYRef.current - moveEvent.clientY
+      const newHeight = startHeightRef.current + deltaY
+      setActivityHeight(Math.max(80, Math.min(500, newHeight)))
+    }
+
+    const handlePointerUp = () => {
+      setIsResizing(false)
+    }
 
     document.addEventListener('pointermove', handlePointerMove)
     document.addEventListener('pointerup', handlePointerUp)
-  }, [activityHeight, handlePointerMove, handlePointerUp])
 
-  useEffect(() => {
     return () => {
       document.removeEventListener('pointermove', handlePointerMove)
       document.removeEventListener('pointerup', handlePointerUp)
     }
-  }, [handlePointerMove, handlePointerUp])
+  }, [isResizing])
 
   return (
     <aside className="w-full bg-white dark:bg-gray-900 border-slate-100 dark:border-gray-700 flex flex-col flex-1 min-h-0 font-sans transition-colors duration-200" aria-label="Members and activity">
@@ -166,7 +164,7 @@ export default memo(function PresenceSidebar({
         {/* Members Section */}
         <div className="p-5">
           <h3 className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-4">
-            Member List
+            {memberLabel}
           </h3>
           <div className="space-y-3">
             {visibleMemberStatusList.map((user) => (

@@ -75,6 +75,10 @@ export default function SessionPreferences() {
   const { isGuest } = authState
   const [campaignId, setCampaignId] = useState(null)
   const [resolvedCampaignName, setResolvedCampaignName] = useState('')
+  const [campaignLabel, setCampaignLabel] = useState('Campaign')
+  const [sessionLabel, setSessionLabel] = useState('Session')
+  const [memberLabel, setMemberLabel] = useState('Players')
+  const [gmLabel, setGmLabel] = useState('GM')
 
   useEffect(() => {
     if (isGuest) {
@@ -87,13 +91,17 @@ export default function SessionPreferences() {
         const client = requireSupabase()
         const { data, error } = await client
           .from('campaigns')
-          .select('id, name')
+          .select('id, name, label_campaign, label_session, label_member, label_gm')
           .eq('slug', campaignSlug)
           .single()
 
         if (!error && data) {
           setCampaignId(data.id)
           setResolvedCampaignName(data.name)
+          setCampaignLabel(data.label_campaign || 'Campaign')
+          setSessionLabel(data.label_session || 'Session')
+          setMemberLabel(data.label_member || 'Players')
+          setGmLabel(data.label_gm || 'GM')
         }
       } catch (err) {
         console.error('Failed to resolve campaign ID:', err)
@@ -364,8 +372,8 @@ export default function SessionPreferences() {
                   <div className="bg-slate-50/40 dark:bg-gray-900/50 p-4 border border-slate-100/60 dark:border-gray-800/80 rounded-xl flex flex-col justify-between min-h-[110px]">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Session Reference</p>
-                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to linked sessions.</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">{sessionLabel} Reference</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Controls @ references to linked {sessionLabel.toLowerCase()}s.</p>
                         <button
                           type="button"
                           onClick={resetSessionReferenceColor}
@@ -377,7 +385,7 @@ export default function SessionPreferences() {
                       <ReferenceColorPicker
                         value={sessionReferenceColor}
                         onChange={(event) => updateSessionReferenceColor(event.target.value)}
-                        label="Session reference"
+                        label={`${sessionLabel} reference`}
                       />
                     </div>
                   </div>
@@ -410,8 +418,8 @@ export default function SessionPreferences() {
               {/* Campaign Display Name Card */}
               <section className="bg-white dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-xl p-6 transition-all duration-200 flex flex-col justify-between h-fit">
                 <div>
-                  <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Campaign Display Name</h3>
-                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-4">Set a custom display name for yourself in this campaign. This name will be visible to all members.<br /></p>
+                  <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">{campaignLabel} Display Name</h3>
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-4">Set a custom display name for yourself in this {campaignLabel.toLowerCase()}. This name will be visible to all {memberLabel.toLowerCase()}.<br /></p>
                   <Input
                     type="text"
                     placeholder={resolvedCampaignName ? `e.g. Voldryn Stoneborn` : "Enter display name..."}
@@ -469,15 +477,15 @@ export default function SessionPreferences() {
               {/* Show Offline Members Card (Sidebar Bento Card) */}
               <section className="bg-white dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-xl p-6 transition-all duration-200 flex flex-col justify-between h-fit">
                 <div>
-                  <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Show Offline Members</h3>
-                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">When disabled, campaign members marked Offline are hidden from the sidebar.</p>
+                  <h3 className="font-semibold text-base text-slate-900 dark:text-gray-100 mb-1">Show Offline {memberLabel}</h3>
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">When disabled, {campaignLabel.toLowerCase()} {memberLabel.toLowerCase()} marked Offline are hidden from the sidebar.</p>
                 </div>
                 <div className="flex items-center justify-between mt-auto ">
                   <span className="text-xs font-medium text-slate-500 dark:text-gray-400">Sidebar Visibility</span>
                   <label className="relative inline-flex items-center cursor-pointer select-none">
                     <input
                       type="checkbox"
-                      aria-label="Show offline members in member list"
+                      aria-label={`Show offline ${memberLabel.toLowerCase()} in ${memberLabel.toLowerCase()} list`}
                       checked={showOfflineMembers}
                       onChange={(event) => handleShowOfflineMembersChange(event.target.checked)}
                       className="sr-only peer"

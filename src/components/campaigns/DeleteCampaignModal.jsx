@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Modal, Button, Input } from '../ui'
 
-export default function DeleteCampaignModal({ isOpen, onClose, onDelete, campaignName }) {
+export default function DeleteCampaignModal({ isOpen, onClose, onDelete, campaignName, campaignLabel = 'Campaign' }) {
   const [confirmText, setConfirmText] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -14,7 +14,7 @@ export default function DeleteCampaignModal({ isOpen, onClose, onDelete, campaig
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Delete Campaign" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Delete ${campaignLabel}`} size="md">
       <div className="space-y-6">
         <p className="text-sm text-slate-600 dark:text-gray-400">
           This action cannot be undone. All sessions, notes, and data associated with 
